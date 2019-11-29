@@ -1,0 +1,229 @@
+package gui
+
+// Globals ...
+var g_combos[] Combo
+
+// ComboId ...
+type ComboId struct {
+	base ControlId
+	combo i32
+}
+
+// Combo ...
+type Combo struct {
+	id ComboId
+	splitter SplitterId
+	picture LabelId
+	label LabelId
+	expand LabelId
+	screen ScreenId
+	window WindowId
+	list ListId
+}
+
+// NewComboId ...
+func NewComboId(base ControlId, combo i32) (out ComboId) {
+	out.base = base
+	out.combo = combo
+	panicIfNot(IsValidCombo(out), "invalid id")
+}
+
+// InvalidCombo ...
+func InvalidCombo() (out ComboId) {
+	out.base = InvalidControl()
+	out.combo = -1
+}
+
+// IsValidCombo ...
+func IsValidCombo(id ComboId) (out bool) {
+	out = id.combo >= 0 && id.combo < len(g_combos) && IsValidControl(id.base)
+}
+
+// ComboGetText ...
+func ComboGetText(id ComboId) (out LabelId) {
+	panicIfNot(IsValidCombo(id), "invalid id")
+	out = g_combos[id.combo].label
+}
+
+// ComboGetPic ...
+func ComboGetPic(id ComboId) (out LabelId) {
+	panicIfNot(IsValidCombo(id), "invalid id")
+	out = g_combos[id.combo].picture
+}
+
+// ComboGetList ...
+func ComboGetList(id ComboId) (out ListId) {
+	panicIfNot(IsValidCombo(id), "invalid id")
+	out = g_combos[id.combo].list
+}
+
+// ComboCreate ...
+func ComboCreate(name str) (out ComboId) {
+	out.combo = len(g_combos)
+	out.base = controlCreate(name, GUI_COMBO, out.combo)
+
+	ControlSetPadding(out.base, g_padding)
+
+	var combo Combo
+	combo.id = out
+
+	var screen ScreenId = ScreenCreate(sprintf("Combocreen_%s", name))
+	combo.screen = screen
+	ControlSetSkin(screen.base, g_popupSkin)
+	ControlSetBounds(screen.base, gfx.gfx_viewportBounds)
+	ScreenSetDuration(screen, -2.0D)
+	ScreenSetModal(screen, true)
+	ScreenSetFloating(screen, true)
+
+	var window WindowId = WindowCreate(sprintf("combo_window_%s", name))
+	ControlAddChild(screen.base, window.base)
+	ControlSetSkin(window.base, g_windowSkin)
+	ControlSetSize(window.base, v2.makef(100.0))
+	ControlSetAutosize(window.base, AUTOSIZE_Y)
+	//ControlSetAlign(window.base, ALIGN_CENTER)
+	var windowHeader ControlId = g_windows[window.window].header
+	ControlSetVisible(windowHeader, 0)
+	var windowStrip ControlId = g_windows[window.window].strip
+	ControlSetVisible(windowStrip, 0)
+
+	combo.window = window
+
+	var list ListId = ListCreate(sprintf("combo_list_%s", name))
+	ControlSetDock(list.base, DOCK_TOP)
+	ControlSetAutosize(list.base, AUTOSIZE_Y)
+	var listHeader ControlId = g_lists[list.list].header
+	g_controls[listHeader.control].visible = 0
+	combo.list = list
+	WindowSetContainee(window, list.base)
+
+	var expand LabelId = LabelCreate(sprintf("combo_expand_%s", name))
+	combo.expand = expand
+	ControlAddChild(out.base, expand.base)
+	ControlSetAutosize(expand.base, AUTOSIZE_X)
+	//ControlSetSize(expand.base, v2.make(32.0))
+	ControlSetDock(expand.base, DOCK_RIGHT)
+	LabelSetAlign(expand, ALIGN_CENTER)
+	LabelSetFont(expand, g_awesomeBoldFont)
+	LabelSetColor(expand, g_blue)
+	LabelSetRune(expand, 214)
+	LabelSetSize(expand, g_fontSizeSmall)
+
+	var picture LabelId = LabelCreate(sprintf("combo_picture_%s", name))
+	combo.picture = picture
+	ControlSetAutosize(picture.base, AUTOSIZE_X)
+	//ControlSetSize(picture.base, v2.make(32.0))
+	ControlSetDock(picture.base, DOCK_LEFT)
+	LabelSetAlign(picture, ALIGN_CENTER)
+	LabelSetFont(picture, g_awesomeBoldFont)
+
+	var label LabelId = LabelCreate(sprintf("combo_label_%s", name))
+	combo.label = label
+	ControlSetAutosize(label.base, AUTOSIZE_X)
+	ControlSetDock(label.base, DOCK_LEFT)
+	LabelSetAlign(label, ALIGN_CENTER)
+
+	var splitter SplitterId = SplitterCreate(sprintf("Comboplitter_%s", name))
+	combo.splitter = splitter
+	ControlAddChild(out.base, splitter.base)
+	ControlSetDock(splitter.base, DOCK_RIGHT)
+	ControlSetAutosize(splitter.base, AUTOSIZE_X)
+	ControlSetSpacing(splitter.base, g_spacing_x)
+	ControlSetPadding(splitter.base, v4.make(5.0, 0.0, 0.0, 0.0))
+	SplitterSetDirection(splitter, SPLIT_LEFT)
+	SplitterSetControls(splitter, picture.base, label.base)
+
+	g_combos = append(g_combos, combo)
+	panicIfNot(IsValidCombo(out), "invalid id")
+}
+
+// ComboProcessEvent ...
+func ComboProcessEvent(id ComboId, event *app.Event) (out i32) {
+	out = app.EVENT_UNUSED
+	panicIfNot(IsValidCombo(id), "invalid id")
+	var visible i32 = g_controls[id.base.control].visible
+
+	if (visible > 0) {
+		var index i32 = id.base.control
+		var focused i32 = g_controls[index].focused
+		var mods i32 = ((*event).keyboard).mods
+
+		if (mods == app.MOD_NONE) { // ##1 refactor with LabelProcessEvent
+			var call bool = false
+			var button i32 = (*event).mouse.button
+			if (button == app.BUTTON_LEFT) {
+				var action i32 = (*event).mouse.action
+				if (action == app.MOUSE_PRESS) {
+					//printf("app.MOUSE_PRESS\n")
+					var hovered i32 = g_controls[id.base.control].hovered
+					if (hovered > 0) {
+						call = true
+					}
+				}
+			} else if (focused > 0) {
+				var key i32 = (*event).keyboard.key
+				if (key == app.KEYCODE_ENTER || key == app.KEYCODE_SPACE) {
+					var action i32 = ((*event).keyboard).action
+					if (action == app.KEY_PRESS) {
+						call = true
+					}
+				}
+			}
+
+			if (call == true) {
+				var screen ScreenId = g_combos[id.combo].screen
+				ScreenShow(screen)
+				out = app.EVENT_CONSUMED
+			}
+		}
+	}
+
+	if (out == app.EVENT_UNUSED) {
+		out = ControlProcessEvent(id.base, event)
+	}
+}
+
+// ComboResize ...
+func ComboResize(id ComboId) () {
+	panicIfNot(IsValidCombo(id), "invalid id")
+	var visible i32 = g_controls[id.base.control].visible
+	if (visible > 0) {
+		var list ListId = g_combos[id.combo].list
+		var scroller ScrollerId = g_lists[list.list].scroller
+		var panel ControlId = g_scrollers[scroller.scroller].panel
+		var container ControlId = g_scrollers[scroller.scroller].container
+
+		ControlSetDock(scroller.base, DOCK_TOP)
+		ControlSetAutosize(scroller.base, AUTOSIZE_Y)
+
+		ControlSetDock(panel, DOCK_TOP)
+		ControlSetAutosize(panel, AUTOSIZE_Y)
+
+		ControlSetDock(container, DOCK_TOP)
+		ControlSetAutosize(container, AUTOSIZE_Y)
+
+		ControlResize(id.base)
+
+		var screen ScreenId = g_combos[id.combo].screen
+		//printf("AAAAAAAA\n")
+		if (ScreenModalIsVisible(screen) == true) {
+		//printf("BBBBBB\n")
+			var window WindowId = g_combos[id.combo].window
+			var comboPosition mat.v2 = g_controls[id.base.control].renderPosition
+			var windowSize mat.v2 = g_controls[window.base.control].size
+			//printf("###################################################### WINDOW SIZE %f\n", windowSize.y)
+			comboPosition.y = comboPosition.y - windowSize.y
+			ControlSetPosition(window.base, comboPosition)
+		}
+	}
+}
+
+// ComboRender ...
+func ComboRender(id ComboId, clip mat.v4, stack i32) () {
+	panicIfNot(IsValidCombo(id), "invalid id")
+	var visible i32 = g_controls[id.base.control].visible
+	if (visible > 0) {
+		ControlRender(id.base, clip, stack)
+	}
+}
+
+

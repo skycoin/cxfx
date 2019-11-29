@@ -1,0 +1,918 @@
+package gfx
+
+import "gl"
+import "mat"
+import "os"
+import "v1"
+import "v2"
+
+// TODO : print gl extensions on init
+// TODO : refactor transition shader
+//
+// Constants ...
+var ALWAYS i32 = gl.ALWAYS
+var BACK i32 = gl.BACK
+var COLOR i32 = gl.COLOR
+var COLOR_BUFFER_BIT i32 = gl.COLOR_BUFFER_BIT
+var CLAMP_TO_EDGE i32 = gl.CLAMP_TO_EDGE
+var CCW i32 = gl.CCW
+var CW i32 = gl.CW
+var DEPTH i32 = gl.DEPTH
+var DEPTH_BUFFER_BIT i32 = gl.DEPTH_BUFFER_BIT
+var EQUAL i32 = gl.EQUAL
+var FLOAT i32 = gl.FLOAT
+var KEEP i32 = gl.KEEP
+var LESS i32 = gl.LESS
+var LINEAR i32 = gl.LINEAR
+var LINES i32 = gl.LINES
+var NONE i32 = gl.NONE
+var ONE i32 = gl.ONE
+var ONE_MINUS_SRC_ALPHA i32 = gl.ONE_MINUS_SRC_ALPHA
+var REPEAT i32 = gl.REPEAT
+var REPLACE i32 = gl.REPLACE
+var RGBA i32 = gl.RGBA
+var SRC_ALPHA i32 = gl.SRC_ALPHA
+var STENCIL i32 = gl.STENCIL
+var STENCIL_BUFFER_BIT i32 = gl.STENCIL_BUFFER_BIT
+var TEXTURE_2D i32 = gl.TEXTURE_2D
+var TEXTURE_CUBE_MAP i32 = gl.TEXTURE_CUBE_MAP
+var TRIANGLES i32 = gl.TRIANGLES
+var UNSIGNED_SHORT i32 = gl.UNSIGNED_SHORT
+var ZERO i32 = gl.ZERO
+
+// Globals ...
+var DEBUG_0 mat.v4
+
+var g_sizeofF32 i32 = 4
+var g_sizeofI32 i32 = 4
+var g_sizeofUI32 i32 = 4
+var g_sizeofUI16 i32 = 2
+
+var g_colorMaskRed bool = true
+var g_colorMaskGreen bool = true
+var g_colorMaskBlue bool = true
+var g_colorMaskAlpha bool = true
+
+var g_drawBuffers []ui32
+
+var g_cull bool = false
+var g_frontFace i32 = gl.CCW
+var g_cullFace i32 = gl.BACK
+
+var g_blend bool = false
+var g_srcColor i32 = 0
+var g_srcAlpha i32 = 0
+var g_dstColor i32 = 0
+var g_dstAlpha i32 = 0
+
+var g_depthTest bool = false
+var g_depthFunc i32 = gl.LESS
+var g_depthMask bool = true
+
+var g_stencilTest bool = false
+var g_stencilWrite i32 = 256
+var g_stencilFunc i32 = gl.ALWAYS
+var g_stencilFuncRef i32 = 0
+var g_stencilFuncMask i32 = 256
+var g_stencilOpFail i32 = gl.KEEP
+var g_stencilOpDepthFail i32 = gl.KEEP
+var g_stencilOpDepthPass i32 = gl.KEEP
+
+var g_clearColor mat.v4
+var g_clearDepth f64
+var g_clearStencil i32
+
+var g_textureCUBE i32 = -1
+var g_texture2D i32 = -1
+var g_framebuffer i32 = -1
+
+var gfx_width f32 = 0.0
+var gfx_height f32 = 0.0
+var gfx_viewportSize mat.v2 = v2.ZERO
+var gfx_viewportBounds mat.v4 = v4.ZERO
+var gfx_ratio_x f32 = 1.0
+var gfx_ratio_y  f32 = 1.0
+
+var gfx_viewportX i32 = 0
+var gfx_viewportY i32 = 0
+var gfx_viewportWidth i32 = 0
+var gfx_viewportHeight i32 = 0
+
+var gfx_scissor bool = false
+var gfx_scissorX i32 = 0
+var gfx_scissorY i32 = 0
+var gfx_scissorWidth i32 = 0
+var gfx_scissorHeight i32 = 0
+
+var g_tfxDefault TemplateId
+var g_tfxFade TemplateId
+var g_tfxMerge TemplateId
+var g_tfxSky TemplateId
+var g_tfxPbr TemplateId
+
+var g_fxVertexColor2D EffectId = EffectInvalid()
+var g_fxTexture2D EffectId = EffectInvalid()
+var g_fxUniformColor3D EffectId = EffectInvalid()
+var g_fxVertexColor3D EffectId = EffectInvalid()
+var g_fxTexture3D EffectId = EffectInvalid()
+var g_fxParticles EffectId = EffectInvalid()
+var g_fxFade_0 EffectId = EffectInvalid()
+var g_fxFade_1 EffectId = EffectInvalid()
+var g_fxMerge EffectId = EffectInvalid()
+var g_fxStencil EffectId = EffectInvalid()
+var g_fxEdge EffectId = EffectInvalid()
+var g_fxSky EffectId = EffectInvalid()
+
+var g_linear0Wrap SamplerState = SamplerStateCreate(gl.LINEAR, gl.LINEAR, gl.REPEAT, gl.REPEAT, gl.REPEAT)
+var g_linearWrap SamplerState = SamplerStateCreate(gl.LINEAR_MIPMAP_NEAREST, gl.LINEAR, gl.REPEAT, gl.REPEAT, gl.REPEAT)
+var g_linearClamp SamplerState = SamplerStateCreate(gl.LINEAR_MIPMAP_NEAREST, gl.LINEAR, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE)
+var g_nearestClamp SamplerState = SamplerStateCreate(gl.NEAREST, gl.NEAREST, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE)
+
+
+var g_vertexLayout []VertexAttribute
+var g_particleLayout []VertexAttribute
+
+// Debug ...
+//var g_debugMesh MeshId
+var g_debugColorCount i32 = 8
+var g_debugColors [8]mat.v4
+var g_useDebugColors bool
+
+// VertexLayout ...
+func VertexLayout()(out []VertexAttribute) {
+	out = g_vertexLayout
+}
+
+// GlError ...
+func GlError() (error bool) {
+	error = false
+	var glerr i32 = -1
+	for glerr != 0  {
+		glerr = gl.GetError()
+		if  glerr != 0 {
+			error = true
+			if glerr == gl.INVALID_ENUM {
+				printf("GL_INVALID_ENUM\n")
+			} else if glerr == gl.INVALID_VALUE {
+				printf("GL_INVALID_VALUE\n")
+			} else if glerr == gl.INVALID_OPERATION {
+				printf("GL_INVALID_OPERATION\n")
+			} else if glerr == gl.STACK_OVERFLOW {
+				printf("GL_STACK_OVERFLOW\n")
+			} else if glerr == gl.STACK_UNDERFLOW {
+				printf("GL_STACK_UNDERFLOW\n")
+			} else if glerr == gl.OUT_OF_MEMORY {
+				printf("GL_OUT_OF_MEMORY\n")
+			} else if glerr != 0 {
+				panicIfNot(false, "invalid glError\n")
+			}
+		}
+	}
+}
+
+// NoGlError ...
+func NoGlErrror() (noerror bool) {
+	var error bool = GlError()
+	noerror = error == false // panic if noerror = (GlError() == false)
+}
+
+// GlStatus ...
+func GlStatus() (error bool) {
+	error = false
+	var glstat i32
+	glstat = gl.CheckFramebufferStatus(gl.FRAMEBUFFER)
+	panicIf(GlError(), "CheckFramebufferStatus")
+	if (glstat != gl.FRAMEBUFFER_COMPLETE) {
+		error = true
+		if (glstat == gl.FRAMEBUFFER_UNDEFINED) {
+			printf("GL_FRAMEBUFFER_UNDEFINED\n")
+		} else if (glstat == gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT) {
+			printf("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n")
+		} else if (glstat == gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT) {
+			printf("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n")
+		} else if (glstat == gl.FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER) {
+			printf("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n")
+		} else if (glstat == gl.FRAMEBUFFER_INCOMPLETE_READ_BUFFER) {
+			printf("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n")
+		} else if (glstat == gl.FRAMEBUFFER_UNSUPPORTED) {
+			printf("GL_FRAMEBUFFER_UNSUPPORTED\n")
+		} else if (glstat == gl.FRAMEBUFFER_INCOMPLETE_MULTISAMPLE) {
+			printf("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n")
+		} else if (glstat == gl.FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS) {
+			printf("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS\n")
+		} else {
+			panicIfNot(false, "invalid glFramebufferStatus")
+		}
+	}
+}
+
+// GlString ...
+func GlString(value i32) (out str) {
+	if value == gl.RGBA {
+		out = "RGBA"
+	} else if value == gl.DEPTH_COMPONENT {
+		out = "DEPTH_COMPONENT"
+	} else if value == gl.DEPTH_COMPONENT24 {
+		out = "DEPTH_COMPONENT24"
+	} else if value == gl.UNSIGNED_BYTE {
+		out = "UNSIGNED_BYTE"
+	} else if value == gl.TEXTURE_2D {
+		out = "TEXTURE_2D"
+	} else if value == gl.TEXTURE_CUBE_MAP {
+		out = "TEXTURE_CUBE_MAP"
+	} else {
+		out = "unknown gl enum"
+	}
+}
+
+// NoGlStatus ...
+func NoGlStatus() (nostatus bool) { // ISSUE : typo in function name GlStatus instaed of NoGlStatus : error: /home/reash/go/src/github.com/skycoin/cx/lib/cxfx/src/graphics.cx:123 identifier 'error' does not exist
+	var status bool = GlStatus()
+	nostatus = status == false // panic if nostatus = (GlStatus() == false)
+}
+
+// Location ...
+type Location struct {
+	location i32
+	Type i32
+	name str
+	bound bool
+}
+
+// LocationBind ...
+func LocationBind(locations []Location, location i32, slot i32, name str, Type i32) (out []Location) {
+	var count i32 = len(locations)
+	for i := count; i <= slot; i++ {
+		locations = append(locations, LocationCreate(-1, "", -1))
+	}
+
+	locations[slot] = LocationCreate(location, name, Type)
+	out = locations
+}
+
+
+// LocationCreate ...
+func LocationCreate(location i32, name str, Type i32) (out Location) {
+	out.location = location
+	out.name = name
+	out.Type = Type
+	out.bound = false
+}
+
+func assignTexture(target i32, slot i32, sampler i32, name i32) () {
+	gl.Uniform1i(sampler, slot)
+	panicIf(GlError(), "gl.Uniform1i")
+
+	gl.ActiveTexture(gl.TEXTURE0 + slot)
+	panicIf(GlError(), "gl.ActiveTexture")
+
+	bindTexture(target, name)
+}
+
+func assignFloat(slot i32, value f32) {
+	gl.Uniform1f(slot, value)
+	panicIf(GlError(), "gl.Uniform1f")
+}
+
+func assignVector4(slot i32, value mat.v4) {
+	gl.UniformV4F(slot, value)
+	panicIf(GlError(), "gl.UniformV4F")
+}
+
+func assignMatrix4(slot i32, value mat.m44, transpose bool) {
+	gl.UniformM44F(slot, transpose, value)
+	panicIf(GlError(), "gl.UniformM4f")
+}
+
+func assignMatrix4V(slot i32, value []mat.m44, transpose bool) {
+	gl.UniformM44FV(slot, len(value), transpose, value)
+	panicIf(GlError(), "gl.UniformM4f")
+}
+
+func bindTexture(target i32, name i32) {
+	if target == gl.TEXTURE_2D {
+		//if g_texture2D != name  { // TODO : fix cache
+			gl.BindTexture(gl.TEXTURE_2D, name)
+			panicIf(GlError(), "gl.BindTexture")
+			g_texture2D = name
+		//}
+	} else if target == gl.TEXTURE_CUBE_MAP {
+		//if g_textureCUBE != name  { // TODO : fix cache
+			gl.BindTexture(gl.TEXTURE_CUBE_MAP, name)
+			panicIf(GlError(), "gl.BindTexture")
+			g_textureCUBE = name
+		//}
+	}
+}
+
+func bindFramebuffer(name i32) {
+	if g_framebuffer != name {
+		gl.BindFramebuffer(gl.FRAMEBUFFER, name)
+		panicIf(GlError(), "gl.BindFramebuffer")
+	}
+}
+
+
+// DrawBuffers ...
+func DrawBuffers(count i32) {
+	for i := 0; i < len(g_drawBuffers); i++ {
+		if i < count {
+			g_drawBuffers[i] = i32.ui32(gl.COLOR_ATTACHMENT0 + i)
+		} else {
+			g_drawBuffers[i] = i32.ui32(gl.NONE)
+		}
+	}
+	gl.DrawBuffers(count, g_drawBuffers)
+	panicIf(GlError(), "gl.DrawBuffers")
+}
+
+// EnableCulling ...
+func EnableCulling(frontFace i32, cullFace i32) () {
+	if g_cull == false {
+		g_cull = true
+		gl.Enable(gl.CULL_FACE)
+		panicIf(GlError(), "gl.Enable(gl.CULL_FACE)")
+	}
+
+	if g_frontFace != frontFace {
+		g_frontFace = frontFace
+		gl.FrontFace(g_frontFace)
+		panicIf(GlError(), "gl.FrontFace")
+	}
+
+	if g_cullFace != cullFace {
+		g_cullFace = cullFace
+		gl.CullFace(g_cullFace)
+		panicIf(GlError(), "gl.CullFace")
+	}
+}
+
+// DisableCulling ...
+func DisableCulling()() {
+	if g_cull == true {
+		g_cull = false
+		gl.Disable(gl.CULL_FACE)
+		panicIf(GlError(), "gl.Disable(gl.CULL_FACE")
+	}
+}
+
+// EnableBlending ...
+func EnableBlending(srcBlend i32, dstBlend i32) () {
+	if (g_blend == false) {
+		g_blend = true
+		gl.Enable(gl.BLEND)
+		panicIf(GlError(), "gl.Enable(gl.BLEND)")
+	}
+
+
+	if (g_srcColor != srcBlend) || (g_dstColor != dstBlend) || (g_srcAlpha != srcBlend) || (g_dstAlpha != dstBlend) {
+		g_srcColor = srcBlend
+		g_srcAlpha = srcBlend
+		g_dstColor = dstBlend
+		g_dstAlpha = dstBlend
+		gl.BlendFunc(srcBlend, dstBlend)
+		panicIf(GlError(), "gl.BlendFunc")
+	}
+}
+
+// EnableBlendingSeparate ...
+func EnableBlendingSeparate(srcColor i32, dstColor i32, srcAlpha i32, dstAlpha i32) {
+	if g_blend == false {
+		g_blend = true
+		gl.Enable(gl.BLEND)
+		panicIf(GlError(), "gl.Enable(gl.BLEND)")
+	}
+
+	if (g_srcColor != srcColor) || (g_dstColor != dstColor) || (g_srcAlpha != srcAlpha) || (g_dstAlpha != dstAlpha) {
+		g_srcColor = srcColor
+		g_dstColor = dstColor
+		g_srcAlpha = srcAlpha
+		g_dstAlpha = dstAlpha
+		gl.BlendFuncSeparate(g_srcColor, g_dstColor, g_srcAlpha, g_dstAlpha)
+		panicIf(GlError(), "gl.BlendFuncSeparate")
+	}
+}
+
+// DisableBlending ...
+func DisableBlending() () {
+	if (g_blend == true) {
+		g_blend = false
+		gl.Disable(gl.BLEND)
+		panicIf(GlError(), "gl.Disable(gl.BLEND)")
+	}
+}
+
+// DepthState ...
+func DepthState(test bool, compare i32, write bool) {
+	DepthTest(test)
+	DepthFunc(compare)
+	DepthWrite(write)
+}
+
+// DepthTest ...
+func DepthTest(value bool) {
+	if value != g_depthTest {
+		if value {
+			gl.Enable(gl.DEPTH_TEST)
+			panicIf(GlError(), "gl.Enable(gl.DEPTH_TEST)")
+		} else {
+			gl.Disable(gl.DEPTH_TEST)
+			panicIf(GlError(), "gl.Disable(gl.DEPTH_TEST)")
+		}
+		g_depthTest = value
+	}
+}
+
+// EnableDepth ...
+func EnableDepth() () {
+	if (g_depthTest == false) {
+		g_depthTest = true
+		gl.Enable(gl.DEPTH_TEST)
+	}
+}
+
+// DisableDepth ...
+func DisableDepth() () {
+	DepthTest(false)
+	DepthWrite(false)
+}
+
+// DepthFunc ...
+func DepthFunc(value i32) {
+	if (g_depthFunc != value) {
+		g_depthFunc = value
+		gl.DepthFunc(g_depthFunc)
+		panicIf(GlError(), "gl.DepthFunc")
+	}
+}
+
+// DepthWrite ...
+func DepthWrite(value bool) {
+	if (g_depthMask != value) {
+		g_depthMask = value
+		gl.DepthMask(g_depthMask)
+		panicIf(GlError(), "gl.DepthWrite")
+	}
+}
+
+// StencilState ...
+func StencilState(test bool, compare i32, ref i32, mask i32, sfail i32, dpfail i32, dppass i32, write i32) {
+	StencilTest(test)
+	StencilFunc(compare, ref, mask)
+	StencilOp(sfail, dpfail, dppass)
+	StencilWrite(write)
+}
+
+// StencilTest ...
+func StencilTest(value bool) {
+	if value != g_stencilTest {
+		if value {
+			gl.Enable(gl.STENCIL_TEST)
+			panicIf(GlError(), "gl.Enable(gl.STENCIL_TEST)")
+		} else {
+   			gl.Disable(gl.STENCIL_TEST)
+			panicIf(GlError(), "gl.Disable(gl.STENCIL_TEST")
+		}
+		g_stencilTest = value
+	}
+}
+
+// DisableStencil ...
+func DisableStencil() () {
+	StencilTest(false)
+	StencilWrite(0)
+}
+
+// StencilFunc ...
+func StencilFunc(compare i32, ref i32, mask i32) {
+	if (g_stencilFunc != compare ||
+		g_stencilFuncRef != ref ||
+		g_stencilFuncMask != mask) {
+		g_stencilFunc = compare
+		g_stencilFuncRef = ref
+		g_stencilFuncMask = mask
+		gl.StencilFunc(g_stencilFunc, g_stencilFuncRef, g_stencilFuncMask)
+		panicIf(GlError(), "gl.StencilFunc")
+	}
+}
+
+// StencilOp ...
+func StencilOp(sfail i32, dpfail i32, dppass i32) {
+	if (g_stencilOpFail != sfail ||
+		g_stencilOpDepthFail != dpfail ||
+		g_stencilOpDepthPass != dppass) {
+		g_stencilOpFail = sfail
+		g_stencilOpDepthFail = dpfail
+		g_stencilOpDepthPass = dppass
+		gl.StencilOp(g_stencilOpFail, g_stencilOpDepthFail, g_stencilOpDepthPass)
+		panicIf(GlError(), "gl.StencilOp")
+	}
+}
+
+// StencilWrite ...
+func StencilWrite(write i32) {
+	if (g_stencilWrite != write) {
+		g_stencilWrite = write
+		gl.StencilMask(g_stencilWrite)
+		panicIf(GlError(), "gl.StencilMask")
+	}
+}
+
+// ClearBufferI ...
+func ClearBufferI(buffer i32, index i32, r i32, g i32, b i32, a i32) {
+	gl.ClearBufferI(buffer, index, r, g, b, a)
+	panicIf(GlError(), "gl.ClearBufferI")
+}
+
+// ClearBufferI ...
+func ClearBufferUI(buffer i32, index i32, r ui32, g ui32, b ui32, a ui32) {
+	gl.ClearBufferUI(buffer, index, r, g, b, a)
+	panicIf(GlError(), "gl.ClearBufferUI")
+}
+
+// ClearBufferF ...
+func ClearBufferF(buffer i32, index i32, r f32, g f32, b f32, a f32) {
+	gl.ClearBufferF(buffer, index, r, g, b, a)
+	panicIf(GlError(), "gl.ClearBufferF")
+}
+
+// Clear ...
+func Clear(buffers i32, color mat.v4, depth f64, stencil i32) () {
+	if ((g_clearColor.x != color.x) ||
+		(g_clearColor.y != color.y) ||
+		(g_clearColor.z != color.z) ||
+		(g_clearColor.w != color.w)) {
+		g_clearColor = color
+		gl.ClearColor(g_clearColor.x, g_clearColor.y, g_clearColor.z, g_clearColor.w)
+		panicIf(GlError(), "gl.ClearColor")
+	}
+	if (g_clearDepth != depth) {
+		g_clearDepth = depth
+		gl.ClearDepth(g_clearDepth)
+	}
+	if (g_clearStencil != stencil) {
+		g_clearStencil = stencil
+		gl.ClearStencil(g_clearStencil)
+	}
+	gl.Clear(buffers)
+	panicIf(GlError(), "gl.Clear")
+}
+
+// ColorWrite ...
+func ColorWrite(red bool, green bool, blue bool, alpha bool) {
+	if (g_colorMaskRed != red ||
+		g_colorMaskGreen != green ||
+		g_colorMaskBlue != blue ||
+		g_colorMaskAlpha != alpha) {
+		g_colorMaskRed = red
+		g_colorMaskGreen = green
+		g_colorMaskBlue = blue
+		g_colorMaskAlpha = alpha
+		gl.ColorMask(g_colorMaskRed, g_colorMaskGreen, g_colorMaskBlue, g_colorMaskAlpha)
+		panicIf(GlError(), "gl.ColorMask")
+	}
+}
+
+// SetViewport ...
+func SetViewport(bounds mat.v4) {
+
+	var x i32 = f32.i32(bounds.x)
+	var y i32 = f32.i32(bounds.y)
+	var width i32 = f32.i32(bounds.z)
+	var height i32 = f32.i32(bounds.w)
+
+	if (gfx_viewportX != x ||
+		gfx_viewportY != y ||
+		gfx_viewportWidth != width ||
+		gfx_viewportHeight != height) {
+		gfx_viewportX = x
+		gfx_viewportY = y
+		gfx_viewportWidth = width
+		gfx_viewportHeight = height
+		gl.Viewport(x, y, width, height)
+		panicIf(GlError(), "gl.Viewport")
+	}
+}
+
+// SetScissor ...
+func SetScissor(bounds mat.v4) {
+	if (gfx_scissor == false) {
+		gfx_scissor = true
+		gl.Enable(gl.SCISSOR_TEST)
+		panicIf(GlError(), "gl.Scissor")
+	}
+
+	var x i32 = f32.i32(bounds.x)
+	var y i32 = f32.i32(bounds.y)
+	var width i32 = f32.i32(bounds.z)
+	var height i32 = f32.i32(bounds.w)
+
+	if (gfx_scissorX != x ||
+		gfx_scissorY != y ||
+		gfx_scissorWidth != width ||
+		gfx_scissorHeight != height) {
+		gfx_scissorX = x
+		gfx_scissorY = y
+		gfx_scissorWidth = width
+		gfx_scissorHeight = height
+		gl.Scissor(x, y, width, height)
+		panicIf(GlError(), "gl.Scissor")
+	}
+}
+
+
+// Init ...
+func Init(width i32, height i32, dataDir str)() {
+	/*var view []f32
+	view = resize(view, 16)
+	State.View = view
+
+	var projection []f32
+	projection = resize(projection, 16)
+	State.Projection = projection*/
+
+	var GL_MAX_COLOR_ATTACHMENTS i32 = 4 // TODO remove hardcode
+	g_drawBuffers = resize(g_drawBuffers, 0)
+	for i := 0; i < GL_MAX_COLOR_ATTACHMENTS; i++ {
+		g_drawBuffers = append(g_drawBuffers, i32.ui32(gl.NONE))
+	}
+	g_vertexLayout = append(g_vertexLayout, VertexAttributeCreate(ATTRIBUTE_POSITION, 3, FLOAT))
+	g_vertexLayout = append(g_vertexLayout, VertexAttributeCreate(ATTRIBUTE_COLOR, 4, FLOAT))
+	g_vertexLayout = append(g_vertexLayout, VertexAttributeCreate(ATTRIBUTE_TEXCOORD, 2, FLOAT))
+
+	g_particleLayout = append(g_particleLayout, VertexAttributeCreate(ATTRIBUTE_POSITION, 3, FLOAT))
+	g_particleLayout = append(g_particleLayout, VertexAttributeCreate(ATTRIBUTE_COLOR, 4, FLOAT))
+	g_particleLayout = append(g_particleLayout, VertexAttributeCreate(ATTRIBUTE_TEXCOORD, 2, FLOAT))
+	g_particleLayout = append(g_particleLayout, VertexAttributeCreate(ATTRIBUTE_TEXCOORD_1, 3, FLOAT))
+	g_particleLayout = append(g_particleLayout, VertexAttributeCreate(ATTRIBUTE_TEXCOORD_2, 4, FLOAT))
+	g_particleLayout = append(g_particleLayout, VertexAttributeCreate(ATTRIBUTE_TEXCOORD_3, 4, FLOAT))
+	g_particleLayout = append(g_particleLayout, VertexAttributeCreate(ATTRIBUTE_TEXCOORD_4, 3, FLOAT))
+	g_particleLayout = append(g_particleLayout, VertexAttributeCreate(ATTRIBUTE_TEXCOORD_5, 3, FLOAT))
+	g_particleLayout = append(g_particleLayout, VertexAttributeCreate(ATTRIBUTE_TEXCOORD_6, 4, FLOAT))
+
+	g_debugColors[0] = v4.RED
+	g_debugColors[1] = v4.GREEN
+	g_debugColors[2] = v4.BLUE
+	g_debugColors[3] = v4.PINK
+	g_debugColors[4] = v4.YELLOW
+	g_debugColors[5] = v4.SKY
+	g_debugColors[6] = v4.ONE
+	g_debugColors[7] = v4.BLACK
+
+	g_clearColor = v4.PINK
+
+	gl.Init()
+	panicIf(GlError(), "gl.Init")
+
+	gl.Disable(gl.BLEND)
+	panicIf(GlError(), "gl.Disable(gl.BLEND)")
+
+	gl.Disable(gl.CULL_FACE)
+	panicIf(GlError(), "gl.Disable(gl.CULL_FACE)")
+
+	gl.Disable(gl.DEPTH_TEST)
+	panicIf(GlError(), "gl.Disable(gl.DEPTH_TEST)")
+
+	gl.ClearColor(g_clearColor.x, g_clearColor.y, g_clearColor.z, g_clearColor.w)
+	panicIf(GlError(), "gl.ClearColor")
+
+	resizeViewport(width, height)
+
+	shaderInit(dataDir)
+
+	g_tfxDefault = TemplateCreate("fxTemplateDefault", "default.vsh", "default.psh")
+	g_tfxFade = TemplateCreate("fxTemplateFade", "default.vsh", "fade.psh")
+	g_tfxMerge = TemplateCreate("fxTemplateMerge", "default.vsh", "merge.psh")
+	g_tfxSky = TemplateCreate("fxTemplateSky", "default.vsh", "sky.psh")
+	g_tfxPbr = TemplateCreate("fxTemplatePbr", "default.vsh", "default.psh")
+
+	// default
+	TemplateReset(g_tfxDefault)
+	TemplateSetKey(g_tfxDefault, USE_COLOR_VTX, true)
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_COLOR, "i_v4Color")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_DEBUG_0, "DEBUG_0")
+	g_fxVertexColor2D = TemplateInstance(g_tfxDefault)
+
+	TemplateReset(g_tfxDefault)
+	TemplateSetKey(g_tfxDefault, USE_COLOR_VTX, true)
+	TemplateSetKey(g_tfxDefault, USE_COLOR_MAP, true)
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_COLOR, "i_v4Color")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_TEXCOORD, "i_v2Texcoord")
+	TemplateBindSampler(g_tfxDefault, SAMPLER_COLOR_0, "u_t2Color", TEXTURE_2D)
+	TemplateBindUniform(g_tfxDefault, UNIFORM_DEBUG_0, "DEBUG_0")
+	g_fxTexture2D = TemplateInstance(g_tfxDefault)
+
+	TemplateReset(g_tfxDefault)
+	TemplateSetVertexKey(g_tfxDefault, USE_TRANSFORM, true)
+	TemplateSetPixelKey(g_tfxDefault, USE_COLOR_UNI, true)
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_DEBUG_0, "DEBUG_0")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_WORLD, "u_m44World")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_VIEW, "u_m44View")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_PROJECTION, "u_m44Projection")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_COLOR, "u_v4Color")
+	g_fxUniformColor3D = TemplateInstance(g_tfxDefault)
+
+	TemplateReset(g_tfxDefault)
+	TemplateSetVertexKey(g_tfxDefault, USE_TRANSFORM, true)
+	TemplateSetKey(g_tfxDefault, USE_COLOR_VTX, true)
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_COLOR, "i_v4Color")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_DEBUG_0, "DEBUG_0")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_WORLD, "u_m44World")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_VIEW, "u_m44View")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_PROJECTION, "u_m44Projection")
+	g_fxVertexColor3D = TemplateInstance(g_tfxDefault)
+
+	TemplateReset(g_tfxDefault)
+	TemplateSetVertexKey(g_tfxDefault, USE_TRANSFORM, true)
+	TemplateSetKey(g_tfxDefault, USE_COLOR_VTX, true)
+	TemplateSetKey(g_tfxDefault, USE_COLOR_MAP, true)
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_COLOR, "i_v4Color")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_TEXCOORD, "i_v2Texcoord")
+	TemplateBindSampler(g_tfxDefault, SAMPLER_COLOR_0, "u_t2Color", TEXTURE_2D)
+	TemplateBindUniform(g_tfxDefault, UNIFORM_DEBUG_0, "DEBUG_0")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_WORLD, "u_m44World")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_VIEW, "u_m44View")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_PROJECTION, "u_m44Projection")
+	g_fxTexture3D = TemplateInstance(g_tfxDefault)
+
+	// particle
+	TemplateReset(g_tfxDefault)
+	TemplateSetVertexKey(g_tfxDefault, USE_TRANSFORM, true)
+	TemplateSetKey(g_tfxDefault, USE_COLOR_UNI, true)
+	TemplateSetKey(g_tfxDefault, USE_COLOR_VTX, true)
+	TemplateSetKey(g_tfxDefault, USE_COLOR_MAP, true)
+	TemplateSetKey(g_tfxDefault, USE_PARTICLE, true)
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_COLOR, "i_v4Color")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_TEXCOORD, "i_v2Texcoord")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_TEXCOORD_1, "i_v3Velocity")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_TEXCOORD_2, "i_v4Orientation")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_TEXCOORD_3, "i_v4AngularVelocity")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_TEXCOORD_4, "i_v3Scale")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_TEXCOORD_5, "i_v3ScaleVelocity")
+	TemplateBindAttribute(g_tfxDefault, ATTRIBUTE_TEXCOORD_6, "i_v4Particle")
+	TemplateBindSampler(g_tfxDefault, SAMPLER_COLOR_0, "u_t2Color", TEXTURE_2D)
+	TemplateBindSampler(g_tfxDefault, SAMPLER_COLOR_1, "u_t2Depth", TEXTURE_2D)
+	TemplateBindUniform(g_tfxDefault, UNIFORM_DEBUG_0, "DEBUG_0")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_WORLD, "u_m44World")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_VIEW, "u_m44View")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_COLOR, "u_v4Color")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_PARTICLE, "u_v4Particle")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_PROJECTION, "u_m44Projection")
+	TemplateBindUniform(g_tfxDefault, UNIFORM_TARGET_SIZE, "u_v4TargetSize")
+	g_fxParticles = TemplateInstance(g_tfxDefault)
+
+	// fade
+	TemplateReset(g_tfxFade)
+	TemplateSetKey(g_tfxFade, USE_COLOR_MAP, true)
+	TemplateSetPixelKey(g_tfxFade, USE_PASS_0, true)
+	TemplateBindAttribute(g_tfxFade, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindAttribute(g_tfxFade, ATTRIBUTE_TEXCOORD, "i_v2Texcoord")
+	TemplateBindSampler(g_tfxFade, SAMPLER_COLOR_0, "u_t2Src", TEXTURE_2D)
+	TemplateBindSampler(g_tfxFade, SAMPLER_COLOR_1, "u_t2Dst", TEXTURE_2D)
+	TemplateBindUniform(g_tfxFade, UNIFORM_DEBUG_0, "DEBUG_0")
+	TemplateBindUniform(g_tfxFade, UNIFORM_TIME, "u_fTime")
+	g_fxFade_0 = TemplateInstance(g_tfxFade)
+
+	TemplateReset(g_tfxFade)
+	TemplateSetKey(g_tfxFade, USE_COLOR_MAP, true)
+	TemplateSetPixelKey(g_tfxFade, USE_PASS_1, true)
+	TemplateBindAttribute(g_tfxFade, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindAttribute(g_tfxFade, ATTRIBUTE_TEXCOORD, "i_v2Texcoord")
+	TemplateBindSampler(g_tfxFade, SAMPLER_COLOR_0, "u_t2Src", TEXTURE_2D)
+	TemplateBindSampler(g_tfxFade, SAMPLER_COLOR_1, "u_t2Dst", TEXTURE_2D)
+	TemplateBindUniform(g_tfxFade, UNIFORM_DEBUG_0, "DEBUG_0")
+	TemplateBindUniform(g_tfxFade, UNIFORM_TIME, "u_fTime")
+	g_fxFade_1 = TemplateInstance(g_tfxFade)
+
+	// merge
+	TemplateReset(g_tfxMerge)
+	TemplateSetKey(g_tfxMerge, USE_COLOR_MAP, true)
+	TemplateSetKey(g_tfxMerge, USE_MERGE, true)
+	TemplateBindAttribute(g_tfxMerge, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindAttribute(g_tfxMerge, ATTRIBUTE_TEXCOORD, "i_v2Texcoord")
+	TemplateBindSampler(g_tfxMerge, SAMPLER_COLOR_0, "u_t2Opaque", TEXTURE_2D)
+	TemplateBindSampler(g_tfxMerge, SAMPLER_COLOR_1, "u_t2Alpha0", TEXTURE_2D)
+	TemplateBindSampler(g_tfxMerge, SAMPLER_COLOR_2, "u_t2Alpha1", TEXTURE_2D)
+	TemplateBindSampler(g_tfxMerge, SAMPLER_COLOR_3, "u_t2Depth", TEXTURE_2D)
+	TemplateBindUniform(g_tfxMerge, UNIFORM_DEBUG_0, "DEBUG_0")
+	g_fxMerge = TemplateInstance(g_tfxMerge)
+
+	// edge
+	TemplateReset(g_tfxMerge)
+	TemplateSetKey(g_tfxMerge, USE_COLOR_MAP, true)
+	TemplateSetKey(g_tfxMerge, USE_EDGE, true)
+	TemplateBindAttribute(g_tfxMerge, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindAttribute(g_tfxMerge, ATTRIBUTE_TEXCOORD, "i_v2Texcoord")
+	TemplateBindSampler(g_tfxMerge, SAMPLER_COLOR_3, "u_t2Depth", TEXTURE_2D)
+	TemplateBindUniform(g_tfxMerge, UNIFORM_TARGET_SIZE, "u_v4TargetSize")
+	TemplateBindUniform(g_tfxMerge, UNIFORM_DEBUG_0, "DEBUG_0")
+	g_fxEdge = TemplateInstance(g_tfxMerge)
+
+	// stencil
+	TemplateReset(g_tfxMerge)
+	TemplateSetKey(g_tfxMerge, USE_COLOR_MAP, true)
+	TemplateSetKey(g_tfxMerge, USE_STENCIL, true)
+	TemplateBindAttribute(g_tfxMerge, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindAttribute(g_tfxMerge, ATTRIBUTE_TEXCOORD, "i_v2Texcoord")
+	TemplateBindSampler(g_tfxMerge, SAMPLER_COLOR_3, "u_t2Depth", TEXTURE_2D)
+	TemplateBindUniform(g_tfxMerge, UNIFORM_DEBUG_0, "DEBUG_0")
+	g_fxStencil = TemplateInstance(g_tfxMerge)
+
+	// sky
+	TemplateReset(g_tfxSky)
+	TemplateSetVertexKey(g_tfxSky, USE_TRANSFORM, true)
+	TemplateBindAttribute(g_tfxSky, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindSampler(g_tfxSky, SAMPLER_ENV_DIFFUSE, "u_tcEnvironmentDiffuse", TEXTURE_CUBE_MAP)
+	TemplateBindUniform(g_tfxSky, UNIFORM_DEBUG_0, "DEBUG_0")
+	TemplateBindUniform(g_tfxSky, UNIFORM_WORLD, "u_m44World")
+	TemplateBindUniform(g_tfxSky, UNIFORM_VIEW, "u_m44View")
+	TemplateBindUniform(g_tfxSky, UNIFORM_PROJECTION, "u_m44Projection")
+	g_fxSky = TemplateInstance(g_tfxSky)
+
+	// pbr
+	TemplateReset(g_tfxPbr)
+	TemplateSetVertexKey(g_tfxPbr, USE_TRANSFORM, true)
+	TemplateBindAttribute(g_tfxPbr, ATTRIBUTE_POSITION, "i_v3Position")
+	TemplateBindAttribute(g_tfxPbr, ATTRIBUTE_NORMAL, "i_v3Normal")
+	TemplateBindAttribute(g_tfxPbr, ATTRIBUTE_TEXCOORD, "i_v2Texcoord")
+	TemplateBindAttribute(g_tfxPbr, ATTRIBUTE_TANGENT, "i_v4Tangent")
+	TemplateBindAttribute(g_tfxPbr, ATTRIBUTE_WEIGHT, "i_v4Weight")
+	TemplateBindAttribute(g_tfxPbr, ATTRIBUTE_JOINT, "i_v4Joint")
+	TemplateBindSampler(g_tfxPbr, SAMPLER_COLOR_0, "u_t2Color", TEXTURE_2D)
+	TemplateBindSampler(g_tfxPbr, SAMPLER_NORMAL, "u_t2Normal", TEXTURE_2D)
+	TemplateBindSampler(g_tfxPbr, SAMPLER_METAL_ROUGH, "u_t2MetalRough", TEXTURE_2D)
+	TemplateBindSampler(g_tfxPbr, SAMPLER_BRDF, "u_t2BRDF", TEXTURE_2D)
+	TemplateBindSampler(g_tfxPbr, SAMPLER_EMISSIVE, "u_t2Emissive", TEXTURE_2D)
+	TemplateBindSampler(g_tfxPbr, SAMPLER_ENV_SPECULAR, "u_tcEnvironmentSpecular", TEXTURE_CUBE_MAP)
+	TemplateBindSampler(g_tfxPbr, SAMPLER_ENV_DIFFUSE, "u_tcEnvironmentDiffuse", TEXTURE_CUBE_MAP)
+	TemplateBindSampler(g_tfxPbr, SAMPLER_OCCLUSION, "u_t2Occlusion", TEXTURE_2D)
+	TemplateBindUniform(g_tfxPbr, UNIFORM_DEBUG_0, "DEBUG_0")
+	TemplateBindUniform(g_tfxPbr, UNIFORM_WORLD, "u_m44World")
+	TemplateBindUniform(g_tfxPbr, UNIFORM_VIEW, "u_m44View")
+	TemplateBindUniform(g_tfxPbr, UNIFORM_PROJECTION, "u_m44Projection")
+	TemplateBindUniform(g_tfxPbr, UNIFORM_WORLD_INVERSE, "u_m44WorldInverse")
+	TemplateBindUniform(g_tfxPbr, UNIFORM_CAMERA_POSITION, "u_v4CameraPosition")
+	TemplateBindUniform(g_tfxPbr, UNIFORM_COLOR, "u_v4Color")
+	TemplateBindUniform(g_tfxPbr, UNIFORM_METAL_ROUGH, "u_v4MetalRough")
+	TemplateBindUniform(g_tfxPbr, UNIFORM_EMISSIVE, "u_v4Emissive")
+	TemplateBindUniform(g_tfxPbr, UNIFORM_SKELETON, "u_m44Skeleton")
+}
+
+// Resize ...
+func Resize(width i32, height i32)() {
+	resizeViewport(width, height)
+	ResizeTargets(width, height)
+	//ResizeTextures(width, height)
+}
+
+func resizeViewport(width i32, height i32) {
+	gfx_width = i32.f32(width)
+	gfx_height = i32.f32(height)
+	gfx_viewportSize = v2.make(gfx_width, gfx_height)
+	gfx_viewportBounds = v4.make(0.0, 0.0, gfx_width, gfx_height)
+	gfx_ratio_y = gfx_width / gfx_height
+	gfx_ratio_x = gfx_height / gfx_width
+	SetViewport(gfx_viewportBounds)
+	SetScissor(gfx_viewportBounds)
+}
+
+// Destroy ...
+func Destroy()() {
+
+	//PopScissor()
+
+	ProgramUse(NullProgram())
+
+   	var i i32
+	for i = 0; i < len(g_vbos); i = i + 1 {
+		//printf("gl.DeleteBuffers(%d)\n", g_vbos[i])
+		gl.DeleteBuffers(1, g_vbos[i])
+		panicIf(GlError(), "glDeleteBuffers")
+	}
+
+	for i = 0; i < len(g_vaos); i = i + 1 {
+		//printf("gl.DeleteVertexArrays(%d)\n", g_vaos[i])
+		gl.DeleteVertexArrays(1, g_vaos[i])
+		panicIf(GlError(), "g_DeleteVertexArrays")
+	}
+
+
+	DestroyTargets()
+	DestroyTextures()
+
+	for i = 0; i < len(g_programs); i = i + 1 {
+		printf("gl.DeleteProgram(%d)\n", g_programs[i])
+		gl.DeleteProgram(g_programs[i]) // ##0 crash
+		panicIf(GlError(), "gl.DeleteProgram")
+	}
+
+	gl.Destroy()
+}
+
+

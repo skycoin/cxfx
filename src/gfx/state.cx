@@ -1,0 +1,27 @@
+package gfx
+
+// Globals ...
+var State State
+
+// State ...
+type State struct {
+	View []f32
+	Projection []f32
+}
+
+// SamplerState ...
+type SamplerState struct {
+	min i32
+	mag i32
+	s i32
+	t i32
+	r i32
+}
+
+func SamplerStateCreate(min i32, mag i32, s i32, t i32, r i32) (out SamplerState) {
+	out.min = min
+	out.mag = mag
+	out.s = s
+	out.t = t
+	out.r = r
+}

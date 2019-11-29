@@ -1,0 +1,195 @@
+package gui
+
+import "app"
+
+// Globals ...
+var g_pictures []Picture
+
+// PictureId ...
+type PictureId struct {
+	base ControlId
+	picture i32
+}
+
+// Picture ...
+type Picture struct {
+	id PictureId
+	frame i32
+	animation AnimationId
+	batch gfx.BatchId
+	pictureAlign i32
+	picturePosition mat.v2
+	alpha bool
+}
+
+// NewPictureId ...
+func NewPictureId(base ControlId, picture i32) (out PictureId) {
+	out.base = base
+	out.picture = picture
+	panicIfNot(IsValidPicture(out), "invalid id")
+}
+
+// IsValidPicture ...
+func IsValidPicture(id PictureId) (out bool) {
+	out = id.picture >= 0 && id.picture < len(g_pictures) && IsValidControl(id.base)
+}
+
+// PictureCreate ...
+func PictureCreate(name str) (out PictureId) {
+	out.picture = len(g_pictures)
+	out.base = controlCreate(name, GUI_PICTURE, out.picture)
+
+	var picture Picture
+	picture.id = out
+	picture.animation = invalid_animation()
+	picture.batch = gfx.InvalidBatch()
+	picture.pictureAlign = ALIGN_NONE
+	picture.picturePosition = v2.ZERO
+	picture.alpha = false
+
+	g_pictures = append(g_pictures, picture)
+	panicIfNot(IsValidPicture(out), "invalid id")
+}
+
+// PictureSetAnimation ...
+func PictureSetAnimation(id PictureId, animation AnimationId) {
+	panicIfNot(IsValidPicture(id), "invalid id")
+	g_pictures[id.picture].animation = animation
+}
+
+// PictureSetAlign ...
+func PictureSetAlign(id PictureId, align i32) {
+	panicIfNot(IsValidPicture(id), "invalid id")
+	g_pictures[id.picture].pictureAlign = align
+}
+
+// PictureProcessEvent ...
+func PictureProcessEvent(id PictureId, event *app.Event) (out i32) {
+	panicIfNot(IsValidPicture(id), "invalid id")
+	out = ControlProcessEvent(id.base, event)
+}
+
+// PictureMeasure ...
+func PictureMeasure(id PictureId) (width f32, height f32) { // ##1 factorize with label_resize
+	panicIfNot(IsValidPicture(id), "invalid id")
+
+	var animation AnimationId = g_pictures[id.picture].animation
+	panicIfNot(IsValidAnimation(animation), "invalid animation")
+
+	var i32Width i32 = g_animations[animation.index].width
+	var i32Height i32 = g_animations[animation.index].height
+
+	width = i32.f32(i32Width)
+	height = i32.f32(i32Height)
+
+	var padding mat.v4 = g_controls[id.base.control].padding
+	var autoscale i32 = g_controls[id.base.control].autoscale
+	if ((autoscale & AUTOSCALE_X) == AUTOSCALE_X) {
+		width = g_controls[id.base.control].size.x// + padding.x + padding.z
+	}
+	if ((autoscale & AUTOSCALE_Y) == AUTOSCALE_Y) {
+		height = g_controls[id.base.control].size.y// + padding.y + padding.w
+	}
+}
+
+// PictureResize ...
+func PictureResize(id PictureId) () {
+	panicIfNot(IsValidPicture(id), "invalid id")
+
+	var animation AnimationId = g_pictures[id.picture].animation
+	panicIfNot(IsValidAnimation(animation), "invalid animation")
+
+	var i32Width i32 = g_animations[animation.index].width
+	var i32Height i32 = g_animations[animation.index].height
+
+	var pixelBounds mat.v2 = v2.make(i32.f32(i32Width), i32.f32(i32Height))
+
+	controlResize(id.base, pixelBounds, pixelBounds)
+	var controlIndex i32 = id.base.control
+	var position mat.v2 = g_controls[controlIndex].renderPosition
+	//var size mat.v2 = g_controls[controlIndex].renderSize
+	var size mat.v2 = g_controls[controlIndex].size
+	var scale mat.v2 = g_controls[controlIndex].scale
+	var padding mat.v4 = g_controls[controlIndex].padding
+	//printf("PICTURE_SCALE %f, %f, width %f, height %f, scale.x * width %f, scale.y * height %f\n", scale.x, scale.y, width, height, scale.x * width, scale.y * height)
+
+	var newSize mat.v2 = v2.mul(scale, pixelBounds)
+	//printf("NEW SIZE %f, %f - %f, %f -> %f, %f\n", pixelBounds.x, pixelBounds.y, newSize.x, newSize.y, size.x, size.y)
+	position.x, position.y = ControlAlign(id.base, g_pictures[id.picture].pictureAlign, 0.0, 0.0, newSize.x, newSize.y, position.x, position.y, size.x, size.y, padding)
+	//printf("PICTURE_POSITION %f, %f\n", position.x, position.y)
+	g_pictures[id.picture].picturePosition = position
+
+	var frame i32 = g_pictures[id.picture].frame
+	var texture gfx.TextureId = g_animations[animation.index].textures[frame]
+	g_pictures[id.picture].batch = gfx.GetBatch(gfx.g_fxTexture2D, texture, 0, gfx.g_linearWrap, g_pictures[id.picture].alpha, 128)
+	//ControlPrint("PictureResize : AFTER", id.base, false)
+}
+
+// PictureRender ...
+func PictureRender(id PictureId, clip mat.v4, stack i32) () {
+	panicIfNot(IsValidPicture(id), "invalid id")
+
+	ControlRender(id.base, clip, stack)
+
+	var controlIndex i32 = id.base.control
+
+	var color mat.v4 = v4.ONE
+	var skin SkinId = g_controls[controlIndex].skin
+	panicIfNot(IsValidSkin(skin) || skin.skin == -1, "invalid id")
+	if IsValidSkin(skin) {
+		var backLayer LayerId = g_skins[skin.skin].back
+		panicIfNot(IsValidLayer(backLayer) || backLayer.layer == -1, "invalid id")
+		if IsValidLayer(backLayer) {
+			color = g_layers[backLayer.layer].surface
+		}
+	}
+
+	var animation AnimationId = g_pictures[id.picture].animation
+	panicIfNot(IsValidAnimation(animation), "invalid animation")
+
+	var i32Width i32 = g_animations[animation.index].width
+	var i32Height i32 = g_animations[animation.index].height
+
+	var frameCount i32 = g_animations[animation.index].frameCount
+
+	var frame i32 = g_pictures[id.picture].frame
+	var texture gfx.TextureId = g_animations[animation.index].textures[frame]
+	var frameDelta i32 = frameCount / 8
+	if (frameDelta <= 0) {
+		frameDelta = 1
+	}
+	frame = frame + frameDelta
+	if (frame >= frameCount) {
+		frame = 0
+	}
+	g_pictures[id.picture].frame = frame
+
+	if gfx.TextureName(texture) > 0 {
+		//printf("RENDER_BOUNDS %f, %f, %f, %f\n",
+		//  g_controls[id.control].renderBounds.x,
+		//g_controls[id.control].renderBounds.y,
+		//g_controls[id.control].renderBounds.z,
+		//g_controls[id.control].renderBounds.w)
+
+		var scale mat.v2 = g_controls[controlIndex].scale
+
+		//ControlPrint("PictureRender : ", id.base, false)
+		var width f32 = scale.x * i32.f32(i32Width)
+		var height f32 = scale.y * i32.f32(i32Height)
+
+		var renderPosition mat.v2 = g_pictures[id.picture].picturePosition
+		//var renderPosition mat.v2 = g_controls[controlIndex].renderPosition
+
+		var batch gfx.BatchId = g_pictures[id.picture].batch
+		panicIfNot(gfx.IsValidBatch(batch), "invalid batch")
+
+		var renderBounds mat.v4 = v4.make_v22(renderPosition, v2.make(width, height))
+		//ControlPrint("PictureRender : renderBounds ", id.base, false)
+		//printf("renderBounds %f, %f, %f, %f\n", renderBounds.x, renderBounds.y, renderBounds.z, renderBounds.w)
+		var renderClips mat.v4 = gfx.PushScissor(g_controls[controlIndex].name, renderBounds)
+		var meshId gfx.MeshId = gfx.BatchGetMesh(batch)
+		gfx.MeshAppendOrthoQuad(meshId, renderBounds, v4.BLUE, color, renderClips, ComputeDepth(stack))
+		gfx.PopScissor()
+	}
+}
+

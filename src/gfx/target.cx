@@ -1,0 +1,257 @@
+package gfx
+
+// Globals ...
+var g_targets []Target
+
+// TargetId ...
+type TargetId struct {
+	target i32
+}
+
+// Target ...
+type Target struct {
+	id TargetId
+	scale i32
+	width i32
+	height i32
+	fwidth f32
+	fheight f32
+	bounds mat.v4
+	size mat.v4
+	framebuffer i32
+	colors []TextureId
+	depth TextureId
+	stencil TextureId
+	age i32
+	resizable bool
+}
+
+// InvalidTarget ...
+func InvalidTarget()(out TargetId) {
+	out.target = -1
+}
+
+// IsValidTarget ...
+func IsValidTarget(id TargetId) (out bool) {
+	out = id.target >= 0 && id.target < len(g_targets)
+}
+
+// TargetPrint ...
+func TargetPrint(message str, id TargetId) {
+	panicIfNot(IsValidTarget(id), "invalid target")
+	printf("%s : id %d, framebuffer %d\n", message, id.target, g_targets[id.target].framebuffer)
+	var colors []TextureId = g_targets[id.target].colors
+	var colorCount i32 = len(colors)
+	for i := 0; i < colorCount; i++ {
+		if IsValidTexture(colors[i]) {
+			TexturePrint(message, colors[i])
+		}
+	}
+	var depth TextureId = g_targets[id.target].depth
+	if IsValidTexture(depth) {
+		TexturePrint(message, depth)
+	}
+	var stencil TextureId = g_targets[id.target].stencil
+	if IsValidTexture(stencil) {
+		TexturePrint(message, stencil)
+	}
+}
+
+// TargetCreate ...
+func TargetCreate(colors i32, width i32, height i32, scale i32, resizable bool) (out TargetId) {
+	out.target = len(g_targets)
+
+	var target Target
+	target.id = out
+	var framebuffer i32 = -1
+	framebuffer = gl.GenFramebuffers(1, framebuffer)
+	panicIf(GlError(), "gl.GenFramebuffers")
+	target.framebuffer = framebuffer
+	for i := 0; i < colors; i++ {
+		target.colors = append(target.colors, InvalidTexture())
+	}
+	target.depth = InvalidTexture()
+	target.stencil = InvalidTexture()
+
+	g_targets = append(g_targets, target)
+
+	targetResize(out, width, height, scale, resizable)
+	panicIfNot(IsValidTarget(out), "")
+}
+
+func targetResize(id TargetId, width i32, height i32, scale i32, resizable bool) {
+	panicIfNot(IsValidTarget(id), "invalid target")
+	var swidth i32 = width / scale
+	var sheight i32 = height / scale
+	var fwidth f32 = i32.f32(swidth)
+	var fheight f32 = i32.f32(sheight)
+
+	g_targets[id.target].scale = scale
+	g_targets[id.target].width = swidth
+	g_targets[id.target].height = sheight
+	g_targets[id.target].fwidth = fwidth
+	g_targets[id.target].fheight = fheight
+	g_targets[id.target].bounds = v4.make(0.0, 0.0, fwidth, fheight)
+	g_targets[id.target].size = v4.make(fwidth, fheight, 1.0 / fwidth, 1.0 / fheight)
+	g_targets[id.target].resizable = resizable
+}
+
+// TargetDestroy ...
+func TargetDestroy(target Target) () {
+}
+
+// TargetBind ...
+func TargetBind(id TargetId) {
+	panicIfNot(IsValidTarget(id), "")
+	//TargetPrint("TargetBind", id)
+	bindFramebuffer(g_targets[id.target].framebuffer)
+
+	var bounds mat.v4 = g_targets[id.target].bounds
+	SetViewport(bounds)
+	SetScissor(bounds)
+
+	var colors []TextureId = g_targets[id.target].colors
+	DrawBuffers(len(colors))
+}
+
+// TargetAttachColor ...
+func TargetAttachColor(id TargetId, texture TextureId, i i32) {
+	panicIfNot(IsValidTarget(id), "")
+	targetAttachTexture(id, gl.COLOR_ATTACHMENT0 + i, texture)
+	var colors []TextureId = g_targets[id.target].colors
+	colors[i] = texture
+	//printf("TARGET_ATTACH_COLOR : TARGET %d, COLOR %d, TEXTURE %d\n", id.target, i, texture.texture)
+}
+
+// TargetAttachDepth ...
+func TargetAttachDepth(id TargetId, depth TextureId) {
+	panicIfNot(IsValidTarget(id), "")
+	targetAttachTexture(id, gl.DEPTH_ATTACHMENT, depth)
+	g_targets[id.target].depth = depth
+}
+
+// TargetAttachStencil ...
+func TargetAttachStencil(id TargetId, stencil TextureId) {
+	panicIfNot(IsValidTarget(id), "invalid target")
+	targetAttachTexture(id, gl.STENCIL_ATTACHMENT, stencil)
+	g_targets[id.target].stencil = stencil
+}
+
+// TargetGetAge ...
+func TargetGetAge(id TargetId) (out i32) {
+	panicIfNot(IsValidTarget(id), "invalid target")
+	out = g_targets[id.target].age
+}
+
+// TargetSetAge ...
+func TargetSetAge(id TargetId, age i32) () {
+	panicIfNot(IsValidTarget(id), "invalid target")
+	g_targets[id.target].age = age
+}
+
+// TargetGetSize ...
+func TargetGetSize(id TargetId) (out mat.v4) {
+	panicIfNot(IsValidTarget(id), "invalid target")
+	out = g_targets[id.target].size
+}
+
+// TargetGetWidth ...
+func TargetGetWidth(id TargetId) (out f32) {
+	panicIfNot(IsValidTarget(id), "invalid target")
+	out = g_targets[id.target].fwidth
+}
+
+// TargetGetHeight ...
+func TargetGetHeight(id TargetId) (out f32) {
+	panicIfNot(IsValidTarget(id), "invalid target")
+	out = g_targets[id.target].fheight
+}
+
+// TargetGetColor ...
+func TargetGetColor(id TargetId, i i32) (out TextureId) {
+	out = InvalidTexture()
+	if IsValidTarget(id) {
+		var colors []TextureId = g_targets[id.target].colors
+		if  i >= 0 && i < len(colors) {
+			out = colors[i]
+			//printf("TARGET_GET_COLOR : TARGET %d, COLOR %d, TEXTURE %d\n", id.target, i, out.texture)
+		}
+	}
+}
+
+// TargetGetDepth ...
+func TargetGetDepth(id TargetId) (out TextureId) {
+	if IsValidTarget(id) {
+		out = g_targets[id.target].depth
+	} else {
+		out = InvalidTexture()
+	}
+}
+
+// DestroyTargets ...
+func DestroyTargets() {
+	var count i32 = len(g_targets)
+	for i := 0; i < count; i++ {
+		gl.DeleteFramebuffers(1, g_targets[i].framebuffer)
+		panicIf(GlError(), "g.DeleteFramebuffers")
+	}
+}
+
+// ResizeTargets ...
+func ResizeTargets(width i32, height i32) {
+	var count i32 = len(g_targets)
+	printf("RESIZE_TARGETS %d\n", count)
+	for i := 0; i < count; i++ {
+		var id TargetId = g_targets[i].id
+		var resizable bool = g_targets[i].resizable
+		if resizable {
+			var colors []TextureId = g_targets[i].colors
+			var colorCount i32 = len(colors)
+			var targetScale i32 = g_targets[i].scale
+			var targetWidth i32 = width / targetScale
+			var targetHeight i32 = height / targetScale
+			if targetWidth != g_targets[i].width || targetHeight != g_targets[i].height {
+				targetResize(id, width, height, targetScale, resizable)
+				for c := 0; c < colorCount; c++ {
+					if IsValidTexture(colors[c]) {
+						TextureResize(colors[c], targetWidth, targetHeight)
+						TextureSamplerState(colors[c], g_nearestClamp)
+						TargetAttachColor(id, colors[c], c)
+					}
+				}
+
+				var depth TextureId = g_targets[i].depth
+				if IsValidTexture(depth) {
+					TextureResize(depth, targetWidth, targetHeight)
+					TextureSamplerState(depth, g_nearestClamp)
+					TargetAttachDepth(id, depth)
+				}
+
+				var stencil TextureId = g_targets[i].stencil
+				if IsValidTexture(stencil) && depth.texture != stencil.texture {
+					TextureResize(stencil, targetWidth, targetHeight)
+					TextureSamplerState(stencil, g_nearestClamp)
+					TargetAttachStencil(id, stencil)
+				}
+			}
+		}
+	}
+}
+
+func targetAttachTexture(id TargetId, attachment i32, texture TextureId) {
+	panicIfNot(IsValidTarget(id), "")
+	bindFramebuffer(g_targets[id.target].framebuffer)
+	//TexturePrint("targetAttachTexture", texture)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, TextureName(texture), 0)
+	panicIf(GlError(), "gl.FramebufferTexture2D")
+	panicIf(GlStatus(), "gl.CheckFramebufferStatus")
+}
+
+// TODO renderbuffers
+// TargetAttachBuffer ...
+//	renderbuffer = gl.GenRenderbuffers(1, renderbuffer)
+//	gl.BindRenderbuffer(gl.RENDERBUFFER, renderbuffer)
+//	gl.RenderbufferStorage(gl.RENDERBUFFER, format, w, h)
+//	gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthbuffer)
+//	gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT, gl.RENDERBUFFER, stencilbuffer)
+

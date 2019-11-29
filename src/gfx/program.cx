@@ -1,0 +1,127 @@
+package gfx
+
+import "gl"
+
+// Globals ...
+var g_programs []i32
+
+// Program ...
+type Program struct {
+	name i32
+}
+
+// NullProgram ...
+func NullProgram()(out Program) {
+	out.name = 0
+}
+
+// ProgramCreate ...
+func ProgramCreate(attributes []Location, samplers []Location, uniforms []Location, vertex str, pixel str) (out Program) {
+	// vertex shader
+	var vertexShader i32 = gl.CreateShader(gl.VERTEX_SHADER)
+	panicIf(GlError(), "gl.CreateShader")
+
+	gl.ShaderSource(vertexShader, 1, vertex)
+	panicIf(GlError(), "gl.ShaderSource")
+
+	gl.CompileShader(vertexShader)
+	panicIf(GlError(), "gl.CompileShader")
+
+	// pixel shader
+	var pixelShader i32 = gl.CreateShader(gl.FRAGMENT_SHADER)
+	panicIf(GlError(), "gl.CreateShader")
+
+	gl.ShaderSource(pixelShader, 1, pixel)
+	panicIf(GlError(), "gl.ShaderSource")
+
+	gl.CompileShader(pixelShader)
+	panicIf(GlError(), "gl.CompileShader")
+
+	// program
+	out.name = gl.CreateProgram()
+	panicIf(GlError(), "gl.CreateProgram")
+	g_programs = append(g_programs, out.name)
+
+	var attributeCount i32 = len(attributes)
+	for i := 0; i < attributeCount; i++ {
+		var location i32 = attributes[i].location
+		if location >= 0 {
+ 			ProgramBindAttribute(out, location, attributes[i].name)
+		}
+	}
+
+	gl.AttachShader(out.name, vertexShader)
+	panicIf(GlError(), "gl.AttachShader")
+
+	gl.AttachShader(out.name, pixelShader)
+	panicIf(GlError(), "gl.AttachShader")
+
+	gl.LinkProgram(out.name)
+	panicIf(GlError(), "gl.LinkProgram")
+
+	gl.DetachShader(out.name, vertexShader)
+	panicIf(GlError(), "gl.LinkProgram")
+
+	gl.DetachShader(out.name, pixelShader)
+	panicIf(GlError(), "gl.DetachShader")
+
+	gl.DeleteShader(vertexShader)
+	panicIf(GlError(), "gl.DeleteShader")
+
+	gl.DeleteShader(pixelShader)
+	panicIf(GlError(), "gl.DeleteShader")
+
+	ProgramUse(out)
+
+	var samplerCount i32 = len(samplers)
+	for i := 0; i < samplerCount; i++ {
+		var name str = samplers[i].name
+		if name != "" {
+			samplers[i].location = ProgramTryBindSampler(out, name)
+		}
+	}
+
+	var uniformCount i32 = len(uniforms)
+	for i := 0; i < uniformCount; i++ {
+		var name str = uniforms[i].name
+		if name != "" {
+			uniforms[i].location = ProgramTryBindUniform(out, name)
+		}
+	}
+}
+
+// ProgramUse ...
+func ProgramUse(program Program) {
+	gl.UseProgram(program.name)
+	panicIf(GlError(), "gl.UseProgram")
+}
+
+// ProgramBindAttribute ...
+func ProgramBindAttribute(program Program, location i32, name str) () {
+	gl.BindAttribLocation(program.name, location, name)
+	panicIf(GlError(), "gl.BindAttributeLocation")
+}
+
+// ProgramBindUniform ...
+func ProgramBindUniform(program Program, name str) (uniform i32) {
+	uniform = ProgramTryBindUniform(program, name)
+	panicIfNot(uniform >= 0, "uniform>= 0")
+}
+
+// ProgramTryBindUniform ...
+func ProgramTryBindUniform(program Program, name str) (uniform i32) {
+	uniform = gl.GetUniformLocation(program.name, name) // ##2 crash find a way to test if str is present in gl.Strs
+	panicIf(GlError(), "gl.GetUniformLocation")
+}
+
+// ProgramBindSampler ...
+func ProgramBindSampler(program Program, name str) (sampler i32) {
+	sampler = ProgramBindUniform(program, name)
+}
+
+// ProgramTryBindSampler ...
+func ProgramTryBindSampler(program Program, name str) (sampler i32) {
+	sampler = ProgramTryBindUniform(program, name)
+}
+
+

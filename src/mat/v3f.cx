@@ -1,0 +1,437 @@
+package v3
+
+import "mat"
+import "v1"
+import "v2"
+import "m44"
+
+// Constants ...
+var ZERO v3 = makef(0.0)
+var ONE v3 = makef(1.0)
+
+var RED v3 = make(1.0, 0.0, 0.0)
+var GREEN v3 = make(0.0, 1.0, 0.0)
+var BLUE v3 = make(0.0, 0.0, 1.0)
+var PINK v3 = make(1.0, 0.0, 1.0)
+var YELLOW v3 = make(1.0, 1.0, 0.0)
+var SKY v3 = make(0.0, 1.0, 1.0)
+
+var MIN v3 = makef(v1.MIN)
+var MAX v3 = makef(v1.MAX)
+var PI v3 = makef(v1.PI)
+
+// isnan ...
+func isnan(a v3) (out bool) {
+	out = f32.isnan(a.x) ||
+		  f32.isnan(a.y) ||
+		  f32.isnan(a.z)
+}
+
+// to_str ...
+func to_str(a v3) (out str) {
+	out = sprintf("{ %f, %f, %f }", a.x, a.y, a.z)
+}
+
+// min ...
+func min(a v3, b v3) (out v3) {
+	//panicIf(isnan(a), "NAN min #0")
+	//panicIf(isnan(b), "NAN min #1")
+	out = a
+	if b.x < a.x {
+		out.x = b.x
+	}
+	if b.y < a.y {
+		out.y = b.y
+	}
+	if b.z < a.z {
+		out.z = b.z
+	}
+	//panicIf(isnan(out), "NAN min")
+}
+
+// minf ...
+func minf(a v3, b f32) (out v3) {
+	//panicIf(isnan(a), "NAN min #0")
+	//panicIf(f32.isnan(b), "NAN min #1")
+	out = a
+	if b < a.x {
+		out.x = b
+	}
+	if b < a.y {
+		out.y = b
+	}
+	if b < a.z {
+		out.z = b
+	}
+	//panicIf(isnan(out), "NAN min")
+}
+
+// max ...
+func max(a v3, b v3) (out v3) {
+	//panicIf(isnan(a), "NAN max #0")
+	//panicIf(isnan(b), "NAN max #1")
+	out = a
+	if b.x > a.x {
+		out.x = b.x
+	}
+	if b.y > a.y {
+		out.y = b.y
+	}
+	if b.z > a.z {
+		out.z = b.z
+	}
+	//panicIf(isnan(out), "NAN max")
+}
+
+// maxf ...
+func maxf(a v3, b f32) (out v3) {
+	//panicIf(isnan(a), "NAN max #0")
+	//panicIf(f32.isnan(b), "NAN max #1")
+	out = a
+	if b > a.x {
+		out.x = b
+	}
+	if b > a.y {
+		out.y = b
+	}
+	if b > a.z {
+		out.z = b
+	}
+	//panicIf(isnan(out), "NAN max")
+}
+
+// clamp ...
+func clamp(a v3, vmin v3, vmax v3) (out v3) {
+	//panicIf(isnan(a), "NAN clamp #0")
+	//panicIf(isnan(vmin), "NAN clamp #1")
+	//panicIf(isnan(vmax), "NAN clamp #2")
+	out.x = f32.max(vmin.x, f32.min(a.x, vmax.x))
+	out.y = f32.max(vmin.y, f32.min(a.y, vmax.y))
+	out.z = f32.max(vmin.z, f32.min(a.z, vmax.z))
+	//panicIf(isnan(out), "NAN clamp")
+}
+
+// clampf ...
+func clampf(a v3, fmin f32, fmax f32) (out v3) {
+	//panicIf(isnan(a), "NAN clamp #0")
+	//panicIf(f32.isnan(fmin), "NAN clamp #1")
+	//panicIf(f32.isnan(fmax), "NAN clamp #2")
+	out.x = f32.max(fmin, f32.min(a.x, fmax))
+	out.y = f32.max(fmin, f32.min(a.y, fmax))
+	out.z = f32.max(fmin, f32.min(a.z, fmax))
+	//panicIf(isnan(out), "NAN clamp")
+}
+
+// sat ...
+func sat(a v3) (out v3) {
+	//panicIf(isnan(a), "NAN sat #0")
+	out.x = f32.max(0.0, f32.min(1.0, a.x))
+	out.y = f32.max(0.0, f32.min(1.0, a.y))
+	out.z = f32.max(0.0, f32.min(1.0, a.z))
+	//panicIf(isnan(out), "NAN sat")
+}
+
+// make ...
+func make(x f32, y f32, z f32) (out v3) {
+	out.x = x
+	out.y = y
+	out.z = z
+	//panicIf(isnan(out), "NAN make")
+}
+
+// makef ...
+func makef(a f32) (out v3) {
+	out.x = a
+	out.y = a
+	out.z = a
+	//panicIf(isnan(out), "NAN makef")
+}
+
+// make_v12 ...
+func make_v12(x f32, a v2) (out v3) {
+	out.x = x
+	out.y = a.x
+	out.z = a.y
+	//panicIf(isnan(out), "NAN make_v12")
+}
+
+// make_v21 ...
+func make_v21(a v2, z f32) (out v3) {
+	out.x = a.x
+	out.y = a.y
+	out.z = z
+	//panicIf(isnan(out), "NAN make_v21")
+}
+
+// x ...
+func make_x(a v3) (out v3) {
+	out.x = a.x
+}
+
+// y ...
+func make_y(a v3) (out v3) {
+	out.y = a.y
+}
+
+// z ...
+func make_z(a v3) (out v3) {
+	out.z = a.z
+}
+
+// xy ...
+func xy(a v3) (out v2) {
+	//panicIf(isnan(a), "NAN xy #0")
+	out.x = a.x
+	out.y = a.y
+	//panicIf(v2.isnan(out), "NAN xy")
+}
+
+// zw ...
+func yz(a v3) (out v2) {
+	//panicIf(isnan(a), "NAN zw #0")
+	out.x = a.y
+	out.y = a.z
+	//panicIf(v2.isnan(out), "NAN yz")
+}
+
+// equ ...
+func equ(a v3, b v3) (out bool) {
+	//panicIf(isnan(a), "NAN equ a#0")
+	//panicIf(isnan(b), "NAN equ b#0")
+	out = a.x == b.x &&
+		  a.y == b.y &&
+		  a.z == b.z
+}
+
+// nequ ...
+func nequ(a v3, b v3) (out bool) {
+	//panicIf(isnan(a), "NAN nequ a#0")
+	//panicIf(isnan(b), "NAN nequ b#0")
+	out = a.x != b.x ||
+		  a.y != b.y ||
+		  a.z != b.z
+}
+
+// add ...
+func add(a v3, b v3) (out v3) {
+	out.x = a.x + b.x
+	out.y = a.y + b.y
+	out.z = a.z + b.z
+	//panicIf(isnan(out), "NAN add")
+}
+
+// sub ...
+func sub(a v3, b v3) (out v3) {
+	out.x = a.x - b.x
+	out.y = a.y - b.y
+	out.z = a.z - b.z
+	//panicIf(isnan(out), "NAN sub")
+}
+
+// neg ...
+func neg(a v3) (out v3) {
+	out.x = 0.0 - a.x
+	out.y = 0.0 - a.y
+	out.z = 0.0 - a.z
+	//panicIf(isnan(out), "NAN neg")
+}
+
+// mul ...
+func mul(a v3, b v3) (out v3) {
+	out.x = a.x * b.x
+	out.y = a.y * b.y
+	out.z = a.z * b.z
+	//panicIf(isnan(out), "NAN mul")
+}
+
+// mulf ...
+func mulf(a v3, f f32) (out v3) {
+	out.x = a.x * f
+	out.y = a.y * f
+	out.z = a.z * f
+	//panicIf(isnan(out), "NAN mulf")
+}
+
+// madd ...
+func madd(a v3, b v3, c v3) (out v3) {
+	out.x = a.x * b.x + c.x
+	out.y = a.y * b.y + c.y
+	out.z = a.z * b.z + c.z
+	//panicIf(isnan(out), "NAN madd")
+}
+
+// maddf ...
+func maddf(a v3, f f32, c v3) (out v3) {
+	out.x = a.x * f + c.x
+	out.y = a.y * f + c.y
+	out.z = a.z * f + c.z
+	//panicIf(isnan(out), "NAN maddf")
+}
+
+// div ...
+func div(a v3, b v3) (out v3) {
+	out.x = a.x / b.x
+	out.y = a.y / b.y
+	out.z = a.z / b.z
+	//panicIf(isnan(out), "NAN div")
+}
+
+// divf ...
+func divf(a v3, f f32) (out v3) {
+	out.x = a.x / f
+	out.y = a.y / f
+	out.z = a.z / f
+	//panicIf(isnan(out), "NAN divf")
+}
+
+// lerp ...
+func lerp(a v3, b v3, t v3) (out v3) {
+	out.x = a.x * (1.0 - t.x) + b.x * t.x
+	out.y = a.y * (1.0 - t.y) + b.y * t.y
+	out.z = a.z * (1.0 - t.z) + b.z * t.z
+	//panicIf(isnan(out), "NAN lerp")
+}
+
+// lerpsat ...
+func lerpsat(a v3, b v3, t v3) (out v3) {
+	out.x = a.x * f32.max(0.0, f32.min(1.0, 1.0 - t.x)) +
+			b.x * f32.max(0.0, f32.min(1.0, t.x))
+	out.y = a.y * f32.max(0.0, f32.min(1.0, 1.0 - t.y)) +
+			b.y * f32.max(0.0, f32.min(1.0, t.y))
+	out.z = a.z * f32.max(0.0, f32.min(1.0, 1.0 - t.z)) +
+			b.z * f32.max(0.0, f32.min(1.0, t.z))
+	//panicIf(isnan(out), "NAN lerpsat")
+}
+
+// lerpf ...
+func lerpf(a v3, b v3, t f32) (out v3) {
+	var nt f32 = 1.0 - t
+	out.x = a.x * nt + b.x * t
+	out.y = a.y * nt + b.y * t
+	out.z = a.z * nt + b.z * t
+	//panicIf(isnan(out), "NAN lerp")
+}
+
+// lerpsatf ...
+func lerpsatf(a v3, b v3, t f32) (out v3) {
+	t = f32.max(0.0, f32.min(1.0, t))
+	var nt f32 = f32.max(0.0, f32.min(1.0, 1.0 - t))
+	out.x = a.x * nt + b.x * t
+	out.y = a.y * nt + b.y * t
+	out.z = a.z * nt + b.z * t
+	//panicIf(isnan(out), "NAN lerpsat")
+}
+
+// rand ...
+func rand() (out v3) {
+	out.x = f32.rand()
+	out.y = f32.rand()
+	out.z = f32.rand()
+	//panicIf(isnan(out), "NAN rand")
+}
+
+// srand ...
+func srand() (out v3) {
+	out.x = f32.rand() * 2.0 - 1.0
+	out.y = f32.rand() * 2.0 - 1.0
+	out.z = f32.rand() * 2.0 - 1.0
+	//panicIf(isnan(out), "NAN srand")
+}
+
+// cross ...
+func cross(a v3, b v3) (out v3) {
+	out.x = a.y*b.z - b.y*a.z
+	out.y = b.x*a.z - a.x*b.z
+	out.z = a.x*b.y - b.x*a.y
+	//panicIf(isnan(out), "NAN cross")
+}
+
+// dot ...
+func dot(a v3, b v3) (out f32) {
+	out = a.x*b.x + a.y*b.y + a.z*b.z
+	//panicIf(f32.isnan(out), "NAN dot")
+}
+
+// sqlength ...
+func sqlength(a v3) (out f32) {
+	out = a.x*a.x + a.y*a.y
+	//panicIf(f32.isnan(out), "NAN sqlength")
+}
+
+// length ...
+func length(a v3) (out f32) {
+	out = f32.sqrt(a.x*a.x + a.y*a.y + a.z*a.z)
+	//panicIf(f32.isnan(out), "NAN length")
+}
+
+// normalize ...
+func normalize(a v3) (out v3) {
+	var l f32 = f32.sqrt(a.x*a.x + a.y*a.y + a.z*a.z)
+	out.x = a.x / l
+	out.y = a.y / l
+	out.z = a.z / l
+	//panicIf(isnan(out), "NAN normalize")
+}
+
+// transform_vector_x ...
+func transform_vector_x(x f32, m m44) (out v3) {
+	//panicIf(isnan(x), "NAN transform_vector_x #0")
+	//panicIf(m44.isnan(m), "NAN transform_vector_x #1")
+	out.x = x * m.v00
+	out.y = x * m.v01
+	out.z = x * m.v02
+	//panicIf(isnan(out), "NAN transform_vector_x")
+}
+
+// transform_vector_y ...
+func transform_vector_y(y f32, m m44) (out v3) {
+	//panicIf(isnan(x), "NAN transform_vector_y #0")
+	//panicIf(m44.isnan(m), "NAN transform_vector_y #1")
+	out.x = y * m.v10
+	out.y = y * m.v11
+	out.z = y * m.v12
+	//panicIf(isnan(out), "NAN transform_vector_y")
+}
+
+// transform_vector_x ...
+func transform_vector_z(z f32, m m44) (out v3) {
+	//panicIf(isnan(x), "NAN transform_vector_z #0")
+	//panicIf(m44.isnan(m), "NAN transform_vector_z #1")
+	out.x = z * m.v20
+	out.y = z * m.v21
+	out.z = z * m.v22
+	//panicIf(isnan(out), "NAN transform_vector_z")
+}
+
+// transform_vectorf ...
+func transform_vectorf(x f32, y f32, z f32, m m44) (out v3) {
+	//panicIf(isnan(x), "NAN transform_vectorf #0")
+	//panicIf(isnan(y), "NAN transform_vectorf #1")
+	//panicIf(isnan(z), "NAN transform_vectorf #2")
+	//panicIf(m44.isnan(m), "NAN transform_vector #1")
+	out.x = x * m.v00 + y * m.v10 + z * m.v20
+	out.y = x * m.v01 + y * m.v11 + z * m.v21
+	out.z = x * m.v02 + y * m.v12 + z * m.v22
+	//panicIf(isnan(out), "NAN transform_vector")
+}
+
+// transform_vector ...
+func transform_vector(a v3, m m44) (out v3) {
+	//panicIf(isnan(a), "NAN transform_vector #0")
+	//panicIf(m44.isnan(m), "NAN transform_vector #1")
+	out.x = a.x * m.v00 + a.y * m.v10 + a.z * m.v20
+	out.y = a.x * m.v01 + a.y * m.v11 + a.z * m.v21
+	out.z = a.x * m.v02 + a.y * m.v12 + a.z * m.v22
+	//panicIf(isnan(out), "NAN transform_vector")
+}
+
+// transform_point ...
+func transform_point(a v3, m m44) (out v3) {
+	//panicIf(isnan(a), "NAN transform_vector #0")
+	//panicIf(m44.isnan(m), "NAN transform_vector #1")
+	out.x = a.x * m.v00 + a.y * m.v10 + a.z * m.v20 + m.v30
+	out.y = a.x * m.v01 + a.y * m.v11 + a.z * m.v21 + m.v31
+	out.z = a.x * m.v02 + a.y * m.v12 + a.z * m.v22 + m.v32
+	//panicIf(isnan(out), "NAN transform_vector")
+}
+

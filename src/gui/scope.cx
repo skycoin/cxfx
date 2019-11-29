@@ -1,0 +1,68 @@
+package gui
+
+// Globals ...
+var g_dock Bound
+var g_docks []Bound
+
+var g_offset rectangle_s
+var g_offsets []rectangle_s
+
+var g_scopeIndex i32 = 0
+
+// Bound ...
+type Bound struct { // TODO : remove type ?
+	left f32
+	bottom f32
+	right f32
+	top f32
+}
+
+// Rectangle ...
+type rectangle_s struct { // TODO : remove type ?
+	x f32
+	y f32
+	width f32
+	height f32
+}
+
+// ResetScope ...
+func ResetScope()() {
+	panicIfNot(len(g_docks) == 0, "invalid scope")
+	panicIfNot(len(g_offsets) == 0, "invalid scope")
+
+	g_docks = resize(g_docks, 0)
+	g_offsets = resize(g_offsets, 0)
+
+	g_dock.left = 0.0
+	g_dock.bottom = 0.0
+	g_dock.right = gfx.gfx_width
+	g_dock.top = gfx.gfx_height
+
+	g_offset.x = 0.0
+	g_offset.y = 0.0
+	g_offset.width = gfx.gfx_width
+	g_offset.height = gfx.gfx_height
+}
+
+// PushScope ...
+func PushScope()() {
+	g_docks = append(g_docks, g_dock)
+	g_offsets = append(g_offsets, g_offset)
+	panicIfNot(len(g_docks) == len(g_offsets), "invalid scope")
+}
+
+// PopScope ...
+func PopScope() (){
+	var scopeCount i32 = len(g_docks)
+	panicIfNot(scopeCount > 0, "stack underflow")
+	panicIfNot(scopeCount == len(g_offsets), "stack underflow")
+
+	var newScopeCount i32 = scopeCount - 1
+	g_dock = g_docks[newScopeCount]
+	g_offset = g_offsets[newScopeCount]
+
+	g_docks = resize(g_docks, newScopeCount)
+	g_offsets = resize(g_offsets, newScopeCount)
+}
+
+

@@ -1,0 +1,166 @@
+package gui
+
+
+// Globals ...
+var g_binders[] Binder
+
+// BinderId ...
+type BinderId struct {
+	base ControlId
+		binder i32
+}
+
+// Binder ...
+type Binder struct {
+	id BinderId
+		header ControlId
+		container ControlId
+		selected i32
+}
+
+// NewBinderId ...
+func NewBinderId(base ControlId, binder i32) (out BinderId) {
+	out.base = base
+		out.binder = binder
+		panicIfNot(IsValidBinder(out), "invalid id")
+}
+
+// InvalidBinder ...
+func InvalidBinder() (out BinderId) {
+	out.base = InvalidControl()
+		out.binder = -1
+}
+
+// IsValidBinder ...
+func IsValidBinder(id BinderId) (out bool) {
+	out = id.binder >= 0 && id.binder < len(g_binders) && IsValidControl(id.base)
+}
+
+// BinderCreate ...
+func BinderCreate(name str) (out BinderId) {
+	out.binder = len(g_binders)
+	out.base = controlCreate(name, GUI_BINDER, out.binder)
+
+	var binder Binder
+	binder.id = out
+
+	var header ControlId = ControlCreate("binder.header")
+	ControlAddChild(out.base, header)
+	ControlSetDock(header, DOCK_TOP)
+	//ControlSetSkin(header, g_debugRedSkin)
+	//ControlSetSize(header, v2.make(0.0, 0.08))
+	ControlSetAutosize(header, AUTOSIZE_Y)
+	binder.header = header
+	binder.selected = -1
+	var container ControlId = ControlCreate("binder.container")
+	ControlAddChild(out.base, container)
+	ControlSetSkin(container, g_blackSkin)
+	ControlSetPadding(container, v4.make(3.0, 3.0, 3.0, 0.0))
+	ControlSetDock(container, DOCK_FILL)
+	binder.container = container
+
+	binder.selected = -1
+
+	g_binders = append(g_binders, binder)
+	panicIfNot(IsValidBinder(out), "invalid id")
+}
+
+// BinderOnPage ...
+func BinderOnPage(page i32, state i32) {
+	var id ControlId = NewControlId(page)
+	var headerControl ControlId = g_controls[page].parent
+	panicIfNot(IsValidControl(headerControl), "internal error")
+	panicIfNot(g_controls[headerControl.control].gui_type == GUI_CONTROL, "internal error")
+
+	var binderControl ControlId = g_controls[headerControl.control].parent
+	panicIfNot(IsValidControl(binderControl), "internal error")
+	panicIfNot(g_controls[binderControl.control].gui_type == GUI_BINDER, "internal error")
+
+	var pageCount i32 = len(g_controls[headerControl.control].children)
+	var i i32 = 0
+	for i = 0; i < pageCount; i = i + 1 {
+		var child ControlId = g_controls[headerControl.control].children[i]
+		if (child.control == page) {
+			var binderControlIndex i32 = binderControl.control
+			var binderIndex i32 = g_controls[binderControlIndex].gui_index
+			g_binders[binderIndex].selected = i
+			i = pageCount // ISSUE break statement break
+		}
+	}
+}
+
+// BinderAddPage ...
+func BinderAddPage(id BinderId, name str, color mat.v4, size i32, control ControlId) {
+	panicIfNot(IsValidBinder(id), "invalid id")
+	var header ControlId = g_binders[id.binder].header
+	var pageCount i32 = len(g_controls[header.control].children)
+
+	var page LabelId = LabelCreate(sprintf("binder.page_%d", pageCount))
+	ControlAddChild(header, page.base)
+	ControlSetDock(page.base, DOCK_LEFT)
+	ControlSetAutosize(page.base, AUTOSIZE)
+	ControlSetSkin(page.base, g_binderPageSkin)
+	ControlSetPadding(page.base, v4.make(3.0, 0.0, 3.0, 0.0))
+	ControlSetFocusable(page.base, 1)
+	LabelSetFont(page, g_boldFont)
+	LabelSetText(page, name)
+	LabelSetSize(page, size)
+	LabelSetColor(page, color)
+	LabelSetAlign(page, ALIGN_CENTER)
+	LabelSetOnState(page, "gui", "BinderOnPage")
+	var container ControlId = g_binders[id.binder].container
+	ControlAddChild(container, control)
+	ControlSetDock(control, DOCK_FILL)
+	ControlSetVisible(control, 0)
+
+	g_binders[id.binder].selected = 0
+}
+
+// BinderProcessEvent ...
+func BinderProcessEvent(id BinderId, event *app.Event) (out i32) {
+	panicIfNot(IsValidBinder(id), "invalid id")
+	var visible i32 = g_controls[id.base.control].visible
+	if (visible > 0) {
+		out = ControlProcessEvent(id.base, event)
+	}
+}
+
+// BinderResize ...
+func BinderResize(id BinderId) () {
+	panicIfNot(IsValidBinder(id), "invalid id")
+	var visible i32 = g_controls[id.base.control].visible
+	if (visible > 0) {
+		ControlResize(id.base)
+
+		var selected i32 = g_binders[id.binder].selected
+		var header ControlId = g_binders[id.binder].header
+		var container ControlId = g_binders[id.binder].container
+
+		var pageCount i32 = len(g_controls[header.control].children)
+
+		var i i32 = 0
+		for i = 0; i < pageCount; i = i + 1 {
+			var child ControlId = g_controls[header.control].children[i]
+			var page ControlId = g_controls[container.control].children[i]
+			//var childFocused i32 = ControlFocused(child)
+			if (selected == i) {
+				ControlSetVisible(page, 1)
+				ControlSetSelected(child, 1)
+			} else {
+				ControlSetVisible(page, 0)
+				ControlSetSelected(child, 0)
+			}
+		}
+	}
+}
+
+// BinderRender ...
+func BinderRender(id BinderId, clip mat.v4, stack i32) () {
+	panicIfNot(IsValidBinder(id), "invalid id")
+	//ControlPrint("BinderRender : ", id.base, false)
+	var visible i32 = g_controls[id.base.control].visible
+	if (visible > 0) {
+		ControlRender(id.base, clip, stack)
+	}
+}
+

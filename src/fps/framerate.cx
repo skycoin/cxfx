@@ -1,0 +1,105 @@
+package fps
+
+import "time"
+
+// Globals ...
+var g_framerate Framerate
+
+// Framerate ...
+type Framerate struct {
+	currentTime i64
+	previousTime i64
+	deltaTime i64
+	fpsTime i64
+	frameTime i64
+	fps i64
+
+	deltaSecond f64
+}
+
+// DeltaSecond ...
+func DeltaSecond()(out f64) {
+	out = g_framerate.deltaSecond
+}
+
+// DeltaNano ...
+func DeltaNano()(out i64) {
+	out = g_framerate.deltaTime
+}
+
+// SecondToNano ...
+func SecondToNano(second f64) (nano i64) {
+	nano = f64.i64(second * 1000000000.0D)
+}
+
+// NanoToSecond ...
+func NanoToSecond(nano i64) (second f64) {
+	second = i64.f64(nano) / 1000000000.0D
+}
+
+// NanoToMilli ...
+func NanoToMilli(nano i64) (milli f64) {
+	milli = i64.f64(nano) / 1000000.0D
+}
+
+// Init ...
+func Init(targetFps ui32) {
+	g_framerate.currentTime = time.UnixNano()
+	g_framerate.previousTime = g_framerate.currentTime
+	g_framerate.deltaTime = 0L
+	g_framerate.fpsTime = 0L
+	g_framerate.frameTime = 0L
+	var targetFpsI64 i64 = ui32.i64(targetFps)
+	if targetFpsI64 > 0L {
+		g_framerate.frameTime = SecondToNano(1.0D) / targetFpsI64
+	}
+	g_framerate.fps = 0L
+}
+
+// BeginUpdate ...
+func BeginUpdate(updateStepSecond ui32) {
+	g_framerate.currentTime = time.UnixNano()
+	g_framerate.deltaTime = g_framerate.currentTime - g_framerate.previousTime
+	g_framerate.deltaSecond = NanoToSecond(g_framerate.deltaTime)
+
+	if g_framerate.deltaTime == g_framerate.currentTime { // TODO : remove ? fixed steps ?
+		g_framerate.deltaTime = g_framerate.frameTime
+	}
+
+	var updateStepNano i64 = SecondToNano(ui32.f64(updateStepSecond))
+
+	var full bool = false
+	if (g_framerate.currentTime - g_framerate.fpsTime) > SecondToNano(ui32.f64(updateStepSecond)) {
+		g_framerate.fpsTime = g_framerate.currentTime
+		var dt i64 = ui32.i64(updateStepSecond)
+		var frameCount i64 = 0L
+		if dt > 0L {
+			frameCount = (g_framerate.fps + 1L) / dt
+		}
+		printf("fps : %d, dt : %fms\n", frameCount, NanoToMilli(g_framerate.deltaTime))
+		g_framerate.fps = 0L
+		full = true
+		PrintProfiles() // ISSUE : garbage value when : len(g_profiles)
+	} else {
+		g_framerate.fps = g_framerate.fps + 1L // ISSUE : g_framerate.fps++ : framerate.cx:78 function 'i64.add' expected input argument of type 'i64'; 'i32' was provided
+	}
+
+	ClearProfiles(full) // ISSUE : garbage value when : len(g_profiles)
+}
+
+
+// EndUpdate ...
+func EndUpdate() {
+	if g_framerate.frameTime > 0L {
+		var updateTime i64 = time.UnixNano()
+		var deltaUpdateTime i64 = updateTime - g_framerate.currentTime
+
+		if (deltaUpdateTime < g_framerate.frameTime) {
+			var sleepTimeMilli i32 = f64.i32(NanoToMilli(g_framerate.frameTime - deltaUpdateTime))
+			time.Sleep(sleepTimeMilli)
+		}
+	}
+
+	g_framerate.previousTime = g_framerate.currentTime
+}
+

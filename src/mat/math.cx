@@ -1,0 +1,48 @@
+package mat
+
+type v2 struct {
+    x f32
+    y f32
+}
+
+type v3 struct {
+    x f32
+    y f32
+    z f32
+}
+
+type v4 struct {
+    x f32
+    y f32
+    z f32
+    w f32
+}
+
+type m44 struct {
+    v00 f32
+    v01 f32
+    v02 f32
+    v03 f32
+
+    v10 f32
+    v11 f32
+    v12 f32
+    v13 f32
+
+    v20 f32
+    v21 f32
+    v22 f32
+    v23 f32
+
+    v30 f32
+    v31 f32
+    v32 f32
+    v33 f32
+}
+
+type TRS struct {
+    t v3
+    r v4
+    s v3
+}
+

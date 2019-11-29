@@ -1,0 +1,102 @@
+package app
+
+import "mat"
+import "v2"
+
+// Constants ...
+var BUTTON_LEFT  i32 = 0
+var BUTTON_RIGHT i32 = 1
+
+var MOUSE_RELEASE i32 = 0
+var MOUSE_PRESS   i32 = 1
+var MOUSE_MOVE    i32 = 38
+
+var KEY_RELEASE i32 = 0
+var KEY_PRESS   i32 = 1
+var KEY_REPEAT  i32 = 2
+
+var KEYCODE_SPACE     i32 =  32
+var KEYCODE_ESCAPE    i32 = 256
+var KEYCODE_ENTER     i32 = 257
+var KEYCODE_TAB       i32 = 258
+var KEYCODE_RIGHT     i32 = 262
+var KEYCODE_LEFT      i32 = 263
+var KEYCODE_DOWN      i32 = 264
+var KEYCODE_UP        i32 = 265
+var KEYCODE_LEFT_CTRL i32 = 341
+var KEYCODE_SHIFT     i32 = 340
+var KEYCODE_MENU      i32 = 343
+
+var KEYCODE_1 i32 = 49
+var KEYCODE_2 i32 = 50
+var KEYCODE_3 i32 = 51
+var KEYCODE_4 i32 = 52
+var KEYCODE_5 i32 = 53
+var KEYCODE_6 i32 = 54
+var KEYCODE_7 i32 = 55
+var KEYCODE_8 i32 = 56
+var KEYCODE_9 i32 = 57
+var KEYCODE_0 i32 = 48
+
+var KEYCODE_A i32 = 65
+var KEYCODE_B i32 = 66
+var KEYCODE_D i32 = 68
+var KEYCODE_S i32 = 83
+var KEYCODE_V i32 = 86
+var KEYCODE_W i32 = 87
+
+var MOD_NONE  i32 = 0
+var MOD_SHIFT i32 = 1
+var MOD_CTRL  i32 = 2
+var MOD_ALT   i32 = 4
+var MOD_MENU  i32 = 8
+
+var EVENT_ERROR    i32 = 0
+var EVENT_UNUSED   i32 = 1
+var EVENT_CONSUMED i32 = 2
+
+// KeyboardEvent ...
+type KeyboardEvent struct {
+	key i32
+	scancode i32
+	action i32
+	mods i32
+}
+
+// MouseEvent ...
+type MouseEvent struct {
+	position mat.v2
+	button i32
+	action i32
+	mods i32
+}
+
+// Event ...
+type Event struct {
+	keyboard KeyboardEvent
+	mouse MouseEvent
+}
+
+// InvalidKeyboardEvent ...
+func InvalidKeyboardEvent() (out KeyboardEvent) {
+	out.key = -1
+	out.scancode = -1
+	out.action = 0
+	out.mods = 0
+}
+
+// InvalidMouseEvent ...
+func InvalidMouseEvent() (out MouseEvent) {
+	out.position = v2.makef(-1.0)
+	out.button = -1
+	out.action = 0
+	out.mods = 0
+}
+
+// InvalidEvent ...
+func InvalidEvent() (out Event) {
+	out.keyboard = InvalidKeyboardEvent()
+	out.mouse = InvalidMouseEvent()
+}
+
+

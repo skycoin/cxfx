@@ -1,0 +1,98 @@
+package gfx
+
+// Globals ...
+var g_scissors[]mat.v4
+
+// PushScissor ...
+func PushScissor(name str, bounds mat.v4) (out mat.v4) {
+	// panicIfNot(bounds.z > 0 && bounds.w > 0, "invalid bounds")
+	out = bounds
+	var scissorCount i32 = len(g_scissors)
+	if (scissorCount > 0) {
+		var previousScissor i32 = scissorCount - 1
+		var scissor mat.v4 = g_scissors[previousScissor]
+		var x0 f32 = scissor.x
+		var y0 f32 = scissor.y
+		var x1 f32 = x0 + scissor.z
+		var y1 f32 = y0 + scissor.w
+
+		var x2 f32 = bounds.x
+		var y2 f32 = bounds.y
+		var x3 f32 = x2 + bounds.z
+		var y3 f32 = y2 + bounds.w
+
+		var maxX f32 = v1.max(x0, x2)
+		var maxY f32 = v1.max(y0, y2)
+
+		var minX f32 = v1.min(x1, x3)
+		var minY f32 = v1.min(y1, y3)
+
+		out.x = maxX
+		out.y = maxY
+		var width f32 = minX - maxX
+		var height f32 = minY - maxY
+
+		out.z = v1.max(0.0, width)
+		out.w = v1.max(0.0, height)
+		var i i32 = 0
+		//for i = 0; i < scissorCount; i = i + 1 {
+		//	printf("----")
+		//}
+		//printf("x0 %f, y0 %f, x1 %f, y1 %f, x2 %f, y2 %f, x3 %f, y3 %f\n", x0, y0, x1, y1, x2, y2, x3, y3)
+		//for i = 0; i < scissorCount; i = i + 1 {
+		//	printf("----")
+		//}
+		//printf("max %f, %f, min %f, %f\n", maxX, maxY, minX, minY)
+		//for i = 0; i < scissorCount; i = i + 1 {
+		//	printf("----")
+		//}
+		var scissorW f32 = scissor.x + scissor.z
+		var scissorH f32 = scissor.y + scissor.w
+		//printf("%s old scissor %f, %f, %f, %f\n", name, scissor.x, scissor.y, scissorW, scissorH)
+		//for i = 0; i < scissorCount; i = i + 1 {
+		//	printf("----")
+		//}
+//		printf("%s bounds  %f, %f, %f, %f\n", name, bounds.x, bounds.y, bounds.z, bounds.w)
+//		for i = 0; i < scissorCount; i = i + 1 {
+  //		  printf("----")
+		//}
+		var outW f32 = out.x + out.z
+		var outH f32 = out.y + out.w
+		//printf("%s new scissor %f, %f, %f, %f\n", name, out.x, out.y, outW, outH)
+	} else {
+		out = bounds
+		//var i i32 = 0
+		//for i = 0; i < scissorCount; i = i + 1 {
+		//	printf("----")
+		//}
+		//printf("%s bounds %f, %f, %f, %f\n", name, bounds.x, bounds.y, bounds.z, bounds.w)
+		//for i = 0; i < scissorCount; i = i + 1 {
+		//	printf("----")
+		//}
+		//printf("%s out first %f, %f, %f, %f\n", name, out.x, out.y, out.z, out.w)
+
+	}
+	g_scissors = append(g_scissors, out)
+	//if (out.x == 0.0 && out.y == 0.0 && out.z == 0 && out.w == 0) {
+	//	printf("%s thostuhsth \n", name)
+	//	panicIfNot(false, "")
+	//}
+
+	//var tmp mat.v4 =  g_scissors[scissorCount]
+	//printf("%d, tmp readback %f, %f, %f, %f\n", scissorCount, tmp.x, tmp.y, tmp.z, tmp.w)
+
+	//SetScissor(bounds)
+}
+
+// PopScissor ...
+func PopScissor() {
+	var scissorCount i32 = len(g_scissors)
+	panicIfNot(scissorCount > 0, "underflow")
+	g_scissors = resize(g_scissors, scissorCount - 1)
+	//if (scissorCount > 0) {
+	//	var scissor i32 = scissorCount - 1
+		//SetScissor(g_scissors[scissor])
+	//}
+}
+
+

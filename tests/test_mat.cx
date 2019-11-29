@@ -1,0 +1,499 @@
+package main
+
+import "mat"
+import "fps"
+
+import "v3"
+import "v4"
+import "m44"
+import "q4"
+
+var p fps.ProfileId
+//var a4 mat.v4 = mat.v4_(1.0, 2.0, 3.0, 4.0)
+//var b4 mat.v4 = mat.v4_(5.0, 6.0, 7.0, 8.0)
+
+//var a3 mat.v3 = mat.v3_(1.0, 2.0, 3.0)
+//var b3 mat.v3 = mat.v3_(4.0, 5.0, 6.0)
+
+//var A4 v4.v4 = v4.make(1.0, 2.0, 3.0, 4.0)
+//var B4 v4.v4 = v4.make(5.0, 6.0, 7.0, 8.0)
+
+//var A3 v3.v3 = v3.make(1.0, 2.0, 3.0)
+//var B3 v3.v3 = v3.make(4.0, 5.0, 6.0)
+
+var x f32 = 1.0
+var y f32 = 2.0
+var z f32 = 3.0
+var w f32 = 4.0
+
+func start(name str)() {
+	printf("%s : ", name)
+	fps.ClearProfile(p, true)
+	fps.StartProfile(p)
+}
+
+func stop() () {
+	fps.StopProfile(p)
+	fps.PrintProfile(p)
+}
+
+
+func call_3f(a f32, b f32, c f32) {
+}
+
+func call_v3(a mat.v3) {
+}
+
+
+func main()() {
+	p = fps.CreateProfile("")
+	//var a44 []f32 = mat.MatrixAlloc()
+	//var A44 m44.m44
+	var count i32 = 1000000
+
+	start("empty loop")
+	for i := 0; i < count; i++ {
+	}
+	stop()
+
+	start("--- : function call constant floats")
+	for i := 0; i < count; i++ {
+		call_3f(1.0, 2.0, 3.0)
+	}
+	stop()
+
+	start("--- : function call stack floats")
+	var aa f32 = 1.0
+	var bb f32 = 2.0
+	var cc f32 = 3.0
+	for i := 0; i < count; i++ {
+		call_3f(aa, bb, cc)
+	}
+	stop()
+
+	start("--- : function call floats")
+	for i := 0; i < count; i++ {
+		var a f32 = 1.0
+		var b f32 = 2.0
+		var c f32 = 3.0
+		call_3f(a, b, c)
+	}
+	stop()
+
+	start("--- : function call constant vectors")
+	for i := 0; i < count; i++ {
+		call_v3(v3.ONE)
+	}
+	stop()
+
+	start("--- : function call stack vectors")
+	var vv mat.v3 = v3.make(1.0, 2.0, 3.0)
+	for i := 0; i < count; i++ {
+		call_v3(v3.ONE)
+	}
+	stop()
+
+	start("--- : function call loop vectors")
+	for i := 0; i < count; i++ {
+		var v mat.v3
+		v.x = 1.0
+		v.y = 2.0
+		v.z = 3.0
+		call_v3(v)
+	}
+	stop()
+
+	start("--- : function call make vectors")
+	for i := 0; i < count; i++ {
+		call_v3(v3.make(1.0, 2.0, 3.0))
+	}
+	stop()
+
+	start("--- : function call make_SQT")
+	var t mat.TRS
+	t.s = v3.ONE
+	t.r = v4.ALPHA
+	t.t = v3.ZERO
+	for i := 0; i < count; i++ {
+		var m mat.m44 = m44.make_SQT(t)
+	}
+	stop()
+
+	start("--- : function call makev_SQT")
+	for i := 0; i < count; i++ {
+		var m mat.m44 = m44.makev_SQT(v3.ONE, v4.ALPHA, v3.ZERO)
+	}
+	stop()
+
+	start("--- : function call makev_SQT")
+	for i := 0; i < count; i++ {
+		var m mat.m44 = m44.makef_SQT(1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+	}
+	stop()
+/*
+ start("--- : v4_add")
+	for i := 0; i < count; i++ {
+		var v mat.v4 = mat.v4_add(a4, b4)
+	}
+	stop()
+
+	start("+++ : v4.add")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = v4.add(A4, B4)
+	}
+	stop()
+
+	start("--- : v4_add temps")
+	for i := 0; i < count; i++ {
+		var v mat.v4 = mat.v4_add(mat.v4_(1.0, 2.0, 3.0, 4.0), mat.v4_(5.0, 6.0, 7.0, 8.0))
+	}
+	stop()
+
+	start("+++ : v4.add temps")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = v4.add(v4.make(1.0, 2.0, 3.0, 4.0), v4.make(5.0, 6.0, 7.0, 8.0))
+	}
+	stop()
+
+	start("--- : v4_normalize")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = mat.v4_normalize(a4)
+	}
+	stop()
+
+	start("+++ : v4.normalize")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = v4.normalize(A4)
+	}
+	stop()
+
+	start("--- : v4_sqlength")
+	for i := 0; i < count; i++ {
+		var f f32 = mat.v4_sqlength(a4)
+	}
+	stop()
+
+	start("+++ : v4.sqlength")
+	for i := 0; i < count; i++ {
+		var f f32 = v4.sqlength(A4)
+	}
+	stop()
+
+	start("--- : v4_transform")
+	for i := 0; i < count; i++ {
+		var v mat.v4 = mat.v4_transform(a4, a44)
+	}
+	stop()
+
+	start("+++ : v4.transform")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = v4.transform(A4, M44)
+	}
+	stop()
+
+	start("--- : QuaternionSlerp")
+	for i := 0; i < count; i++ {
+		var v mat.v4 = mat.QuaternionSlerp(a4, b4, 0.5)
+	}
+	stop()
+
+	start("+++ : q4.slerp	   ")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = q4.slerp(A4, B4, 0.5)
+	}
+	stop()
+
+	start("--- : QuaternionLerp")
+	for i := 0; i < count; i++ {
+		var v mat.v4 = mat.QuaternionLerp(a4, b4, 0.5)
+	}
+	stop()
+
+	start("+++ : q4.lerp	   ")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = q4.lerp(A4, B4, 0.5)
+	}
+	stop()
+
+	start("--- : QuaternionFromVectors")
+	for i := 0; i < count; i++ {
+		var v mat.v4 = mat.QuaternionFromVectors(a3, b3)
+	}
+	stop()
+
+	start("+++ : q4.from_vectors	  ")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = q4.from_vectors(A3, B3)
+	}
+	stop()
+
+	start("--- : QuaternionFromAxisAngle")
+	for i := 0; i < count; i++ {
+		var v mat.v4 = mat.QuaternionFromAxisAngle(x, y, z, w)
+	}
+	stop()
+
+	start("+++ : q4.from_axis_angle	 ")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = q4.from_axis_angle(x, y, z, w)
+	}
+	stop()
+
+	start("--- : QuaternionFromYawPitchRoll")
+	for i := 0; i < count; i++ {
+		var v mat.v4 = mat.QuaternionFromYawPitchRoll(x, y, z)
+	}
+	stop()
+
+	start("+++ : q4.from_yaw_pitch_roll	")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = q4.from_yaw_pitch_roll(x, y, z)
+	}
+	stop()
+
+	start("--- : QuaternionToAxis")
+	for i := 0; i < count; i++ {
+		var v mat.v3 = mat.QuaternionToAxis(x, y, z, w)
+	}
+	stop()
+
+	start("+++ : q4.to_axis	  ")
+	for i := 0; i < count; i++ {
+		var v v3.v3 = q4.to_axis(x, y, z, w)
+	}
+	stop()
+
+	start("--- : QuaternionToAxisAngle")
+	for i := 0; i < count; i++ {
+		var v mat.v4 = mat.QuaternionToAxisAngle(0.0, 1.0, 0.0, 0.0)
+	}
+	stop()
+
+	start("+++ : q4.to_axis_angle	 ")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = q4.to_axis_angle(0.0, 1.0, 0.0, 0.0)
+	}
+	stop()
+
+	start("--- : QuaternionMultiply")
+	for i := 0; i < count; i++ {
+		var v mat.v4 = mat.QuaternionMultiply(a4, b4)
+	}
+	stop()
+
+	start("+++ : q4.mul			")
+	for i := 0; i < count; i++ {
+		var v v4.v4 = q4.mul(A4, B4)
+	}
+	stop()
+
+	start("--- : QuaternionTransformVector")
+	for i := 0; i < count; i++ {
+		var v mat.v3 = mat.QuaternionTransformVector(a4, a3)
+	}
+	stop()
+
+	start("+++ : q4.transform_vector	  ")
+	for i := 0; i < count; i++ {
+		var v v3.v3 = q4.transform_vector(A4, A3)
+	}
+	stop()*/
+
+	/*start("--- : MatrixTranspose")
+	for i := 0; i < count; i++ {
+		a44 = mat.MatrixTranspose(a44)
+	}
+	stop()
+
+	start("+++ : m44.transpose  ")
+	for i := 0; i < count; i++ {
+		var m m44.m44 = m44.transpose(A44)
+	}
+	stop()
+
+	start("--- : MatrixCreate")
+	for i := 0; i < count; i++ {
+		a44 = mat.MatrixCreate(a44, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+	}
+	stop()
+
+	start("--- : make_SQT	 ")
+	for i := 0; i < count; i++ {
+		var m m44.m44 = m44.make_SQT(2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+	}
+	stop()
+
+	start("--- : MatrixCreate2")
+	for i := 0; i < count; i++ {
+		a44 = mat.MatrixCreate2(a44, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+	}
+	stop()
+
+	start("--- : make_SQT2	  ")
+	for i := 0; i < count; i++ {
+		var m m44.m44 = m44.make_SQT2(2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+	}
+	stop()
+
+	start("--- : MatrixCreateProjection")
+	for i := 0; i < count; i++ {
+		a44 = mat.MatrixCreateProjection(a44, 0.1, 1000.0, 0.9, 800.0, 600.0)
+	}
+	stop()
+
+	start("--- : make_project		  ")
+	for i := 0; i < count; i++ {
+		var m m44.m44 = m44.make_project(0.1, 1000.0, 0.9, 800.0, 600.0)
+	}
+	stop()
+
+	start("--- : MatrixCreateTranslation")
+	for i := 0; i < count; i++ {
+		a44 = mat.MatrixCreateTranslation(a44, x, y, z)
+	}
+	stop()
+
+	start("--- : make_translate		 ")
+	for i := 0; i < count; i++ {
+		var m m44.m44 = m44.make_translate(x, y, z)
+	}
+	stop()
+
+	start("--- : MatrixCreateRotationFromQuaternion")
+	for i := 0; i < count; i++ {
+		a44 = mat.MatrixCreateRotationFromQuaternion(a44, 0.0, 0.0, 0.0, 1.0)
+	}
+	stop()
+
+	start("--- : make_rotate					   ")
+	for i := 0; i < count; i++ {
+		var m m44.m44 = m44.make_rotate(0.0, 0.0, 0.0, 1.0)
+	}
+	stop()
+
+	start("--- : MatrixCreateRotationX")
+	for i := 0; i < count; i++ {
+		a44 = mat.MatrixCreateRotationX(a44, 0.0)
+	}
+	stop()
+
+	start("--- : make_rotate_x		")
+	for i := 0; i < count; i++ {
+		var m m44.m44 = m44.make_rotate_x(0.0)
+	}
+	stop()
+
+	start("--- : MatrixCreateRotationY")
+	for i := 0; i < count; i++ {
+		a44 = mat.MatrixCreateRotationY(a44, 0.0)
+	}
+	stop()
+
+	start("--- : make_rotate_y		")
+	for i := 0; i < count; i++ {
+		var m m44.m44 = m44.make_rotate_y(0.0)
+	}
+	stop()
+
+	start("--- : MatrixCreateScale")
+	for i := 0; i < count; i++ {
+		a44 = mat.MatrixCreateScale(a44, 2.0, 2.0, 2.0)
+	}
+	stop()
+
+	start("--- : make_scale	   ")
+	for i := 0; i < count; i++ {
+		var m m44.m44 = m44.make_scale(2.0, 2.0, 2.0)
+	}
+	stop()
+
+	start("--- : MatrixDeterminant")
+	for i := 0; i < count; i++ {
+		var f f32 = mat.MatrixDeterminant(a44)
+	}
+	stop()
+
+	start("--- : determinant	  ")
+	for i := 0; i < count; i++ {
+		var f f32 = m44.determinant(A44)
+	}
+	stop()
+
+	start("--- : MatrixInverse")
+	for i := 0; i < count; i++ {
+		a44 = mat.MatrixInverse(a44, a44)
+	}
+	stop()
+
+	start("--- : inverse	  ")
+	for i := 0; i < count; i++ {
+		A44 = m44.inverse(A44)
+	}
+	stop()
+
+	start("--- : MatrixMultiply")
+	for i := 0; i < count; i++ {
+		a44 = mat.MatrixMultiply(a44, a44, a44)
+	}
+	stop()
+
+	start("--- : mul		   ")
+	for i := 0; i < count; i++ {
+		var m m44.m44 = m44.mulX(A44, A44)
+	}
+	stop()
+*/
+
+/*	var stack []f32
+	var STACK []m44
+
+	start("--- : MatrixStackPush")
+	for i := 0; i < count; i++ {
+		stack = mat.MatrixStackPush(stack, a44)
+	}
+	stop()
+
+	start("+++ : push		   ")
+	for i := 0; i < count; i++ {
+		STACK = m44.push(STACK, A44)
+	}
+	stop()
+
+	start("--- : MatrixStackLast")
+	for i := 0; i < count; i++ {
+		var m []f32  = mat.MatrixStackLast(stack)
+	}
+	stop()
+
+	start("+++ : last		   ")
+	for i := 0; i < count; i++ {
+		var m m44.m44 = m44.last(STACK)
+	}
+	stop()
+
+	start("--- : MatrixStackPop")
+	for i := 0; i < count; i++ {
+		stack = mat.MatrixStackPop(stack, 1)
+	}
+	stop()
+
+	start("+++ : pop		   ")
+	for i := 0; i < count; i++ {
+		STACK = m44.pop(STACK, 1)
+	}
+	stop()*/
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

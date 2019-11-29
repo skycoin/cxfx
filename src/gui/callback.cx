@@ -1,0 +1,22 @@
+package gui // TODO : move in package app or uti
+
+// func_i32_i32_id ...
+type func_i32_i32_id struct {
+	index i32
+}
+
+// func_i32_i32 ...
+func func_i32_i32(packageName str, functionName str) (out func_i32_i32_id) {
+	out.index = glfw.func_i32_i32(packageName, functionName)
+}
+
+// invalid_func_i32_i32 ...
+func invalid_func_i32_i32() (out func_i32_i32_id) {
+	out.index = -1
+}
+
+// call_i32_i32 ...
+func call_i32_i32(function func_i32_i32_id, a i32, b i32) {
+	glfw.call_i32_i32(function.index, a, b)
+}
+

@@ -1,0 +1,235 @@
+package gui
+
+// Globals ...
+var g_scrollers[] Scroller
+
+// ScrollerId ...
+type ScrollerId struct {
+	base ControlId
+	scroller i32
+}
+
+// Scroller ...
+type Scroller struct {
+	id ScrollerId
+	panel ControlId
+	container ControlId
+	containee ControlId
+	vlift LifterId
+	hlift LifterId
+}
+
+// NewScrollerId ...
+func NewScrollerId(base ControlId, scroller i32) (out ScrollerId) {
+	out.base = base
+	out.scroller = scroller
+	panicIfNot(IsValidScroller(out), "invalid id")
+}
+
+// IsValidScroller ...
+func IsValidScroller(id ScrollerId) (out bool) {
+	out = id.scroller >= 0 && id.scroller < len(g_scrollers) && IsValidControl(id.base)
+}
+
+// ScrollerSetContainee ...
+func ScrollerSetContainee(id ScrollerId, containee ControlId) {
+	panicIfNot(IsValidScroller(id), "invalid id")
+	panicIfNot(IsValidControl(containee), "invalid control")
+	var container ControlId = g_scrollers[id.scroller].container
+	ControlClearChildren(container)
+	ControlAddChild(container, containee)
+	g_scrollers[id.scroller].containee = containee
+}
+
+// ScrollerCreate ...
+func ScrollerCreate(name str) (out ScrollerId) {
+	out.scroller = len(g_scrollers)
+	out.base = controlCreate(name, GUI_SCROLLER, out.scroller)
+
+	var lifterSize f32 = 8.0
+
+	var scroller Scroller
+	scroller.id = out
+
+	var vlift LifterId = LifterCreate("vlift")
+	ControlAddChild(out.base, vlift.base)
+	ControlSetSize(vlift.base, v2.make(lifterSize, 0.0))
+	ControlSetDock(vlift.base, DOCK_RIGHT)
+	ControlSetFocusIndex(vlift.base, 1)
+	//ControlSetSkin(vlift.base, g_debugBlueSkin)
+	LifterSetDirection(vlift, LIFT_VERT)
+	LifterSetSize(vlift, lifterSize)
+	scroller.vlift = vlift
+
+	var panel ControlId = ControlCreate("panel")
+	ControlAddChild(out.base, panel)
+	ControlSetDock(panel, DOCK_FILL)
+ //   ControlSetAutosize(panel, AUTOSIZE_Y)
+	ControlSetFocusIndex(panel, 0)
+	scroller.panel = panel
+
+	var hlift LifterId = LifterCreate("hlift")
+	ControlAddChild(panel, hlift.base)
+	ControlSetSize(hlift.base, v2.make(0.0, lifterSize))
+	ControlSetDock(hlift.base, DOCK_BOTTOM)
+	ControlSetFocusIndex(hlift.base, 1)
+	//ControlSetSkin(hlift.base, g_greenSkin)
+	LifterSetDirection(hlift, LIFT_HORZ)
+	LifterSetSize(hlift, lifterSize)
+	scroller.hlift = hlift
+
+	var container ControlId = ControlCreate("container")
+	ControlAddChild(panel, container)
+	ControlSetDock(container, DOCK_FILL)
+	//ControlSetAutosize(container, AUTOSIZE_Y)
+	//ControlSetSkin(container, g_blueSkin)
+	ControlSetFocusIndex(container, 0)
+	scroller.container = container
+
+	g_scrollers = append(g_scrollers, scroller)
+	panicIfNot(IsValidScroller(out), "invalid id")
+}
+
+// ScrollerProcessEvent ...
+func ScrollerProcessEvent(id ScrollerId, event *app.Event) (out i32) {
+	panicIfNot(IsValidScroller(id), "invalid id")
+	//ControlPrint("SCROLLER", id.base, false)
+	out = app.EVENT_UNUSED
+	var vlift LifterId = g_scrollers[id.scroller].vlift
+	var vliftFocused i32 = ControlFocused(vlift.base)
+
+	var hlift LifterId = g_scrollers[id.scroller].hlift
+	var hliftFocused i32 = ControlFocused(hlift.base)
+
+	if (vliftFocused > 0 || hliftFocused > 0) {
+		var action i32 = ((*event).keyboard).action
+		if (action == app.KEY_PRESS) {
+			var key i32 = ((*event).keyboard).key
+			var lift LifterId = InvalidLifter()
+			if (/*hliftFocused > 0 &&*/
+				(key == app.KEYCODE_LEFT ||
+				 key == app.KEYCODE_RIGHT)) {
+				lift = hlift
+				ControlPrint("HLIFT ", hlift.base, false)
+			} else if (/*vliftFocused > 0 &&*/
+					  (key == app.KEYCODE_UP ||
+					   key == app.KEYCODE_DOWN)) {
+				lift = vlift
+				ControlPrint("VLIFT ", vlift.base, false)
+			}
+
+			if (IsValidLifter(lift)) {
+				var visible i32 = g_controls[lift.base.control].visible
+				if (visible > 0) {
+					var carret ControlId = g_lifters[lift.lifter].carret
+					ForceFocus(carret)
+				}
+			}
+		}
+	}
+
+	out = ControlProcessEvent(id.base, event)
+}
+
+// ScrollerResize ...
+func ScrollerResize(id ScrollerId) () {
+	panicIfNot(IsValidScroller(id), "invalid id")
+
+	//ControlPrint("ScrollerResize : ", id.base, false)
+	var container ControlId = g_scrollers[id.scroller].container
+	var maxSize mat.v2 = g_controls[container.control].size
+	//printf("MAXSIZE %f, %f\n", maxSize.x, maxSize.y)
+
+	var containee ControlId = g_scrollers[id.scroller].containee
+	var curSize mat.v2 = g_controls[containee.control].size
+	//printf("CURSIZE %f, %f\n", curSize.x, curSize.y)
+
+	var hlift LifterId = g_scrollers[id.scroller].hlift
+	var vlift LifterId = g_scrollers[id.scroller].vlift
+
+	var percent mat.v2 = v2.ZERO
+	var offset mat.v2 = v2.make(LifterGetOffset(hlift), LifterGetOffset(vlift))
+	//printf("OFFSET %f, %f\n", offset.x, offset.y)
+
+	var maxOffset mat.v2 = v2.make(LifterGetMaxOffset(hlift), LifterGetMaxOffset(vlift))
+	//printf("MAXOFFSET %f, %f\n", maxOffset.x, maxOffset.y)
+
+	if (curSize.y > 0.0) {
+		var vliftIndex i32 = vlift.lifter
+		var vliftMax f32 = LifterGetMaxAmount(vlift)
+		var vamount f32 = maxSize.y * vliftMax / curSize.y
+		//printf("VAMOUNT %f\n", vamount)
+		LifterSetAmount(vlift, vamount)
+		if (curSize.y <= maxSize.y) {
+			g_controls[vlift.base.control].visible = 0
+		} else {
+			g_controls[vlift.base.control].visible = 1
+				if (maxOffset.y > 0.0) {
+					percent.y = offset.y * 100.0 / maxOffset.y
+				} else {
+					percent.y = 0.0
+				}
+		}
+	} else {
+		g_controls[vlift.base.control].visible = 0
+	}
+
+	if (curSize.x > 0.0) {
+		var hliftIndex i32 = hlift.lifter
+			var hliftMax f32 = LifterGetMaxAmount(hlift)
+			var hamount f32 = maxSize.x * hliftMax / curSize.x
+			LifterSetAmount(hlift, hamount)
+			var maxOffsetX f32 = LifterGetMaxOffset(hlift)
+			if (curSize.x <= maxSize.x) {
+				g_controls[hlift.base.control].visible = 0
+			} else {
+				g_controls[hlift.base.control].visible = 1
+					percent.x = offset.x * 100.0 / maxOffset.x
+			}
+	} else {
+		g_controls[hlift.base.control].visible = 0
+	}
+
+	//printf("percent %f, %f\n", percent.x, percent.y)
+
+	/*	var hvisible i32 = g_controls[hlift.base.control].visible
+		  var vvisible i32 = g_controls[vlift.base.control].visible
+
+		  if (hvisible > 0 && vvisible > 0) {
+		  } else if (hvisible > 0) {
+		  } else if (vvisible > 0) {
+		  }
+		  */
+
+	var widthOffset f32 = maxSize.x - curSize.x
+		var heightOffset f32 = maxSize.y - curSize.y
+		//panicIfNot(mat.is_nan(curSize.y) == false, "ScrollerResize curSize.y nan")
+		//panicIfNot(mat.is_nan(maxSize.y) == false, "ScrollerResize maxSize.y nan")
+		//panicIfNot(mat.is_nan(heightOffset) == false, "ScrollerResize heightOffset nan")
+		//panicIfNot(mat.is_nan(percent.y) == false, "ScrollerResize percent.y nan")
+
+		/*if (id.base.control == 38) {
+		  printf("heightOffset %f\n", heightOffset)
+
+		  printf("position.x %f, position.y : heightOffset + percent.y * maxSize.y / 100.0 %f\n", 0.0 - percent.x * maxSize.x / 100.0, heightOffset + percent.y * maxSize.y / 100.0)
+		  }*/
+		g_controls[containee.control].position = v2.make(0.0 + percent.x * widthOffset / 100.0, heightOffset - percent.y * heightOffset / 100.0)
+		var after mat.v2 = g_controls[containee.control].position
+
+		/*if (id.base.control == 38) {
+		  printf("AFTER %f, %f\n", after.x, after.y)
+		  }*/
+		ControlResize(id.base)
+		//if (id.base.control == 38) {
+		//printf("offset %f, %f\n", offsetX, offsetY)
+		//ControlPrint("ScrollerResize : after ", containee, false)
+		//}
+}
+
+// ScrollerRender ...
+func ScrollerRender(id ScrollerId, clip mat.v4, stack i32) () {
+	panicIfNot(IsValidScroller(id), "invalid id")
+		ControlRender(id.base, clip, stack)
+}
+
+

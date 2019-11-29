@@ -1,0 +1,261 @@
+package gfx
+
+import "mat"
+import "v1"
+import "v2"
+import "v3"
+import "v4"
+import "m44"
+
+var g_emitters []Emitter
+var g_alive []EmitterId
+var g_freeEmitters []EmitterId
+
+type Particle struct {
+	time f32
+	life f32
+	fadeIn f32
+	fadeOut f32
+	color mat.v4
+	position mat.v3
+	velocity mat.v3
+	orientation mat.v4
+	angularVelocity mat.v4
+	scale mat.v3
+	scaleVelocity mat.v3
+}
+
+type Emitter struct {
+	position mat.v3
+	positionBias mat.v3
+
+	orientation mat.v4
+	orientationBias mat.v4
+
+	scale mat.v3
+	scaleBias mat.v3
+
+	velocity mat.v3
+	velocityBias f32
+
+	angularVelocity mat.v4
+	angularVelocityBias mat.v4
+
+	scaleVelocity mat.v3
+	scaleVelocityBias f32
+
+	life f32
+	lifeBias f32
+
+	puff i32
+	puffBias i32
+
+	color mat.v4
+	colorBias mat.v4
+
+	texture TextureId
+
+	particles []Particle
+	alive bool
+	emitMax i32
+	allocMax i32
+	lifeMax f32
+	lifeCur f32
+	fadeIn f32
+	fadeOut f32
+	mesh MeshId
+}
+
+type EmitterId struct {
+	emitter i32
+}
+
+func ParticleGetEmitter(allocMax i32) (out EmitterId) {
+	out.emitter = -1
+	var count i32 = len(g_freeEmitters)
+	for i := 0; i < count; i++ {
+		var id EmitterId = g_freeEmitters[i]
+		if g_emitters[id.emitter].alive == false && g_emitters[id.emitter].allocMax == allocMax {
+			out = id
+			var newCount i32 = count - 1
+			g_freeEmitters[i] = g_freeEmitters[newCount]
+			g_freeEmitters = resize(g_freeEmitters, newCount)
+			return
+		}
+	}
+
+	out = EmitterCreate(allocMax)
+}
+func EmitterCreate(allocMax i32)(out EmitterId) {
+	out.emitter = len(g_emitters)
+	var emitter Emitter
+	emitter.allocMax = allocMax
+	emitter.mesh = MeshLock(TRIANGLES, UNSIGNED_SHORT, 6 * allocMax, g_particleLayout, 4 * allocMax)
+	MeshSetCulling(emitter.mesh, CW, NONE)
+	g_emitters = append(g_emitters, emitter)
+}
+
+func EmitterInit(id EmitterId, emitMax i32, lifeMax f32, fadeIn f32, fadeOut f32) {
+	var emitter Emitter = g_emitters[id.emitter]
+	emitter.emitMax = emitMax
+	emitter.lifeMax = lifeMax
+	emitter.lifeCur = 0.0
+	emitter.fadeIn = fadeIn
+	emitter.fadeOut = fadeOut
+	emitter.particles = resize(emitter.particles, 0)
+	if emitter.alive == false {
+		g_alive = append(g_alive, id)
+		emitter.alive = true
+	}
+
+	var mesh MeshId = emitter.mesh
+	MeshBegin(mesh)
+
+	var particles []Particle = g_emitters[id.emitter].particles
+	var allocMax i32 = g_emitters[id.emitter].allocMax
+	var puffIndex i32
+	for p := 0; p < allocMax ; p++ {
+
+		var puffBias i32 = i32.rand(0, emitter.puffBias)
+		var puffCount i32 = emitter.puff + puffBias
+		var time f32 = i32.f32(puffIndex) * 1.0 / 60.0
+		for puff := 0; puff < puffCount && p < allocMax; puff++ {
+			var particle Particle
+			particle.time = time
+			particle.fadeIn = 0.3
+			particle.fadeOut = 2.0
+			particle.life = emitter.life * 0.5 + f32.rand() * emitter.lifeBias
+
+			particle.position = v3.add(emitter.position, v3.mul(v3.srand(), emitter.positionBias))
+			particle.velocity = v3.mul(emitter.velocity, v3.srand())
+			particle.velocity = v3.mulf(particle.velocity, 1.0 + v1.srand() * emitter.velocityBias)
+
+			var axis mat.v3 = v4.xyz(emitter.orientation)
+			axis = v3.normalize(v3.add(axis, v3.mul(v3.srand(), v4.xyz(emitter.orientationBias))))
+			var angle f32 = emitter.orientation.w * (1.0 + v1.srand() * emitter.orientationBias.w)
+			particle.orientation = v4.make_v31(axis, angle)
+
+			particle.angularVelocity.w = (emitter.angularVelocity.w * v1.srand()) * (1.0 + v1.srand() * emitter.angularVelocityBias.w)
+			particle.scale = v3.add(emitter.scale, v3.mul(v3.srand(), emitter.scaleBias))
+			particle.scaleVelocity = v3.mul(emitter.scaleVelocity, v3.rand())
+			particle.scaleVelocity = v3.mulf(particle.scaleVelocity, 1.0 + f32.rand() * emitter.scaleVelocityBias)
+
+			var rgb f32 = v1.srand()
+			particle.color = v4.sat(v4.add(emitter.color, v4.mul(v4.make(rgb, rgb, rgb, v1.srand()), emitter.colorBias)))
+			MeshAppendParticle(mesh, particle)
+			particles = append(particles, particle)
+			p = p + 1
+		}
+		puffIndex = puffIndex + 1
+	}
+
+	MeshEnd(emitter.mesh)
+
+	emitter.particles = particles
+	g_emitters[id.emitter] = emitter
+}
+
+func EmitterSetPosition(id EmitterId, position mat.v3, positionBias mat.v3) {
+	g_emitters[id.emitter].position = position
+	g_emitters[id.emitter].positionBias = positionBias
+}
+
+func EmitterSetVelocity(id EmitterId, velocity mat.v3, velocityBias f32) {
+	g_emitters[id.emitter].velocity = velocity
+	g_emitters[id.emitter].velocityBias = velocityBias
+}
+
+func EmitterSetOrientation(id EmitterId, orientation mat.v4, orientationBias mat.v4) {
+	g_emitters[id.emitter].orientation = orientation
+	g_emitters[id.emitter].orientationBias = orientationBias
+}
+
+func EmitterSetAngularVelocity(id EmitterId, angularVelocity mat.v4, angularVelocityBias mat.v4) {
+	g_emitters[id.emitter].angularVelocity = angularVelocity
+	g_emitters[id.emitter].angularVelocityBias = angularVelocityBias
+}
+
+func EmitterSetScale(id EmitterId, scale mat.v3, scaleBias mat.v3) {
+	g_emitters[id.emitter].scale = scale
+	g_emitters[id.emitter].scaleBias = scaleBias
+}
+
+func EmitterSetScaleVelocity(id EmitterId, scaleVelocity mat.v3, scaleVelocityBias f32) {
+	g_emitters[id.emitter].scaleVelocity = scaleVelocity
+	g_emitters[id.emitter].scaleVelocityBias = scaleVelocityBias
+}
+
+func EmitterSetLife(id EmitterId, life f32, lifeBias f32) {
+	g_emitters[id.emitter].life = life
+	g_emitters[id.emitter].lifeBias = lifeBias
+}
+
+func EmitterSetPuff(id EmitterId, puff i32, puffBias i32) {
+	g_emitters[id.emitter].puff = puff
+	g_emitters[id.emitter].puffBias = puffBias
+}
+
+func EmitterSetColor(id EmitterId, color mat.v4, colorBias mat.v4) {
+	g_emitters[id.emitter].color = color
+	g_emitters[id.emitter].colorBias = colorBias
+}
+
+func EmitterSetTexture(id EmitterId, texture TextureId) {
+	g_emitters[id.emitter].texture = texture
+}
+
+func ParticleInit()() {
+}
+
+func ParticleUpdate(deltaTime f32)() {
+	var aliveCount i32 = len(g_alive)
+	for i := 0; i < aliveCount; i++ {
+		var id EmitterId = g_alive[i]
+		var emitter Emitter = g_emitters[id.emitter]
+		var lifeCur f32 = emitter.lifeCur
+		if lifeCur < emitter.lifeMax {
+			lifeCur = lifeCur + deltaTime
+			if lifeCur > emitter.lifeMax {
+				lifeCur = emitter.lifeMax
+				aliveCount = aliveCount - 1
+				g_alive[i] = g_alive[aliveCount]
+				g_alive = resize(g_alive, aliveCount)
+				g_freeEmitters = append(g_freeEmitters, id)
+				i = i - 1
+				emitter.alive = false
+			}
+		}
+
+		emitter.lifeCur = lifeCur
+		g_emitters[id.emitter] = emitter
+	}
+}
+
+func ParticleRender(view mat.m44, projection mat.m44, cameraPosition mat.v3, opaqueTarget TargetId, debugValue mat.v4, width f32, height f32)() {
+	var effect EffectId = g_fxParticles
+	EffectUse(g_fxParticles)
+	EffectAssignM44(effect, UNIFORM_WORLD, m44.IDENTITY, false)
+	EffectAssignM44(effect, UNIFORM_VIEW, view, false)
+	EffectAssignM44(effect, UNIFORM_PROJECTION, projection, false)
+	EffectAssignV4(effect, UNIFORM_DEBUG_0, debugValue)
+	EffectAssignV4(effect, UNIFORM_TARGET_SIZE, v4.make(width, height, 1.0 / width, 1.0 / height))
+	EffectAssignTexture(effect, SAMPLER_COLOR_1, TargetGetDepth(opaqueTarget), g_nearestClamp)
+
+	var aliveCount i32 = len(g_alive)
+	for i := 0; i < aliveCount; i++ {
+		var id EmitterId = g_alive[i]
+		var emitter Emitter = g_emitters[id.emitter]
+		var lifeCur f32 = emitter.lifeCur
+		var lifeMax f32 = emitter.lifeMax
+		var fadeIn f32 = emitter.fadeIn
+		var fadeOut f32 = emitter.fadeOut
+
+		var fade f32 = v1.sat(lifeCur / fadeIn) * v1.sat((lifeMax - lifeCur) / fadeOut)
+		panicIf(f32.isnan(fade), "NAN FADE")
+		EffectAssignV4(effect, UNIFORM_COLOR, v4.make(1.0, 1.0, 1.0, fade))
+		EffectAssignV4(effect, UNIFORM_PARTICLE, v4.make(lifeCur, lifeMax, 0.0, 0.0))
+		EffectTryAssignTexture(effect, SAMPLER_COLOR_0, emitter.texture, g_linearWrap)
+		MeshRender(emitter.mesh)
+	}
+}
+

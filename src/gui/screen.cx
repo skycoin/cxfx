@@ -1,0 +1,367 @@
+package gui
+
+// Globals ...
+var g_screens []Screen
+var g_modals []ScreenId
+
+var g_currentScreen ScreenId = InvalidScreen()
+var g_nextScreen	ScreenId = InvalidScreen()
+
+var g_transitionDuration f64 = 0.5D
+var g_transitionTime	 f64 = 0.0D
+
+// ScreenId ...
+type ScreenId struct {
+	base ControlId
+	screen i32
+}
+
+// Screen ...
+type Screen struct {
+	id	ScreenId
+	on_exit   ScreenId
+	on_enter  ScreenId
+	on_menu   ScreenId
+	on_next   ScreenId
+	duration  f64
+	time	  f64
+	state	 i32
+	prevState i32
+	modal	 bool
+	paused	bool
+	floating  bool
+	onEvent func_i32_i32_id
+	onUpdate func_i32_i32_id
+	onRender func_i32_i32_id
+	renderEx bool
+}
+
+// NewScreenId ...
+func NewScreenId(base ControlId, screen i32) (out ScreenId) {
+	out.base = base
+	out.screen = screen
+	panicIfNot(IsValidScreen(out), "invalid id")
+}
+
+// InvalidScreen ...
+func InvalidScreen() (out ScreenId) { // ISSUE : func InvalidScreen() {
+	out.base = InvalidControl()
+	out.screen = -1
+}
+
+// IsValidScreen ...
+func IsValidScreen(id ScreenId) (out bool) {
+	out = id.screen >= 0 && id.screen < len(g_screens) && IsValidControl(id.base)
+}
+
+// ScreenCreate ...
+func ScreenCreate(name str) (out ScreenId) {
+	out.screen = len(g_screens)
+	out.base = controlCreate(name, GUI_SCREEN, out.screen)
+
+	ControlSetFocusIndex(out.base, 0)
+
+	var screen Screen
+	screen.id = out
+	screen.on_exit   = InvalidScreen()
+	screen.on_enter  = InvalidScreen()
+	screen.on_menu   = InvalidScreen()
+	screen.on_next   = InvalidScreen()
+	screen.duration  = -1.0D
+	screen.time	  = 0.0D
+	screen.state	 = STATE_CLOSED
+	screen.prevState = STATE_CLOSED
+	screen.modal	 = false
+	screen.paused	= false
+	screen.floating  = false
+	screen.onEvent = invalid_func_i32_i32()
+	screen.onUpdate = invalid_func_i32_i32()
+	screen.onRender = invalid_func_i32_i32()
+	screen.renderEx = false
+
+	g_screens = append(g_screens, screen)
+	panicIfNot(IsValidScreen(out), "invalid id")
+}
+
+// ScreenSetModal ...
+func ScreenSetModal(id ScreenId, modal bool) {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	g_screens[id.screen].modal = modal
+}
+
+// ScreenSetFloating ...
+func ScreenSetFloating(id ScreenId, floating bool) () {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	g_screens[id.screen].floating = floating
+}
+
+// ScreenSetRenderEx ...
+func ScreenSetRenderEx(id ScreenId, renderEx bool) () {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	g_screens[id.screen].renderEx = renderEx
+}
+
+// ScreenSetOnExit ...
+func ScreenSetOnExit(id ScreenId, exit ScreenId) () {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	panicIfNot(IsValidScreen(exit)  , "invalid id")
+	g_screens[id.screen].on_exit = exit
+}
+
+// ScreenSetOnMenu ...
+func ScreenSetOnMenu(id ScreenId, menu ScreenId) () {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	panicIfNot(IsValidScreen(menu)  , "invalid id")
+	g_screens[id.screen].on_menu = menu
+}
+
+// ScreenSetOnEnter ...
+func ScreenSetOnEnter(id ScreenId, enter ScreenId) () {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	panicIfNot(IsValidScreen(enter) , "invalid id")
+	g_screens[id.screen].on_enter = enter
+}
+
+// ScreenSetOnNext ...
+func ScreenSetOnNext(id ScreenId, next ScreenId) () {
+	panicIfNot(IsValidScreen(id), "invalid id 0")
+	panicIfNot(IsValidScreen(next)  , "invalid id 1")
+	g_screens[id.screen].on_next = next
+}
+
+// ScreenSetOnEvents ...
+func ScreenSetOnEvents(id ScreenId, event ScreenId) () {
+	ScreenSetOnExit(id, event)
+	ScreenSetOnEnter(id, event)
+	ScreenSetOnMenu(id, event)
+}
+
+// ScreenSetDuration ...
+func ScreenSetDuration(id ScreenId, duration f64) {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	g_screens[id.screen].duration = duration
+}
+
+// ScreenSetOnEvent ...
+func ScreenSetOnEvent(id ScreenId, packageName str, functionName str) {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	g_screens[id.screen].onEvent = func_i32_i32(packageName, functionName)
+	var onEvent func_i32_i32_id = g_screens[id.screen].onEvent
+	panicIfNot(onEvent.index >= 0, "invalid function")
+}
+
+// ScreenSetOnUpdate ...
+func ScreenSetOnUpdate(id ScreenId, packageName str, functionName str) {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	g_screens[id.screen].onUpdate = func_i32_i32(packageName, functionName)
+	var onUpdate func_i32_i32_id = g_screens[id.screen].onUpdate
+	panicIfNot(onUpdate.index >= 0, "invalid function")
+}
+
+// ScreenSetOnRender ...
+func ScreenSetOnRender(id ScreenId, packageName str, functionName str) {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	g_screens[id.screen].onRender = func_i32_i32(packageName, functionName)
+	var onRender func_i32_i32_id = g_screens[id.screen].onRender
+	panicIfNot(onRender.index >= 0, "invalid function")
+}
+
+// ScreenProcessEvent ...
+func ScreenProcessEvent(id ScreenId, event *app.Event) (out i32) {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	var onEvent func_i32_i32_id = g_screens[id.screen].onEvent
+	if onEvent.index >= 0 {
+		call_i32_i32(onEvent, id.base.control, -1)
+	}
+	out = ControlProcessEvent(id.base, event)
+
+}
+
+// ScreenChangeState ...
+func ScreenChangeState(id ScreenId, state i32) () {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	g_screens[id.screen].prevState = g_screens[id.screen].state
+	g_screens[id.screen].state = state
+	var prev i32 = g_screens[id.screen].prevState
+	var curr i32 = g_screens[id.screen].state
+	/*if (prev != curr) {
+		printf("%d screen state changed %d -> %d\n", id.screen, prev, curr)
+	}*/
+}
+
+// ScreenStateChanged ...
+func ScreenStateChanged(id ScreenId, prev i32, curr i32) (value bool) {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	var screenPrev i32 = g_screens[id.screen].prevState
+	var screenCurr i32 = g_screens[id.screen].state
+	value = ((screenPrev == prev) && (screenCurr == curr))
+}
+
+// ScreenHideModal ...
+func ScreenHideModal(id ScreenId) {
+	panicIfNot(IsValidScreen(id), "invalid screen")
+	var modalCount i32 = len(g_modals)
+	panicIfNot(modalCount > 0, "invalid count")
+	if (modalCount > 0) {
+		var modalIndex i32 = modalCount - 1
+		var modalScreen ScreenId = g_modals[modalIndex]
+		panicIfNot(modalScreen.screen == id.screen, "invalid screen")
+		if (modalScreen.screen == id.screen) {
+			ScreenHide(modalScreen)
+			g_modals = resize(g_modals, modalIndex)
+			g_hotScreen = InvalidScreen()
+		}
+	}
+}
+
+// ScreenModalIsVisible ...
+func ScreenModalIsVisible(id ScreenId) (out bool) {
+	out = false
+	panicIfNot(IsValidScreen(id), "invalid id")
+	var modal bool = g_screens[id.screen].modal
+	if (modal == true) {
+		var modalCount i32 = len(g_modals)
+		if (modalCount > 0) {
+			var lastIndex i32 = modalCount - 1
+			var left i32 = g_modals[lastIndex].screen
+			var right i32 = id.screen
+			if (left == right) {
+				out = true
+			}
+		}
+	}
+}
+
+// ScreenHide ...
+func ScreenHide(id ScreenId) () {
+	panicIfNot(IsValidScreen(id), "invalid screen")
+}
+
+// ScreenShow ...
+func ScreenShow(id ScreenId) () {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	g_hotScreen = id
+	//ControlPrint("ScreenShow : ", id.base, false)
+	RebuildFocus(id)
+
+	var modal bool = g_screens[id.screen].modal
+	if (modal == true) {
+		var modalCount i32 = len(g_modals)
+		g_modals = append(g_modals, id)
+	} else {
+		g_nextScreen = id
+		g_transitionTime = 0.0D
+	}
+}
+
+// ScreenUpdate ...
+func ScreenUpdate(id ScreenId, deltaTime f64) () {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	var t f64 = g_screens[id.screen].time
+	var d f64 = g_screens[id.screen].duration
+
+	g_screens[id.screen].time = t
+	var state i32 = g_screens[id.screen].state
+	if ((t <= 0.0D) && (state == STATE_CLOSED)) {
+		ScreenChangeState(id, STATE_SHOWING)
+	} else if ((t >= d) && (d > 0.0D) && (state == STATE_OPENED)) { // can't use g_screens[screen].state here
+		ScreenChangeState(id, STATE_CLOSING)
+	}
+
+	t = t + deltaTime
+	g_screens[id.screen].time = t
+	var onUpdate func_i32_i32_id = g_screens[id.screen].onUpdate
+	if onUpdate.index >= 0 {
+		call_i32_i32(onUpdate, id.base.control, -1)
+	}
+}
+
+// ScreenResize ...
+func ScreenResize(id ScreenId) () {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	ControlResize(id.base)
+}
+
+// ScreenRender ...
+func ScreenRender(id ScreenId, clip mat.v4, stack i32) () {
+	panicIfNot(IsValidScreen(id), "invalid screen")
+	//fps.StartProfile(g_profileRenderScreenControl)
+
+	var onRender func_i32_i32_id = g_screens[id.screen].onRender
+	if onRender.index >= 0 {
+		call_i32_i32(onRender, id.base.control, -1)
+	} else {
+		gfx.MeshBegin(g_opaqueVertexColoredTriangles)
+		gfx.MeshBegin(g_opaqueVertexColoredLines)
+		gfx.MeshBegin(g_alphaVertexColoredTriangles)
+		gfx.BeginBatches()
+
+		clip = gfx.PushScissor(g_controls[id.base.control].name, gfx.gfx_viewportBounds)
+		ControlRender(id.base, clip, stack)
+		gfx.PopScissor()
+
+		//panicIfNot(gfx.g_scissorCount == 0, "invalid scissor stack")
+		gfx.EndBatches()
+		gfx.MeshEnd(g_alphaVertexColoredTriangles)
+		gfx.MeshEnd(g_opaqueVertexColoredLines)
+		gfx.MeshEnd(g_opaqueVertexColoredTriangles)
+
+		//fps.StopProfile(g_profileRenderScreenControl)
+
+		// opaque
+		//fps.StartProfile(g_profileRenderOpaqueVertexColoredTriangles)
+		if gfx.MeshIsEmpty(g_opaqueVertexColoredTriangles) == false {
+			gfx.DisableBlending()
+			gfx.EffectUse(gfx.g_fxVertexColor2D)
+			gfx.MeshRender(g_opaqueVertexColoredTriangles)
+		}
+		//fps.StopProfile(g_profileRenderOpaqueVertexColoredTriangles)
+
+		//fps.StartProfile(g_profileRenderOpaqueTexturedTriangles)
+		gfx.RenderBatches(false)
+		//fps.StopProfile(g_profileRenderOpaqueTexturedTriangles)
+
+		//fps.StartProfile(g_profileRenderOpaqueVertexColoredLines)
+		if gfx.MeshIsEmpty(g_opaqueVertexColoredLines) == false {
+			gfx.DisableBlending()
+			gfx.EffectUse(gfx.g_fxVertexColor2D)
+			gfx.MeshRender(g_opaqueVertexColoredLines)
+		}
+		//fps.StopProfile(g_profileRenderOpaqueVertexColoredLines)
+
+		// alpha
+		//fps.StartProfile(g_profileRenderAlphaTexturedTriangles)
+		gfx.RenderBatches(true)
+		//fps.StopProfile(g_profileRenderAlphaTexturedTriangles)
+
+		//fps.StartProfile(g_profileRenderAlphaVertexColoredTriangles)
+		if gfx.MeshIsEmpty(g_alphaVertexColoredTriangles) == false {
+			gfx.EnableBlending(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+			gfx.EffectUse(gfx.g_fxVertexColor2D)
+			gfx.MeshRender(g_alphaVertexColoredTriangles)
+		}
+	}
+	//fps.StopProfile(g_profileRenderAlphaVertexColoredTriangles)
+
+
+	/*gfx.ColorWrite(false, false, false, false)
+	  gfx.DisableDepth()
+	  gfx.DisableBlending()
+	  gfx.StencilState(true, gl.ALWAYS, 256, 256, gl.KEEP, gl.REPLACE, gl.REPLACE, 256)
+
+	  var screenPair i32 = get_focus_pair(id)
+	  var currentFocus i32 = g_focused[screenPair].currentFocus
+	  var focusCount i32 = g_focused[screenPair].focusCount
+	  if (focusCount > 0 && currentFocus >= 0 && currentFocus < focusCount) {
+	  var focusedId ControlId = g_focused[screenPair].focusList[currentFocus]
+	  gfx.MeshBegin(g_opaqueVertexColoredTriangles)
+	  var renderBounds mat.v4 = v4.make_v22(g_controls[focusedId.control].renderPosition, g_controls[focusedId.control].size)
+	  gfx.MeshAppendOrthoQuad(g_opaqueVertexColoredTriangles, renderBounds,
+	  v4.RED, v4.WHITE, gfx.gfx_viewportBounds, 1.0)
+	  gfx.MeshEnd(g_opaqueVertexColoredTriangles)
+	  gfx.EffectUse(gfx.g_fxVertexColor2D)
+	  gfx.MeshRender(g_opaqueVertexColoredTriangles)
+	  }*/
+}
+
+

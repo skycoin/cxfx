@@ -1,0 +1,76 @@
+/*
+package gui
+
+// Globals ...
+var g_templates[] Template
+
+// TemplateId ...
+type TemplateId struct {
+	base ControlId
+	template i32
+}
+
+// Template ...
+type Template struct {
+	id TemplateId
+}
+
+// NewTemplateId ...
+func NewTemplateId(base ControlId, template i32) (out TemplateId) {
+	out.base = base
+	out.template = template
+	panicIfNot(IsValidTemplate(out), "invalid id")
+}
+
+// InvalidTemplate ...
+func InvalidTemplate() (out TemplateId) {
+	out.base = InvalidControl()
+	out.template = -1
+}
+
+// IsValidTemplate ...
+func IsValidTemplate(id TemplateId) (out bool) {
+	out = id.template >= 0 && id.template < g_templateCount && IsValidControl(id.base)
+}
+
+// TemplateCreate ...
+func TemplateCreate(name str) (out TemplateId) {
+	out.template = len(g_templates)
+	out.base = controlCreate(name, GUI_TEMPLATE, out.template)
+
+	var template Template
+	template.id = out
+
+	g_templates = append(g_templates, template)
+	panicIfNot(IsValidTemplate(out), "invalid id")
+}
+
+// TemplateProcessEvent ...
+func TemplateProcessEvent(id TemplateId, event *app.Event) (out i32) {
+	panicIfNot(IsValidTemplate(id), "invalid id")
+	var visible i32 = g_controls[id.base.control].visible
+	if (visible > 0) {
+		out = ControlProcessEvent(id.base, event)
+	}
+}
+
+// TemplateResize ...
+func TemplateResize(id TemplateId) () {
+	panicIfNot(IsValidTemplate(id), "invalid id")
+	var visible i32 = g_controls[id.base.control].visible
+	if (visible > 0) {
+		ControlResize(id.base)
+	}
+}
+
+// TemplateRender ...
+func TemplateRender(id TemplateId, clip mat.v4, stack i32) () {
+	panicIfNot(IsValidTemplate(id), "invalid id")
+	var visible i32 = g_controls[id.base.control].visible
+	if (visible > 0) {
+		ControlRender(id.base, clip, stack)
+	}
+}
+*/
+
+

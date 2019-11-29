@@ -1,0 +1,111 @@
+package gui
+
+import "gfx"
+
+// TODO : only load specific runes from a font
+
+// Globals ...
+var g_fonts []Font
+
+// FontId ...
+type FontId struct {
+	font i32
+}
+
+// Font ...
+type Font struct {
+	id FontId
+	name str
+	path str
+	//range bool
+	//runes []ui32
+	min i32
+	max i32
+	direction i32
+	textureCount i32
+	textures []gfx.TextureId
+	names []str
+	sizes []i32
+}
+
+// InvalidFont ...
+func InvalidFont()(out FontId) {
+	out.font = -1
+}
+
+// IsValidFont ...
+func IsValidFont(id FontId) (out bool) {
+	out = id.font >= 0 && id.font < len(g_fonts)
+}
+
+// FontCreate ...
+func FontCreate(name str, path str, min i32, max i32, direction i32) (out FontId) {
+	out.font = len(g_fonts)
+
+	var font Font
+	font.id = out
+	font.min = min
+	font.max = max
+	font.name = name
+	font.path = path
+
+	//font.range = range
+	//font.runes = runes
+	font.direction = direction
+	font.textureCount = 0
+
+	g_fonts = append(g_fonts, font)
+}
+
+// FontAddSize ...
+func FontAddSize(id FontId, size i32) {
+	panicIfNot(IsValidFont(id), "invalid id")
+
+	var index i32 = id.font
+
+	var name str
+	name = g_fonts[index].name
+
+	var path str
+	path = g_fonts[index].path
+
+	//var range bool = g_fonts[index].range
+	//var runes []ui32 = g_fonts[index].runes
+	var dir i32 = g_fonts[index].direction
+	var min i32 = g_fonts[index].min
+	var max i32 = g_fonts[index].max
+	var textureName str
+	textureName = sprintf("%s_%d", name, size)
+
+	var textureCount i32 = g_fonts[index].textureCount
+	g_fonts[index].textures = append(g_fonts[index].textures, gfx.TextureCreateFont(textureName, path, size, min, max, dir, -1))
+	g_fonts[index].names = append(g_fonts[index].names, textureName)
+	g_fonts[index].sizes = append(g_fonts[index].sizes, size)
+
+	g_fonts[index].textureCount = textureCount + 1
+}
+
+// FontGetTextureIndex ...
+func FontGetTextureIndex(id FontId, size i32) (out i32) {
+	panicIfNot(IsValidFont(id), "invalid id")
+
+	var textureCount i32 = len(g_fonts[id.font].sizes)
+
+	out = -1
+	if (textureCount > 0) {
+		out = 0
+	}
+	var minSize i32 = size
+
+	var i i32 = 0
+	for i= 0 ; i < textureCount; i = i + 1 {
+		var fontSize i32 = g_fonts[id.font].sizes[i]
+		//printf("i %d, FONT_SIZE %d, size %d, minSize %d\n", i, fontSize, size, minSize)
+		if (fontSize >= size && fontSize <= minSize) {
+			out = i
+		}
+	}
+
+	//printf("TEXTURE_INDEX %d\n", out)
+}
+

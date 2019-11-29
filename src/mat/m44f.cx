@@ -1,0 +1,679 @@
+package m44
+
+import "mat"
+
+// TODO : add NAN checks
+
+// Constants ...
+var IDENTITY m44 = ident()
+
+// isnan ...
+func isnan(m m44) (out bool) {
+	out = f32.isnan(m.v00) ||
+		  f32.isnan(m.v01) ||
+		  f32.isnan(m.v02) ||
+		  f32.isnan(m.v03) ||
+		  f32.isnan(m.v10) ||
+		  f32.isnan(m.v11) ||
+		  f32.isnan(m.v12) ||
+		  f32.isnan(m.v13) ||
+		  f32.isnan(m.v20) ||
+		  f32.isnan(m.v21) ||
+		  f32.isnan(m.v22) ||
+		  f32.isnan(m.v23) ||
+		  f32.isnan(m.v30) ||
+		  f32.isnan(m.v31) ||
+		  f32.isnan(m.v32) ||
+		  f32.isnan(m.v33)
+}
+
+// to_str ...
+func to_str(m m44) (out str) {
+	out = sprintf("{ %f, %f, %f, %f | %f, %f, %f, %f | %f, %f, %f, %f | %f, %f, %f, %f }",
+			m.v00, m.v01, m.v02, m.v03,
+			m.v10, m.v11, m.v12, m.v13,
+			m.v20, m.v21, m.v22, m.v23,
+			m.v30, m.v31, m.v32, m.v33)
+}
+
+// ident ...
+func ident() (out m44) {
+	out.v00 = 1.0
+	out.v11 = 1.0
+	out.v22 = 1.0
+	out.v33 = 1.0
+}
+
+// transpose ...
+func transpose(a m44) (out m44) { // ISSUE : if named MatrixIdentity
+	out.v00 = a.v00
+	out.v01 = a.v10
+	out.v02 = a.v20
+	out.v03 = a.v30
+
+	out.v10 = a.v01
+	out.v11 = a.v11
+	out.v12 = a.v21
+	out.v13 = a.v31
+
+	out.v20 = a.v02
+	out.v21 = a.v12
+	out.v22 = a.v22
+	out.v23 = a.v32
+
+	out.v30 = a.v03
+	out.v31 = a.v13
+	out.v32 = a.v23
+	out.v33 = a.v33
+}
+
+// makef_AT ...
+func makef_AT(ax f32, ay f32, az f32, aw f32, tx f32, ty f32, tz f32) (out m44) {
+	var a2 f32 = 0.5 * aw
+	var sina f32 = f32.sin(a2)
+	var qx f32 = ax * sina
+	var qy f32 = ay * sina
+	var qz f32 = az * sina
+	var qw f32 = f32.cos(a2)
+
+	var qxx f32 = 2.0 * qx * qx
+	var qxy f32 = 2.0 * qx * qy
+	var qxz f32 = 2.0 * qx * qz
+	var qxw f32 = 2.0 * qx * qw
+	var qyy f32 = 2.0 * qy * qy
+	var qyz f32 = 2.0 * qy * qz
+	var qyw f32 = 2.0 * qy * qw
+	var qzz f32 = 2.0 * qz * qz
+	var qzw f32 = 2.0 * qz * qw
+
+	out.v00 = 1.0 - qyy - qzz
+	out.v01 = qxy + qzw
+	out.v02 = qxz - qyw
+
+	out.v10 = qxy - qzw
+	out.v11 = 1.0 - qxx - qzz
+	out.v12 = qyz + qxw
+
+	out.v20 = qxz + qyw
+	out.v21 = qyz - qxw
+	out.v22 = 1.0 - qxx - qyy
+
+	out.v30 = tx
+	out.v31 = ty
+	out.v32 = tz
+	out.v33 = 1.0
+}
+
+// makev_AT ...
+func makev_AT(aa mat.v4, t mat.v3) (out m44) {
+	var a2 f32 = 0.5 * aa.w
+	var sina f32 = f32.sin(a2)
+	var qx f32 = aa.x * sina
+	var qy f32 = aa.y * sina
+	var qz f32 = aa.z * sina
+	var qw f32 = f32.cos(a2)
+
+	var qxx f32 = 2.0 * qx * qx
+	var qxy f32 = 2.0 * qx * qy
+	var qxz f32 = 2.0 * qx * qz
+	var qxw f32 = 2.0 * qx * qw
+	var qyy f32 = 2.0 * qy * qy
+	var qyz f32 = 2.0 * qy * qz
+	var qyw f32 = 2.0 * qy * qw
+	var qzz f32 = 2.0 * qz * qz
+	var qzw f32 = 2.0 * qz * qw
+
+	out.v00 = 1.0 - qyy - qzz
+	out.v01 = qxy + qzw
+	out.v02 = qxz - qyw
+
+	out.v10 = qxy - qzw
+	out.v11 = 1.0 - qxx - qzz
+	out.v12 = qyz + qxw
+
+	out.v20 = qxz + qyw
+	out.v21 = qyz - qxw
+	out.v22 = 1.0 - qxx - qyy
+
+	out.v30 = t.x
+	out.v31 = t.y
+	out.v32 = t.z
+	out.v33 = 1.0
+}
+
+// make_SAT ...
+func make_SAT(trs TRS) (out m44) {
+	var a2 f32 = 0.5 * trs.r.w
+	var sina f32 = f32.sin(a2)
+	var qx f32 = trs.r.x * sina
+	var qy f32 = trs.r.y * sina
+	var qz f32 = trs.r.z * sina
+	var qw f32 = f32.cos(a2)
+
+	var qxx f32 = 2.0 * qx * qx
+	var qxy f32 = 2.0 * qx * qy
+	var qxz f32 = 2.0 * qx * qz
+	var qxw f32 = 2.0 * qx * qw
+	var qyy f32 = 2.0 * qy * qy
+	var qyz f32 = 2.0 * qy * qz
+	var qyw f32 = 2.0 * qy * qw
+	var qzz f32 = 2.0 * qz * qz
+	var qzw f32 = 2.0 * qz * qw
+
+	out.v00 = (1.0 - qyy - qzz) * trs.s.x
+	out.v01 = (qxy + qzw) * trs.s.x
+	out.v02 = (qxz - qyw) * trs.s.x
+
+	out.v10 = (qxy - qzw) * trs.s.y
+	out.v11 = (1.0 - qxx - qzz) * trs.s.y
+	out.v12 = (qyz + qxw) * trs.s.y
+
+	out.v20 = (qxz + qyw) * trs.s.z
+	out.v21 = (qyz - qxw) * trs.s.z
+	out.v22 = (1.0 - qxx - qyy) * trs.s.z
+
+	out.v30 = trs.t.x
+	out.v31 = trs.t.y
+	out.v32 = trs.t.z
+	out.v33 = 1.0
+}
+
+// makef_SAT ...
+func makef_SAT(sx f32, sy f32, sz f32, ax f32, ay f32, az f32, aw f32, tx f32, ty f32, tz f32) (out m44) {
+	var a2 f32 = 0.5 * aw
+	var sina f32 = f32.sin(a2)
+	var qx f32 = ax * sina
+	var qy f32 = ay * sina
+	var qz f32 = az * sina
+	var qw f32 = f32.cos(a2)
+
+	var qxx f32 = 2.0 * qx * qx
+	var qxy f32 = 2.0 * qx * qy
+	var qxz f32 = 2.0 * qx * qz
+	var qxw f32 = 2.0 * qx * qw
+	var qyy f32 = 2.0 * qy * qy
+	var qyz f32 = 2.0 * qy * qz
+	var qyw f32 = 2.0 * qy * qw
+	var qzz f32 = 2.0 * qz * qz
+	var qzw f32 = 2.0 * qz * qw
+
+	out.v00 = (1.0 - qyy - qzz) * sx
+	out.v01 = (qxy + qzw) * sx
+	out.v02 = (qxz - qyw) * sx
+
+	out.v10 = (qxy - qzw) * sy
+	out.v11 = (1.0 - qxx - qzz) * sy
+	out.v12 = (qyz + qxw) * sy
+
+	out.v20 = (qxz + qyw) * sz
+	out.v21 = (qyz - qxw) * sz
+	out.v22 = (1.0 - qxx - qyy) * sz
+
+	out.v30 = tx
+	out.v31 = ty
+	out.v32 = tz
+	out.v33 = 1.0
+}
+
+// makev_SAT ...
+func makev_SAT(s mat.v3, aa mat.v4, t mat.v3) (out m44) {
+	var a2 f32 = 0.5 * aa.w
+	var sina f32 = f32.sin(a2)
+	var qx f32 = aa.x * sina
+	var qy f32 = aa.y * sina
+	var qz f32 = aa.z * sina
+	var qw f32 = f32.cos(a2)
+
+	var qxx f32 = 2.0 * qx * qx
+	var qxy f32 = 2.0 * qx * qy
+	var qxz f32 = 2.0 * qx * qz
+	var qxw f32 = 2.0 * qx * qw
+	var qyy f32 = 2.0 * qy * qy
+	var qyz f32 = 2.0 * qy * qz
+	var qyw f32 = 2.0 * qy * qw
+	var qzz f32 = 2.0 * qz * qz
+	var qzw f32 = 2.0 * qz * qw
+
+	out.v00 = (1.0 - qyy - qzz) * s.x
+	out.v01 = (qxy + qzw) * s.x
+	out.v02 = (qxz - qyw) * s.x
+
+	out.v10 = (qxy - qzw) * s.y
+	out.v11 = (1.0 - qxx - qzz) * s.y
+	out.v12 = (qyz + qxw) * s.y
+
+	out.v20 = (qxz + qyw) * s.z
+	out.v21 = (qyz - qxw) * s.z
+	out.v22 = (1.0 - qxx - qyy) * s.z
+
+	out.v30 = t.x
+	out.v31 = t.y
+	out.v32 = t.z
+	out.v33 = 1.0
+}
+
+// makev_QT ...
+func makev_QT(q mat.v4, t mat.v3) (out m44) {
+	var qxx f32 = 2.0 * q.x * q.x
+	var qxy f32 = 2.0 * q.x * q.y
+	var qxz f32 = 2.0 * q.x * q.z
+	var qxw f32 = 2.0 * q.x * q.w
+	var qyy f32 = 2.0 * q.y * q.y
+	var qyz f32 = 2.0 * q.y * q.z
+	var qyw f32 = 2.0 * q.y * q.w
+	var qzz f32 = 2.0 * q.z * q.z
+	var qzw f32 = 2.0 * q.z * q.w
+
+	out.v00 = 1.0 - qyy - qzz
+	out.v01 = qxy + qzw
+	out.v02 = qxz - qyw
+
+	out.v10 = qxy - qzw
+	out.v11 = 1.0 - qxx - qzz
+	out.v12 = qyz + qxw
+
+	out.v20 = qxz + qyw
+	out.v21 = qyz - qxw
+	out.v22 = 1.0 - qxx - qyy
+
+	out.v30 = t.x
+	out.v31 = t.y
+	out.v32 = t.z
+	out.v33 = 1.0
+}
+
+// make_SQT ...
+func make_SQT(trs TRS) (out m44) {
+	var qxx f32 = 2.0 * trs.r.x * trs.r.x
+	var qxy f32 = 2.0 * trs.r.x * trs.r.y
+	var qxz f32 = 2.0 * trs.r.x * trs.r.z
+	var qxw f32 = 2.0 * trs.r.x * trs.r.w
+	var qyy f32 = 2.0 * trs.r.y * trs.r.y
+	var qyz f32 = 2.0 * trs.r.y * trs.r.z
+	var qyw f32 = 2.0 * trs.r.y * trs.r.w
+	var qzz f32 = 2.0 * trs.r.z * trs.r.z
+	var qzw f32 = 2.0 * trs.r.z * trs.r.w
+
+	out.v00 = (1.0 - qyy - qzz) * trs.s.x
+	out.v01 = (qxy + qzw) * trs.s.x
+	out.v02 = (qxz - qyw) * trs.s.x
+
+	out.v10 = (qxy - qzw) * trs.s.y
+	out.v11 = (1.0 - qxx - qzz) * trs.s.y
+	out.v12 = (qyz + qxw) * trs.s.y
+
+	out.v20 = (qxz + qyw) * trs.s.z
+	out.v21 = (qyz - qxw) * trs.s.z
+	out.v22 = (1.0 - qxx - qyy) * trs.s.z
+
+	out.v30 = trs.t.x
+	out.v31 = trs.t.y
+	out.v32 = trs.t.z
+	out.v33 = 1.0
+}
+
+// makef_SQT ...
+func makef_SQT(sx f32, sy f32, sz f32, qx f32, qy f32, qz f32, qw f32, tx f32, ty f32, tz f32) (out m44) {
+	var qxx f32 = 2.0 * qx * qx
+	var qxy f32 = 2.0 * qx * qy
+	var qxz f32 = 2.0 * qx * qz
+	var qxw f32 = 2.0 * qx * qw
+	var qyy f32 = 2.0 * qy * qy
+	var qyz f32 = 2.0 * qy * qz
+	var qyw f32 = 2.0 * qy * qw
+	var qzz f32 = 2.0 * qz * qz
+	var qzw f32 = 2.0 * qz * qw
+
+	out.v00 = (1.0 - qyy - qzz) * sx
+	out.v01 = (qxy + qzw) * sx
+	out.v02 = (qxz - qyw) * sx
+
+	out.v10 = (qxy - qzw) * sy
+	out.v11 = (1.0 - qxx - qzz) * sy
+	out.v12 = (qyz + qxw) * sy
+
+	out.v20 = (qxz + qyw) * sz
+	out.v21 = (qyz - qxw) * sz
+	out.v22 = (1.0 - qxx - qyy) * sz
+
+	out.v30 = tx
+	out.v31 = ty
+	out.v32 = tz
+	out.v33 = 1.0
+}
+
+// makev_SQT ...
+func makev_SQT(s mat.v3, q mat.v4, t mat.v3) (out m44) {
+	var qxx f32 = 2.0 * q.x * q.x
+	var qxy f32 = 2.0 * q.x * q.y
+	var qxz f32 = 2.0 * q.x * q.z
+	var qxw f32 = 2.0 * q.x * q.w
+	var qyy f32 = 2.0 * q.y * q.y
+	var qyz f32 = 2.0 * q.y * q.z
+	var qyw f32 = 2.0 * q.y * q.w
+	var qzz f32 = 2.0 * q.z * q.z
+	var qzw f32 = 2.0 * q.z * q.w
+
+	out.v00 = (1.0 - qyy - qzz) * s.x
+	out.v01 = (qxy + qzw) * s.x
+	out.v02 = (qxz - qyw) * s.x
+
+	out.v10 = (qxy - qzw) * s.y
+	out.v11 = (1.0 - qxx - qzz) * s.y
+	out.v12 = (qyz + qxw) * s.y
+
+	out.v20 = (qxz + qyw) * s.z
+	out.v21 = (qyz - qxw) * s.z
+	out.v22 = (1.0 - qxx - qyy) * s.z
+
+	out.v30 = t.x
+	out.v31 = t.y
+	out.v32 = t.z
+	out.v33 = 1.0
+}
+
+// make_project ...
+func make_project(near f32, far f32, fov f32, width f32, height f32) (out m44) {
+	var m00 f32 = f32.cos(fov) / f32.sin(fov);
+	var range f32 = far - near
+	out.v00 = m00
+	out.v11 = m00 / (height / width)
+	out.v22 = (0.0 - far - near) / range
+	out.v23 = -1.0
+	out.v32 = (0.0 - 2.0 * near * far) / range
+}
+
+// make_translate ...
+func make_translate(x f32, y f32, z f32) (out m44) {
+
+	out.v00 = 1.0
+	out.v11 = 1.0
+	out.v22 = 1.0
+	out.v30 = x
+	out.v31 = y
+	out.v32 = z
+	out.v33 = 1.0
+}
+
+// from_axis_angle ...
+func from_axis_angle(ax f32, ay f32, az f32, a f32) (out m44) {
+	var a2 f32 = 0.5 * a
+	var sina f32 = f32.sin(a2)
+	var qx f32 = ax * sina
+	var qy f32 = ay * sina
+	var qz f32 = az * sina
+	var qw f32 = f32.cos(a2)
+
+	var qxx f32 = 2.0 * qx * qx
+	var qxy f32 = 2.0 * qx * qy
+	var qxz f32 = 2.0 * qx * qz
+	var qxw f32 = 2.0 * qx * qw
+	var qyy f32 = 2.0 * qy * qy
+	var qyz f32 = 2.0 * qy * qz
+	var qyw f32 = 2.0 * qy * qw
+	var qzz f32 = 2.0 * qz * qz
+	var qzw f32 = 2.0 * qz * qw
+
+	out.v00 = 1.0 - qyy - qzz
+	out.v01 = qxy + qzw
+	out.v02 = qxz - qyw
+
+	out.v10 = qxy - qzw
+	out.v11 = 1.0 - qxx - qzz
+	out.v12 = qyz + qxw
+
+	out.v20 = qxz + qyw
+	out.v21 = qyz - qxw
+	out.v22 = 1.0 - qxx - qyy
+
+	out.v33 = 1.0
+}
+
+// from_axis_angle_v31 ...
+func from_axis_angle_v31(axis mat.v3, angle f32) (out m44) {
+	var a2 f32 = 0.5 * angle
+	var sina f32 = f32.sin(a2)
+	var qx f32 = axis.x * sina
+	var qy f32 = axis.y * sina
+	var qz f32 = axis.z * sina
+	var qw f32 = f32.cos(a2)
+
+	var qxx f32 = 2.0 * qx * qx
+	var qxy f32 = 2.0 * qx * qy
+	var qxz f32 = 2.0 * qx * qz
+	var qxw f32 = 2.0 * qx * qw
+	var qyy f32 = 2.0 * qy * qy
+	var qyz f32 = 2.0 * qy * qz
+	var qyw f32 = 2.0 * qy * qw
+	var qzz f32 = 2.0 * qz * qz
+	var qzw f32 = 2.0 * qz * qw
+
+	out.v00 = 1.0 - qyy - qzz
+	out.v01 = qxy + qzw
+	out.v02 = qxz - qyw
+
+	out.v10 = qxy - qzw
+	out.v11 = 1.0 - qxx - qzz
+	out.v12 = qyz + qxw
+
+	out.v20 = qxz + qyw
+	out.v21 = qyz - qxw
+	out.v22 = 1.0 - qxx - qyy
+
+	out.v33 = 1.0
+}
+
+// from_axis_angle_v4 ...
+func from_axis_angle_v4(aa mat.v4) (out m44) {
+	var a2 f32 = 0.5 * aa.w
+	var sina f32 = f32.sin(a2)
+	var qx f32 = aa.x * sina
+	var qy f32 = aa.y * sina
+	var qz f32 = aa.z * sina
+	var qw f32 = f32.cos(a2)
+
+	var qxx f32 = 2.0 * qx * qx
+	var qxy f32 = 2.0 * qx * qy
+	var qxz f32 = 2.0 * qx * qz
+	var qxw f32 = 2.0 * qx * qw
+	var qyy f32 = 2.0 * qy * qy
+	var qyz f32 = 2.0 * qy * qz
+	var qyw f32 = 2.0 * qy * qw
+	var qzz f32 = 2.0 * qz * qz
+	var qzw f32 = 2.0 * qz * qw
+
+	out.v00 = 1.0 - qyy - qzz
+	out.v01 = qxy + qzw
+	out.v02 = qxz - qyw
+
+	out.v10 = qxy - qzw
+	out.v11 = 1.0 - qxx - qzz
+	out.v12 = qyz + qxw
+
+	out.v20 = qxz + qyw
+	out.v21 = qyz - qxw
+	out.v22 = 1.0 - qxx - qyy
+
+	out.v33 = 1.0
+}
+
+
+// from_quat ...
+func from_quat(qx f32, qy f32, qz f32, qw f32) (out m44) {
+	var qxx f32 = 2.0 * qx * qx
+	var qxy f32 = 2.0 * qx * qy
+	var qxz f32 = 2.0 * qx * qz
+	var qxw f32 = 2.0 * qx * qw
+	var qyy f32 = 2.0 * qy * qy
+	var qyz f32 = 2.0 * qy * qz
+	var qyw f32 = 2.0 * qy * qw
+	var qzz f32 = 2.0 * qz * qz
+	var qzw f32 = 2.0 * qz * qw
+
+	out.v00 = 1.0 - qyy - qzz
+	out.v01 = qxy + qzw
+	out.v02 = qxz - qyw
+
+	out.v10 = qxy - qzw
+	out.v11 = 1.0 - qxx - qzz
+	out.v12 = qyz + qxw
+
+	out.v20 = qxz + qyw
+	out.v21 = qyz - qxw
+	out.v22 = 1.0 - qxx - qyy
+
+	out.v33 = 1.0
+}
+
+// from_quat_v4 ...
+func from_quat_v4(q mat.v4) (out m44) {
+	var qxx f32 = 2.0 * q.x * q.x
+	var qxy f32 = 2.0 * q.x * q.y
+	var qxz f32 = 2.0 * q.x * q.z
+	var qxw f32 = 2.0 * q.x * q.w
+	var qyy f32 = 2.0 * q.y * q.y
+	var qyz f32 = 2.0 * q.y * q.z
+	var qyw f32 = 2.0 * q.y * q.w
+	var qzz f32 = 2.0 * q.z * q.z
+	var qzw f32 = 2.0 * q.z * q.w
+
+	out.v00 = 1.0 - qyy - qzz
+	out.v01 = qxy + qzw
+	out.v02 = qxz - qyw
+
+	out.v10 = qxy - qzw
+	out.v11 = 1.0 - qxx - qzz
+	out.v12 = qyz + qxw
+
+	out.v20 = qxz + qyw
+	out.v21 = qyz - qxw
+	out.v22 = 1.0 - qxx - qyy
+
+	out.v33 = 1.0
+}
+
+// make_rotate_x ...
+func make_rotate_x(alpha f32) (out m44) {
+	var cosA f32 = f32.cos(alpha)
+	var sinA f32 = f32.sin(alpha)
+
+	out.v00 = 1.0
+	out.v11 = cosA
+	out.v12 = sinA
+	out.v21 = -sinA
+	out.v22 = cosA
+	out.v33 = 1.0
+}
+
+// make_rotate_y ...
+func make_rotate_y(alpha f32) (out m44) {
+	var cosA f32 = f32.cos(alpha)
+	var sinA f32 = f32.sin(alpha)
+
+	out.v00 = cosA
+	out.v02 = sinA
+	out.v11 = 1.0
+	out.v20 = -sinA
+	out.v22 = cosA
+	out.v33 = 1.0
+}
+
+// make_scale ...
+func make_scale(x f32, y f32, z f32) (out m44) {
+	out.v00 = x
+	out.v11 = y
+	out.v22 = z
+	out.v33 = 1.0
+}
+
+// determinant ...
+func determinant(m m44) (out f32) {
+	var a f32 = m.v22*m.v33 - m.v23*m.v32;
+	var b f32 = m.v21*m.v33 - m.v23*m.v31;
+	var c f32 = m.v21*m.v32 - m.v22*m.v31;
+	var d f32 = m.v20*m.v33 - m.v23*m.v30;
+	var e f32 = m.v20*m.v32 - m.v22*m.v30;
+	var f f32 = m.v20*m.v31 - m.v21*m.v30;
+
+	out = m.v00 * (m.v11*a - m.v12*b + m.v13*c) -
+		  m.v01 * (m.v10*a - m.v12*d + m.v13*e) +
+		  m.v02 * (m.v10*b - m.v11*d + m.v13*f) -
+		  m.v03 * (m.v10*c - m.v11*e + m.v12*f)
+}
+
+// inverse ...
+func inverse(a m44) (out m44) {
+	var d1  f32 = a.v00 * a.v11 - a.v01 * a.v10
+	var d2  f32 = a.v00 * a.v12 - a.v02 * a.v10
+	var d3  f32 = a.v00 * a.v13 - a.v03 * a.v10
+	var d4  f32 = a.v01 * a.v12 - a.v02 * a.v11
+	var d5  f32 = a.v01 * a.v13 - a.v03 * a.v11
+	var d6  f32 = a.v02 * a.v13 - a.v03 * a.v12
+	var d7  f32 = a.v20 * a.v31 - a.v21 * a.v30
+	var d8  f32 = a.v20 * a.v32 - a.v22 * a.v30
+	var d9  f32 = a.v20 * a.v33 - a.v23 * a.v30
+	var d10 f32 = a.v21 * a.v32 - a.v22 * a.v31
+	var d11 f32 = a.v21 * a.v33 - a.v23 * a.v31
+	var d12 f32 = a.v22 * a.v33 - a.v23 * a.v32
+	var md  f32 = d1*d12 - d2*d11 + d3*d10 + d4*d9 - d5*d8 + d6*d7
+
+	out.v00 = ( a.v11*d12 - a.v12*d11 + a.v13*d10) * md
+	out.v01 = (0.0-a.v01*d12 + a.v02*d11 - a.v03*d10) * md
+	out.v02 = ( a.v31*d6  - a.v32*d5  + a.v33*d4)  * md
+	out.v03 = (0.0-a.v21*d6  + a.v22*d5  - a.v23*d4)  * md
+	out.v10 = (0.0-a.v10*d12 + a.v12*d9  - a.v13*d8)  * md
+	out.v11 = ( a.v00*d12 - a.v02*d9  + a.v03*d8)  * md
+	out.v12 = (0.0-a.v30*d6  + a.v32*d3  - a.v33*d2)  * md
+	out.v13 = ( a.v20*d6  - a.v22*d3  + a.v23*d2)  * md
+	out.v20 = ( a.v10*d11 - a.v11*d9  + a.v13*d7)  * md
+	out.v21 = (0.0-a.v00*d11 + a.v01*d9  - a.v03*d7)  * md
+	out.v22 = ( a.v30*d5  - a.v31*d3  + a.v33*d1)  * md
+	out.v23 = (0.0-a.v20*d5  + a.v21*d3  - a.v23*d1)  * md
+	out.v30 = (0.0-a.v10*d10 + a.v11*d8  - a.v12*d7)  * md
+	out.v31 = ( a.v00*d10 - a.v01*d8  + a.v02*d7)  * md
+	out.v32 = (0.0-a.v30*d4  + a.v31*d2  - a.v32*d1)  * md
+	out.v33 = ( a.v20*d4  - a.v21*d2  + a.v22*d1)  * md
+}
+
+// mulISSUE ...
+func mulISSUE(a m44, b m44) (out m44) {
+	out.v00 = a.v00*b.v00 + a.v01*b.v10 + a.v02*b.v20 + a.v03*b.v30
+	out.v01 = a.v00*b.v01 + a.v01*b.v11 + a.v02*b.v21 + a.v03*b.v31
+	out.v02 = a.v00*b.v02 + a.v01*b.v12 + a.v02*b.v22 + a.v03*b.v32
+	out.v03 = a.v00*b.v03 + a.v01*b.v13 + a.v02*b.v23 + a.v03*b.v33
+	out.v10 = a.v10*b.v00 + a.v11*b.v10 + a.v12*b.v20 + a.v13*b.v30
+	out.v11 = a.v10*b.v01 + a.v11*b.v11 + a.v12*b.v21 + a.v13*b.v31
+	out.v12 = a.v10*b.v02 + a.v11*b.v12 + a.v12*b.v22 + a.v13*b.v32
+	out.v13 = a.v10*b.v03 + a.v11*b.v13 + a.v12*b.v23 + a.v13*b.v33
+	out.v20 = a.v20*b.v00 + a.v21*b.v10 + a.v22*b.v20 + a.v23*b.v30
+	out.v21 = a.v20*b.v01 + a.v21*b.v11 + a.v22*b.v21 + a.v23*b.v31
+	out.v22 = a.v20*b.v02 + a.v21*b.v12 + a.v22*b.v22 + a.v23*b.v32
+	out.v23 = a.v20*b.v03 + a.v21*b.v13 + a.v22*b.v23 + a.v23*b.v33
+	out.v30 = a.v30*b.v00 + a.v31*b.v10 + a.v32*b.v20 + a.v33*b.v30
+	out.v31 = a.v30*b.v01 + a.v31*b.v11 + a.v32*b.v21 + a.v33*b.v31
+	out.v32 = a.v30*b.v02 + a.v31*b.v12 + a.v32*b.v22 + a.v33*b.v32
+	out.v33 = a.v30*b.v03 + a.v31*b.v13 + a.v32*b.v23 + a.v33*b.v33
+}
+
+// last ...
+func last(stack []m44) (out m44) {
+	out = stack[len(stack) - 1]
+}
+
+// push ...
+func push(stack []m44, matrix m44) (out []m44) {
+	out = stack
+	var stackLen i32 = len(out)
+	if stackLen > 0 {
+		out = append(out, mulISSUE(matrix, out[stackLen - 1]))
+	} else {
+		out = append(out, matrix)
+	}
+}
+
+// pop ...
+func pop(stack []m44, count i32) (out []m44) {
+	out = stack
+	out = resize(out, len(out) - count)
+}
+
