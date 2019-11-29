@@ -1,4 +1,6 @@
-<img width="75%" height="75%" src="resources/logos/logo_2.png">
+<p align="center">
+    <img width="70%" height="70%" src="resources/logos/logo_2.png">
+</p>
 
 ## Disclaimer : It’s all wip, api will change until it matures.
 
