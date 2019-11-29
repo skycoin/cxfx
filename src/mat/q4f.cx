@@ -1,0 +1,277 @@
+package q4
+
+import "mat"
+import "v1"
+import "v3"
+import "v4"
+
+var IDENTITY mat.v4 = v4.make(0.0, 0.0, 0.0, 1.0)
+
+// slerp ...
+func slerp(a v4, b v4, t f32) (out v4) {
+	//panicIf(v4.isnan(a), "NAN slerp #0")
+	//panicIf(v4.isnan(b), "NAN slerp #1")
+	//panicIf(f32.isnan(t), "NAN slerp #2")
+	var dot f32 = a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w
+	if (dot < 0.0) {
+		b.x = 0.0 - b.x
+		b.y = 0.0 - b.y
+		b.z = 0.0 - b.z
+		b.w = 0.0 - b.w
+		dot = -dot
+	}
+
+	if dot > 0.9995 {
+		out.x = a.x + t * (b.x - a.x)
+		out.y = a.y + t * (b.y - a.y)
+		out.z = a.z + t * (b.z - a.z)
+		out.w = a.w + t * (b.w - a.w)
+	} else {
+		var theta0 f32 = f32.acos(dot);
+		var theta f32 = theta0 * t;
+		var sinTheta f32 = f32.sin(theta);
+		var sinTheta0 f32 = f32.sin(theta0);
+		var s0 f32 = f32.cos(theta) - dot * sinTheta / sinTheta0;
+		var s1 f32 = sinTheta / sinTheta0;
+
+		out.x = a.x * s0 + b.x * s1
+		out.y = a.y * s0 + b.y * s1
+		out.z = a.z * s0 + b.z * s1
+		out.w = a.w * s0 + b.w * s1
+	}
+
+	var l f32 = f32.sqrt(out.x*out.x + out.y*out.y + out.z*out.z + out.w*out.w)
+	out.x = out.x / l
+	out.y = out.y / l
+	out.z = out.z / l
+	out.w = out.w / l
+	//panicIf(v4.isnan(out), "NAN slerp")
+}
+
+// lerp ....
+func lerp(a v4, b v4, t f32) (out v4) {
+	//panicIf(v4.isnan(a), "NAN lerp #0")
+	//panicIf(v4.isnan(b), "NAN lerp #2")
+	//panicIf(f32.isnan(t), "NAN lerp #3")
+	if (a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w) < 0.0 {
+		t = 0.0 - t
+	}
+	var mt f32 = 1.0 - t
+
+	out.x = mt*a.x + t*b.x
+	out.y = mt*a.y + t*b.y
+	out.z = mt*a.z + t*b.z
+	out.w = mt*a.w + t*b.w
+
+	var l f32 = f32.sqrt(out.x*out.x + out.y*out.y + out.z*out.z +out.w*out.w)
+	out.x = out.x / l
+	out.y = out.y / l
+	out.z = out.z / l
+	out.w = out.w / l
+	//panicIf(v4.isnan(out), "NAN lerp")
+}
+
+// from_vectors ...
+func from_vectors(a v3, b v3, f v3) (out v4) {
+	//panicIf(v3.isnan(a), "NAN from_vectors #0")
+	//panicIf(v3.isnan(b), "NAN from_vectors #1")
+	//panicIf(v3.isnan(f), "NAN from_vectors #2")
+
+
+	var d f32 = a.x*b.x + a.y*b.y + a.z*b.z
+	if d >= 1.0 {
+		out = IDENTITY
+	}
+	if d < (1e-6 - 1.0) {
+		if v3.nequ(f, v3.ZERO) {
+			out = from_axis_angle(f.x, f.y, f.z, v1.PI)
+		} else {
+			var x mat.v3 = v3.cross(v3.RED, a)
+			if v3.sqlength(x) == 0.0 {
+				x = v3.cross(v3.GREEN, a)
+			}
+			x = v3.normalize(a)
+			out = from_axis_angle(x.x, x.y, x.z, v1.PI)
+		}
+	} else {
+		var s f32 = f32.sqrt(1.0 + d) * 2.0
+		var is f32 = 1.0 / s
+		var c mat.v3 = v3.cross(a, b)
+
+		out.x = c.x * is
+		out.y = c.y * is
+		out.z = c.z * is
+		out.w = s * 0.5
+
+		out = v4.normalize(out)
+	}
+
+	/*out.x = a.x*b.y + a.y*b.y + a.z*b.z
+	out.y = a.y*b.z - b.y*a.z
+	out.z = b.x*a.z - a.x*b.z
+	out.w = a.x*b.y - b.x*a.y
+	var l f32 = f32.sqrt(out.x*out.x + out.y*out.y + out.z*out.z + out.w*out.w)
+	out.w = out.w + l
+	out.x = out.x / l
+	out.y = out.y / l
+	out.z = out.z / l
+	out.w = out.w / l*/
+	panicIf(v4.isnan(out), "NAN from_vectors")
+}
+
+// from_axis_angle ...
+func from_axis_angle(x f32, y f32, z f32, a f32) (out v4) {
+	//panicIf(f32.isnan(x), "NAN from_axis_angle #0")
+	//panicIf(f32.isnan(y), "NAN from_axis_angle #1")
+	//panicIf(f32.isnan(z), "NAN from_axis_angle #2")
+	//panicIf(f32.isnan(a), "NAN from_axis_angle #3")
+	var a2 f32 = 0.5 * a
+	var sina f32 = f32.sin(a2)
+	out.x = x * sina
+	out.y = y * sina
+	out.z = z * sina
+	out.w = f32.cos(a2)
+	//panicIf(v4.isnan(out), "NAN from_axis_angle")
+}
+
+// from_axis_angle_v31 ...
+func from_axis_angle_v31(axis mat.v3, angle f32) (out v4) {
+	//panicIf(f32.isnan(x), "NAN from_axis_angle_v31 #0")
+	//panicIf(f32.isnan(y), "NAN from_axis_angle_v31 #1")
+	var a2 f32 = 0.5 * angle
+	var sina f32 = f32.sin(a2)
+	out.x = axis.x * sina
+	out.y = axis.y * sina
+	out.z = axis.z * sina
+	out.w = f32.cos(a2)
+	//panicIf(v4.isnan(out), "NAN from_axis_angle_v31")
+}
+
+// from_axis_angle_v4 ...
+func from_axis_angle_v4(aa mat.v4) (out v4) {
+	//panicIf(f32.isnan(x), "NAN from_axis_angle_v4 #0")
+	//panicIf(f32.isnan(y), "NAN from_axis_angle_v4 #1")
+	var a2 f32 = 0.5 * aa.w
+	var sina f32 = f32.sin(a2)
+	out.x = aa.x * sina
+	out.y = aa.y * sina
+	out.z = aa.z * sina
+	out.w = f32.cos(a2)
+	//panicIf(v4.isnan(out), "NAN from_axis_angle"_v4)
+}
+
+
+// from_yaw_pitch_roll ...
+func from_yaw_pitch_roll(y f32, p f32, r f32) (out v4) {
+	//panicIf(f32.isnan(y), "NAN from_yaw_pitch_roll #0")
+	//panicIf(f32.isnan(p), "NAN from_yaw_pitch_roll #1")
+	//panicIf(f32.isnan(r), "NAN from_yaw_pitch_roll #2")
+
+	var y2 f32 = y * 0.5
+	var siny f32 = f32.sin(y2)
+	var cosy f32 = f32.cos(y2)
+
+	var p2 f32 = p * 0.5
+	var sinp f32 = f32.sin(p2)
+	var cosp f32 = f32.cos(p2)
+
+	var r2 f32 = r * 0.5
+	var sinr f32 = f32.sin(r2)
+	var cosr f32 = f32.cos(r2)
+
+	out.x = cosy * sinp * cosr + siny * cosp * sinr
+	out.y = siny * cosp * cosr + cosy * sinp * sinr
+	out.z = cosy * cosp * sinr + siny * sinp * cosr
+	out.w = cosy * cosp * cosr + siny * sinp * sinr
+	//panicIf(v4.isnan(out), "NAN from_yaw_pitch_roll")
+}
+
+// to_axis ...
+func to_axis(x f32, y f32, z f32, w f32) (out v3) {
+	//panicIf(f32.isnan(x), "NAN to_axis #0")
+	//panicIf(f32.isnan(y), "NAN to_axis #1")
+	//panicIf(f32.isnan(z), "NAN to_axis #2")
+	//panicIf(f32.isnan(w), "NAN to_axis #3")
+	var w2 f32 = 1.0 - w * w
+	if w2 <= 0.0 {
+		out.x = 0.0
+		out.y = 0.0
+		out.z = 1.0
+	} else {
+		var rtw2 f32 = 1.0 / f32.sqrt(w2)
+		out.x = x * rtw2
+		out.y = y * rtw2
+		out.z = z * rtw2
+	}
+	//panicIf(v3.isnan(out), "NAN to_axis")
+}
+
+// to_axis_angle ...
+func to_axis_angle(x f32, y f32, z f32, w f32) (out v4) {
+	//panicIf(f32.isnan(x), "NAN to_axis_angle #0")
+	//panicIf(f32.isnan(y), "NAN to_axis_angle #1")
+	//panicIf(f32.isnan(z), "NAN to_axis_angle #2")
+	//panicIf(f32.isnan(w), "NAN to_axis_angle #3")
+	out.w = 2.0 * f32.acos(w)
+	var s f32 = f32.sqrt(1.0 - w * w)
+	if s < 0.001 {
+		out.x = x
+		out.y = y
+		out.z = z
+	} else {
+		out.x = x / s
+		out.y = y / s;
+		out.z = z / s;
+	}
+	//panicIf(v4.isnan(out), "NAN to_axis_angle")
+}
+
+func to_axis_anglev(axisAngle mat.v4) (out v4) {
+	//panicIf(v4.isnan(axisAngle), "NAN to_axis_anglev #0")
+	out.w = 2.0 * f32.acos(axisAngle.w)
+	var s f32 = f32.sqrt(1.0 - axisAngle.w * axisAngle.w)
+	if s < 0.001 {
+		out.x = axisAngle.x
+		out.y = axisAngle.y
+		out.z = axisAngle.z
+	} else {
+		out.x = axisAngle.x / s
+		out.y = axisAngle.y / s;
+		out.z = axisAngle.z / s;
+	}
+	//panicIf(v4.isnan(out), "NAN to_axis_anglev")
+}
+
+// mul ...
+func mul(a v4, b v4) (out v4) {
+	//panicIf(v4.isnan(a), "NAN mul #0")
+	//panicIf(v4.isnan(b), "NAN mul #1")
+	out.x = a.x*b.w + b.x*a.w + a.y*b.z - a.z*b.y
+	out.y = a.y*b.w + b.y*a.w + a.z*b.x - a.x*b.z
+	out.z = a.z*b.w + b.z*a.w + a.x*b.y - a.y*b.x
+	out.w = a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z
+	//panicIf(v4.isnan(out), "NAN mul")
+}
+
+// transform_vector ...
+func transform_vector(q v4, v v3) (out v3) {
+	//panicIf(v4.isnan(q), "NAN transform_vector #0")
+	//panicIf(v3.isnan(v), "NAN transform_vector #1")
+	var a f32 = q.x * 2.0
+	var b f32 = q.y * 2.0
+	var c f32 = q.z * 2.0
+	var d f32 = q.x * a
+	var e f32 = q.y * b
+	var f f32 = q.z * c
+	var g f32 = q.x * b
+	var h f32 = q.x * c
+	var i f32 = q.y * c
+	var j f32 = q.w * a
+	var k f32 = q.w * b
+	var l f32 = q.w * c
+	out.x = (1.0 - e - f) * v.x + (g - l) * v.y + (h + k) * v.z
+	out.y = (g + l) * v.x + (1.0 - d - f) * v.y + (i - j) * v.z
+	out.z = (h - k) * v.x + (i + j) * v.y + (1.0 - d - e) * v.z
+	//panicIf(v3.isnan(out), "NAN transform_vector")
+}
+

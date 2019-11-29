@@ -1,0 +1,143 @@
+package snd
+
+import "al"
+
+// TODO : streaming/compressed
+
+// Globals ...
+var g_sources []i32
+var g_buffers []i32
+
+var g_freeSources []i32
+var g_freeBuffers []i32
+
+var g_playingSources []i32
+var g_playingBuffers []i32
+
+// AlError ...
+func AlError() (error bool) {
+	error = false
+	var alerr i32 = -1
+	for alerr != 0 {
+		alerr = al.Error()
+		if alerr != 0 {
+			error = true
+			if alerr == al.InvalidName {
+				printf("AL_INVALID_NAME\n")
+			} else if alerr == al.InvalidEnum {
+				printf("AL_INVALID_ENUM\n")
+			} else if alerr == al.InvalidValue {
+				printf("AL_INVALID_VALUE\n")
+			} else if alerr == al.InvalidOperation {
+				printf("AL_INVALID_OPERATION\n")
+			} else if alerr != 0 {
+				panicIf(true, "invalid alError\n")
+			}
+		}
+	}
+}
+
+// AlDeviceError ...
+
+
+// GetExtension ...
+func GetExtension(extensions str, name str) (out bool) { // REFACTOR : use in gfx. use in arg ??
+	var nameLen i32 = len(name)
+	//printf("nameLen %d\n", nameLen)
+
+	var extensionsLen i32 = len(extensions)
+	//printf("extensionsLen %s\n", extensionsLen)
+	var start i32 = str.index(extensions, name)
+	//printf("start %d\n", start)
+	var end i32 = start + nameLen + 1
+	//printf("end %d\n", end)
+	if start >= 0 && start < extensionsLen && end > start && end < extensionsLen {
+		var lookup str = str.substr(extensions, start, end)
+		//printf("lookup %s\n", lookup)
+		var lookupLen i32 = len(lookup)
+		//printf("lookupLen %d\n", lookupLen)
+
+		var trim str = lookup
+		if lookupLen == nameLen + 1 {
+			trim = str.trimspace(lookup)
+			//printf("trim %s\n", trim)
+		}
+
+		if trim == name {
+			out = true
+		}
+	}
+}
+
+// Init ...
+func Init(bufferCount i32, sourceCount i32)() { // TODO : ui32
+	al.OpenDevice()
+	panicIf(AlError(), "al.OpenDevice")
+
+	printf("Al Renderer : %s\n", al.Renderer())
+	panicIf(AlError(), "al.Renderer")
+
+	printf("Al Vendor : %s\n", al.Vendor())
+	panicIf(AlError(), "al.Vendor")
+
+	printf("AL Version : %s\n", al.Version())
+	panicIf(AlError(), "al.Version")
+
+	var extensions str = al.Extensions() // TODO : param ??
+	panicIf(AlError(), "al.Extensions")
+	printf("AL Extensions %s\n", extensions)
+
+	if GetExtension(extensions, "AL_EXT_FLOAT32") {
+		printf("found : AL_EXT_FLOAT32\n") // TODO : handle float format
+	}
+
+	if GetExtension(extensions, "AL_EXT_DOUBLE") {
+		printf("found : AL_EXT_DOUBLE\n") // TODO : handle double format
+	}
+
+	if GetExtension(extensions, "AL_SOFT_source_spatialize") {
+		printf("found : AL_SOFT_source_spacialize\n")
+	}
+
+	panicIf(GetExtension(extensions, ""), "")
+	panicIf(GetExtension(extensions, "skycoin"), "")
+	panicIf(GetExtension("", ""), "")
+	panicIf(GetExtension("", "skycoin"), "")
+
+	panicIf(bufferCount <= 0, "")
+	g_freeBuffers = al.GenBuffers(bufferCount)
+	panicIf(AlError(), "al.GenBuffers")
+	//printf("BUFFER LEN %d, FIRST %d\n", len(g_freeBuffers), g_freeBuffers[0])
+
+	panicIf(sourceCount <= 0, "")
+	g_freeSources = al.GenSources(sourceCount)
+	//printf("SOURCE LEN %d, FIRST %d\n", len(g_freeSources), g_freeSources[0])
+	panicIf(AlError(), "al.GenSources")
+}
+
+// Update ...
+func Update()() {
+	var i i32
+	for i < len(g_used) {
+		var used VoiceId = g_used[i]
+
+		var source i32 = g_voices[used.voice].source
+		panicIf(source < 0, "invalid source")
+
+		var alState i32 = al.SourceState(source)
+		panicIf(AlError(), "al.SourceState")
+		if alState == al.Stopped {
+			VoiceStop(used)
+		} else {
+			i++
+		}
+	}
+}
+
+// Destroy ...
+func Destroy()() {
+	// TODO : release buffers
+	// TODO : release sources
+	al.CloseDevice()
+}
+

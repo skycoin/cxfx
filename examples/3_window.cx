@@ -1,0 +1,68 @@
+package main
+
+import "app"
+import "fps"
+
+var exit bool // ISSUE : panic when Application is global
+
+func KeyboardCallback(window str, key i32, scancode i32, action i32, mods i32) () {
+	printf("KeyboardCallback : window %s, key %d, scancode %d, action %d, mods %d\n", window, key, scancode, action, mods)
+	if key == app.KEYCODE_ESCAPE && action == app.KEY_PRESS {
+		exit = true
+	}
+}
+
+func MouseButtonCallback(window str, key i32, action i32, mods i32) () {
+	printf("MouseButtonCallback : window %s, key %d, action %d, mods %d\n", window, key, action, mods)
+}
+
+func MousePositionCallback(window str, x f64, y f64) () {
+	printf("MousePositionCallback : window %s, x %f, y %f\n", window, x, y)
+}
+
+func main()() {
+	var o app.Options
+	o.width = 800
+	o.height = 600
+	o.fps = 60
+	o.Parse()
+
+	var f fps.Framerate
+	f.Init(i32.f64(o.fps))
+
+	var prfSwap fps.ProfileId = fps.CreateProfile("swap")
+	var prfFrame fps.ProfileId = fps.CreateProfile("frame")
+	var prfUpdate fps.ProfileId = fps.CreateProfile("update")
+	var prfRender fps.ProfileId = fps.CreateProfile("render")
+
+	var a app.Application
+	a.Init(o, "Window Tutorial", "mainWindow", 2, 1)
+	a.SetKeyboardCallback("main", "KeyboardCallback")
+	a.SetMouseButtonCallback("main", "MouseButtonCallback")
+	a.SetMousePositionCallback("main", "MousePositionCallback")
+
+	for app.Running(&a) { // ISSUE : can't use member function
+		f.BeginUpdate(2.0D)
+		fps.StartProfile(prfSwap)
+		{
+			a.BeginFrame()
+			fps.StartProfile(prfFrame)
+			{
+				// Update ...
+				fps.StartProfile(prfUpdate)
+				if exit {
+					a.Exit()
+				}
+				fps.StopProfile(prfUpdate)
+
+				// Render ...
+				fps.StartProfile(prfRender)
+				fps.StopProfile(prfRender)
+			}
+			fps.StopProfile(prfFrame)
+			a.EndFrame()
+		}
+		fps.StopProfile(prfSwap)
+		f.EndUpdate()
+	}
+}

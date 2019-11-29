@@ -1,0 +1,128 @@
+package gui
+
+import "gfx"
+
+// TODO : use GL_TEXTURE_2D_ARRAY ??
+
+// Globals ...
+var g_animations []Animation
+
+// AnimationId ...
+type AnimationId struct {
+	index i32
+}
+
+// Animation ...
+type Animation struct {
+	id AnimationId
+	path str
+	textures [] gfx.TextureId
+	delays [] i32
+	disposals []i32
+	frameCount i32
+	loop i32
+	width i32
+	height i32
+}
+
+// IsValidAnimation ...
+func IsValidAnimation(id AnimationId) (out bool) {
+	out = id.index >= 0 && id.index < len(g_animations)
+}
+
+// InvalidAnimation ...
+func invalid_animation() (out AnimationId) {
+	out.index = -1
+}
+
+// AnimationCreate ...
+func AnimationCreate() (out AnimationId) {
+	out.index = len(g_animations)
+
+	var animation Animation
+
+	animation.id = out
+	animation.path = ""
+	animation.frameCount = 0
+	animation.loop = 0
+	animation.width = 0
+	animation.height = 0
+
+	g_animations = append(g_animations, animation)
+	panicIfNot(IsValidAnimation(out), "invalid_id")
+}
+
+// AnimationCreateFromPath ...
+func AnimationCreateFromPath(path str) (out AnimationId) {
+	out = AnimationCreate()
+
+	var index i32 = out.index
+	var frameCount i32 = 0
+	var loopCount i32 = 0
+	var width i32 = 0
+	var height i32 = 0
+	frameCount, loopCount, width, height = gl.NewGIF(path)
+
+	for i := 0; i < frameCount; i++ {
+		var texture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, -1, false)
+
+		var delay i32 = 0
+		var disposal i32 = 0
+		delay, disposal = gl.GIFFrameToTexture(path, i, gfx.TextureName(texture))
+
+		gfx.TextureGenerateMipmap(texture)
+
+		AnimationAddFrame(out, delay, disposal, texture)
+		//printf("FRAME %d/%d, %d, %d, %d, %d\n", i, frameCount, width, height, delay, disposal)
+	}
+
+	gl.FreeGIF(path)
+
+	g_animations[index].path = path
+	g_animations[index].loop = loopCount
+}
+
+// AnimationCreateFromTexture ...
+func AnimationCreateFromTexture(texture gfx.TextureId) (out AnimationId) {
+	out = AnimationCreate()
+	AnimationAddFrame(out, 0, 0, texture)
+}
+
+// AnimationAddFrame ...
+func AnimationAddFrame(id AnimationId, delay i32, disposal i32, texture gfx.TextureId) {
+	panicIfNot(IsValidAnimation(id), "invalid id")
+
+	var index i32 = id.index
+
+	g_animations[index].textures = append(g_animations[index].textures, texture)
+	g_animations[index].delays = append(g_animations[index].delays, delay)
+	g_animations[index].disposals = append(g_animations[index].disposals, 0)
+
+	var width i32 = g_animations[index].width
+	var height i32 = g_animations[index].height
+
+	var textureWidth i32 = gfx.TextureWidth(texture)
+	var textureHeight i32 = gfx.TextureHeight(texture)
+	if (textureWidth > width) {
+		g_animations[index].width = textureWidth
+	}
+	if (textureHeight > height) {
+		g_animations[index].height = textureHeight
+	}
+
+	var frameCount i32 = g_animations[index].frameCount
+	g_animations[index].frameCount = frameCount + 1
+}
+
+// AnimationFrameCount ...
+func AnimationFrameCount(id AnimationId) (out i32) {
+	panicIfNot(IsValidAnimation(id), "invalid id")
+	out = g_animations[id.index].frameCount
+}
+
+// AnimationGetFrame ...
+func AnimationGetFrame(id AnimationId, index i32) (out TextureId) {
+	panicIfNot(IsValidAnimation(id), "invalid id")
+	out = g_animations[id.index].textures[index]
+}
+

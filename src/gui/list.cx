@@ -1,0 +1,564 @@
+package gui
+
+// Globals ...
+var g_lists[] List
+
+// ListId ...
+type ListId struct {
+	base ControlId
+	list i32
+}
+
+// List ...
+type List struct {
+	id ListId
+
+	header ControlId
+	columnCount i32
+	scroller ScrollerId
+	lines ControlId
+	lineCount i32
+	offset mat.v2
+	selectedLine i32
+	selectedItem i32
+	previousSelectedLine i32
+	previousSelectedItem i32
+}
+
+// NewListId ...
+func NewListId(base ControlId, list i32) (out ListId) {
+	out.base = base
+	out.list = list
+	panicIfNot(IsValidList(out), "invalid id")
+}
+
+// IsValidList ...
+func IsValidList(id ListId) (out bool) {
+	out = id.list >= 0 && id.list < len(g_lists) && IsValidControl(id.base)
+}
+
+// ListAddColumn ...
+func ListAddColumn(id ListId, name str, color mat.v4, size i32, skin SkinId) {
+	panicIfNot(IsValidList(id), "invalid id")
+
+	var listIndex i32 = id.list
+	var columnCount i32 = g_lists[listIndex].columnCount
+	var column LabelId = LabelCreate(sprintf("column_%d", columnCount))
+	ControlSetDock(column.base, DOCK_LEFT)
+	//ControlSetSize(column.base, v2.make(0.0, 26.0))
+	ControlSetFocusable(column.base, 1)
+	ControlSetAutosize(column.base, AUTOSIZE_Y)
+	ControlSetPadding(column.base, v4.make(3.0, 0.0, 3.0, 0.0))
+	if (IsValidSkin(skin)) {
+		ControlSetSkin(column.base, skin)
+	}
+	LabelSetFont(column, g_boldFont)
+	LabelSetText(column, name)
+	LabelSetSize(column, size)
+	LabelSetColor(column, color)
+	LabelSetAlign(column, ALIGN_CENTER)
+
+	//ControlPrint("ListAddColumn : ", column.base, false)
+	g_lists[listIndex].columnCount = columnCount + 1
+	var header ControlId = g_lists[listIndex].header
+	ControlAddChild(header, column.base)
+	//printf("childCount %d\n", g_controls[header.control].childCount)
+}
+
+// ListClearLines ...
+func ListClearLines(id ListId) {
+	panicIfNot(IsValidList(id), "invalid id")
+
+	var lines ControlId = g_lists[id.list].lines
+	ControlClearChildren(lines)
+}
+
+// ListAddLine ...
+func ListAddLine(id ListId, skin SkinId) (out ControlId) {
+	panicIfNot(IsValidList(id), "invalid id")
+	var listIndex i32 = id.list
+	var lineCount i32 = g_lists[listIndex].lineCount
+	var line ControlId = ControlCreate(sprintf("line_%d", lineCount))
+
+	var lines ControlId = g_lists[id.list].lines
+	ControlSetDock(line, DOCK_TOP)
+	ControlSetSize(line, v2.ZERO)
+	ControlSetAutosize(line, AUTOSIZE_Y)
+	ControlAddChild(lines, line)
+	if (IsValidSkin(skin)) {
+		ControlSetSkin(line, skin)
+	}
+	//ControlSetFocusable(line, 1)
+	g_lists[listIndex].lineCount = lineCount + 1
+	out = line
+}
+
+// ListLineAddLabel ...
+func ListLineAddLabel(id ControlId, text str, align i32, color mat.v4, size i32, skin SkinId) {
+	panicIfNot(IsValidControl(id), "invalid id")
+
+	var lineName str = g_controls[id.control].name
+	var itemCount i32 = len(g_controls[id.control].children)
+	var itemName str = sprintf("%s_item_%d", lineName, itemCount)
+	var label LabelId = LabelCreate(itemName)
+
+	ControlAddChild(id, label.base)
+	ControlSetDock(label.base, DOCK_LEFT)
+	if (IsValidSkin(skin)) {
+		ControlSetSkin(label.base, skin)
+	}
+	ControlSetPadding(label.base, v4.make(3.0, 0.0, 3.0, 0.0))
+	ControlSetFocusable(label.base, 1)
+	ControlSetAutosize(label.base, AUTOSIZE_Y)
+	LabelSetFont(label, g_regularFont)
+	LabelSetText(label, text)
+	LabelSetSize(label, size)
+	LabelSetColor(label, color)
+	LabelSetAlign(label, align)
+}
+
+// ListLineAddPicture ...
+func ListLineAddPicture(id ControlId, align i32, animation AnimationId) {
+	panicIfNot(IsValidControl(id), "invalid id")
+
+	var lineName str = g_controls[id.control].name
+	var itemCount i32 = len(g_controls[id.control].children)
+	var itemName str = sprintf("%s_item_%d", lineName, itemCount)
+	var label PictureId = PictureCreate(itemName)
+
+	ControlAddChild(id, label.base)
+	ControlSetDock(label.base, DOCK_LEFT)
+	//ControlSetSkin(label.base, g_grayFocusedSkin)
+	ControlSetPadding(label.base, v4.make(3.0, 0.0, 3.0, 0.0))
+	ControlSetSize(label.base, v2.makef(32.0))
+	ControlSetFocusable(label.base, 1)
+	ControlSetAutoscale(label.base, AUTOSCALE)
+	//ControlSetAlign(label, align)
+	PictureSetAlign(label, align)
+	PictureSetAnimation(label, animation)
+	/*LabelSetFont(label, g_regularFont)
+	LabelSetText(label, text)
+	LabelSetSize(label, size)
+	LabelSetColor(label, color)
+	LabelSetAlign(label, align)*/
+}
+
+// ListChildFocuse...
+func ListChildFocus(id ListId, child ControlId, value i32) {
+	panicIfNot(IsValidList(id), "invalid id")
+	panicIfNot(IsValidControl(child), "invalid child id")
+	if (value > 0) {
+
+		var header ControlId = g_lists[id.list].header
+		var panel ControlId = g_lists[id.list].lines
+		var panelFocused  i32 = g_controls[panel.control].focused
+		var panelChildFocused i32 = g_controls[panel.control].childFocused
+		var headerFocused i32 = g_controls[header.control].focused
+		var headerChildFocused i32 = g_controls[header.control].childFocused
+
+		if (panelFocused > 0 || panelChildFocused > 0 || headerFocused > 0 || headerChildFocused > 0) {
+
+			var headerVisible i32 = g_controls[header.control].visible
+			var headerOffset i32 = 0
+			if (headerVisible <= 0) {
+				headerOffset = 1
+			}
+
+			var line ControlId = g_controls[child.control].parent
+
+			var previousSelectedLine i32 = g_lists[id.list].previousSelectedLine
+			var previousSelectedItem i32 = g_lists[id.list].previousSelectedItem
+			var selectedLine i32 = g_lists[id.list].selectedLine
+			var selectedItem i32 = g_lists[id.list].selectedItem
+
+			g_lists[id.list].previousSelectedLine = selectedLine
+			g_lists[id.list].previousSelectedItem = selectedItem
+
+			var lineFocusIndex i32 = g_controls[line.control].focusIndex
+			var itemFocusIndex i32 = g_controls[child.control].focusIndex
+
+			if (line.control != header.control) {
+				lineFocusIndex = lineFocusIndex + headerOffset
+			}
+
+			g_lists[id.list].selectedLine = lineFocusIndex
+			g_lists[id.list].selectedItem = itemFocusIndex
+
+			if (previousSelectedLine != selectedLine &&
+				previousSelectedItem != selectedItem) {
+				ControlPrint("CHILD_FOCUSED : ", line, false)
+			}
+		}
+
+/*		var selectedLine i32 = g_lists[id.list].selectedLine
+		var selectedItem i32 = g_lists[id.list].selectedItem
+
+
+			//ControlPrint("ListChildFocused panel : ", panel, false)
+			var columnCount i32 = g_controls[header.control].childCount
+			var lineCount i32 = g_controls[panel.control].childCount
+
+			if (columnCount > 0) {
+
+				if (selectedLine < 0) {
+					selectedLine = headerOffset
+				}
+
+				if (selectedItem < 0) {
+					selectedItem = 0
+				}
+
+				var selectedLineId ControlId
+				if (selectedLine > headerOffset) {
+					var currentLine i32 = selectedLine - 1
+					selectedLineId = g_controls[panel.control].children[currentLine]
+				} else {
+					selectedLineId = header
+				}
+				var previousSelectedLine i32 = g_lists[id.list].previousSelectedLine
+				var previousSelectedItem i32 = g_lists[id.list].previousSelectedItem
+				var selectedItemId ControlId = g_controls[selectedLineId.control].children[selectedItem]
+				g_lists[id.list].previousSelectedLine = g_lists[id.list].selectedLine
+				g_lists[id.list].previousSelectedItem = g_lists[id.list].selectedItem
+				g_lists[id.list].selectedLine = selectedLine
+				g_lists[id.list].selectedItem = selectedItem
+
+				g_controls[selectedLineId.control].selected = 1
+				g_controls[selectedItemId.control].selected = 1
+				if (selectedItemId.control != child.control) {
+					ControlPrint("ListChildFocused : ForceFocus SELECTED : ", selectedItemId, false)
+					ControlPrint("ListChildFocused : ForceFocus CHILD : ", child, false)
+					ForceFocus(selectedItemId)
+				}
+			}
+		}*/
+	}
+}
+
+// ListCreate ...
+func ListCreate(name str) (out ListId) {
+	out.list = len(g_lists)
+	out.base = controlCreate(name, GUI_LIST, out.list)
+
+	var list List
+	list.id = out
+
+	var controlIndex i32 = out.base.control
+	//ControlSetPadding(out.base, v4.makef(0.01))
+
+	var header ControlId = ControlCreate("header")
+	ControlAddChild(out.base, header)
+	ControlSetDock(header, DOCK_TOP)
+	//ControlSetSize(header, v2.make(0.0, 28.0))
+	ControlSetAutosize(header, AUTOSIZE_Y)
+	ControlSetSkin(header, g_blackSkin)
+	list.header = header
+
+	{
+		var scroller ScrollerId = ScrollerCreate("scroller")
+		ControlAddChild(out.base, scroller.base)
+		ControlSetDock(scroller.base, DOCK_FILL)
+		//ControlSetAutosize(scroller.base, AUTOSIZE_Y)
+
+		var lines ControlId = ControlCreate("lines")
+		//ControlSetDock(lines, DOCK_FILL)
+		ControlSetAutosize(lines, AUTOSIZE_Y)
+		ControlSetSkin(lines, g_blackSkin)
+		list.lines = lines
+
+		ScrollerSetContainee(scroller, lines)
+		list.scroller = scroller
+	}
+
+	list.columnCount = 0
+	list.lineCount = 0
+	list.selectedItem = -1
+	list.selectedLine = -1
+	list.previousSelectedItem = -1
+	list.previousSelectedLine = -1
+	g_lists = append(g_lists, list)
+	panicIfNot(IsValidList(out), "invalid id")
+}
+
+// ListProcessEvent ...
+func ListProcessEvent(id ListId, event *app.Event) (out i32) {
+	panicIfNot(IsValidList(id), "invalid id")
+	out = ControlProcessEvent(id.base, event)
+
+
+	if (out == app.EVENT_UNUSED) {
+		var index i32 = id.base.control
+		var columns ControlId = g_lists[id.list].header
+		var columnsIndex i32 = columns.control
+		var headerFocused i32 = g_controls[columnsIndex].childFocused
+		var headerVisible i32 = g_controls[columnsIndex].visible
+		var lines ControlId = g_lists[id.list].lines
+		var linesIndex i32 = lines.control
+		var focused i32 = g_controls[linesIndex].childFocused
+		var mods i32 = ((*event).keyboard).mods
+		var action i32 = ((*event).keyboard).action
+		var lineCount i32 = len(g_controls[linesIndex].children)
+		var itemCount i32 = len(g_controls[columnsIndex].children)
+		if (lineCount > 0) {
+			if ((headerFocused > 0 || focused > 0) && action == app.KEY_PRESS) {
+				var key i32 = ((*event).keyboard).key
+				var action i32 = ((*event).keyboard).action
+				var selectedLine i32 = g_lists[id.list].selectedLine
+				var selectedItem i32 = g_lists[id.list].selectedItem
+	 
+				var headerOffset i32 = 0
+				if (headerVisible <= 0) {
+					headerOffset = 1
+				}
+				if (key == app.KEYCODE_LEFT) {
+					selectedItem = selectedItem - 1
+					if (selectedItem < 0) {
+						selectedItem = itemCount - 1
+					}
+					out = app.EVENT_CONSUMED
+				} else if (key == app.KEYCODE_DOWN) {
+					selectedLine = selectedLine + 1
+					if (selectedLine > lineCount) {
+						if (mods == app.MOD_CTRL) {
+							selectedLine = lineCount
+							out = app.EVENT_UNUSED
+							//printf("app.EVENT_UNUSED\n")
+						}else {
+							selectedLine = headerOffset
+							out = app.EVENT_CONSUMED
+						}
+				   }
+				} else if (key == app.KEYCODE_RIGHT) {
+					selectedItem = selectedItem + 1
+					if (selectedItem >= itemCount) {
+						selectedItem = 0
+					}
+					out = app.EVENT_CONSUMED
+				} else if (key == app.KEYCODE_UP) {
+					selectedLine = selectedLine - 1
+					if (selectedLine < headerOffset) {
+						if (mods == app.MOD_CTRL) {
+							selectedLine = selectedLine + 1
+							out = app.EVENT_UNUSED
+							//printf("app.EVENT_UNUSED\n")
+						} else {
+							selectedLine = lineCount
+							out = app.EVENT_CONSUMED
+						}
+					}
+				} else if (key == app.KEYCODE_TAB) {
+					if (mods == app.MOD_SHIFT) {
+						if (selectedItem > 0) {
+							selectedItem = selectedItem - 1
+							out = app.EVENT_CONSUMED
+						} else {
+							if (selectedLine > headerOffset) {
+								selectedLine = selectedLine - 1
+								selectedItem = itemCount - 1
+								out = app.EVENT_CONSUMED
+							} else {
+								out = app.EVENT_UNUSED
+							}
+						}
+					} else {
+						if ((selectedItem + 1) < itemCount) {
+							selectedItem = selectedItem + 1
+							out = app.EVENT_CONSUMED
+						} else {
+							if ((selectedLine + 1) <= lineCount) {
+								selectedLine = selectedLine + 1
+								selectedItem = 0
+								out = app.EVENT_CONSUMED
+							} else {
+								out = app.EVENT_UNUSED
+							}
+						}
+					}
+				}
+
+				g_lists[id.list].selectedLine = selectedLine
+				g_lists[id.list].selectedItem = selectedItem
+				//printf("SELECTED LINE %d, ITEM %d\n", selectedLine, selectedItem)
+			}
+		} else {
+			g_lists[id.list].selectedLine = -1
+			g_lists[id.list].selectedItem = -1
+		}
+	}
+	//printf("ListProcessEvent : OUT %d\n", out)
+}
+
+// ListResize ...
+func ListResize(id ListId) () {
+	panicIfNot(IsValidList(id), "invalid id")
+
+	var listIndex i32 = id.list
+	var header ControlId = g_lists[listIndex].header
+	var headerIndex i32 = header.control
+
+	var scroller ScrollerId = g_lists[listIndex].scroller
+	var scrollerContainer ControlId = g_scrollers[scroller.scroller].container
+	var scrollerPanel ControlId = g_scrollers[scroller.scroller].panel
+
+	var lines ControlId = g_lists[listIndex].lines
+	var linesIndex i32 = lines.control
+	var columnCount i32 = len(g_controls[headerIndex].children)
+	var lineCount i32 = len(g_controls[linesIndex].children)
+	var i i32 = 0
+
+	/*if (id.base.control == 36) {
+		printf("--------------------------------> ListResize\n")
+		ControlPrint("ListResize : ", id.base, false)
+		ControlPrint("ListResize : LINES ", lines, false)
+		printf("columnCount %d, lineCount %d, listIndex %d, headerIndex %d, linesIndex %d\n", columnCount, lineCount, listIndex, headerIndex, linesIndex)
+	}*/
+
+	var containerWidth f32 = g_controls[scrollerContainer.control].size.x
+	var scrollerWidth f32 = g_controls[scroller.base.control].size.x
+
+	var lineWidth f32 = 0.0
+	for i = 0; i < columnCount; i = i + 1 {
+	var maxWidth f32 = 0.0
+		var column ControlId = g_controls[headerIndex].children[i]
+		/*if (id.base.control == 36) {
+			ControlPrint("ListResize : column ", column, false)
+		}*/
+		var columnIndex i32 = column.control
+		g_controls[column.control].selected = 0
+
+		var width f32
+		var height f32
+		width, height = ControlMeasure(column)
+		//printf("COLUMN_MEASURE %f, %f\n", width, height)
+		maxWidth = v1.max(maxWidth, width)
+		var k i32 = 0
+		for k = 0; k < lineCount; k = k + 1 {
+			var line ControlId = g_controls[linesIndex].children[k]
+			var lineIndex i32 = line.control
+			/*if (id.base.control == 36) {
+				ControlPrint("ListResize : line ", line, false)
+			}*/
+
+			var item ControlId = g_controls[lineIndex].children[i]
+			//ControlPrint("ListResize : item ", item, false)
+			var itemIndex i32 = item.control
+
+			width, height = ControlMeasure(item)
+			//printf("ITEM_MEASURE %f, %f\n", width, height)
+			maxWidth = v1.max(maxWidth, width)
+			//printf("WIDTH %f, MAX_WIDTH %f\n", width, maxWidth)
+		}
+		//printf("MAX_WIDTH %f\n", maxWidth)
+		g_controls[columnIndex].size.x = maxWidth
+		if ((i + 1) == columnCount) {
+			ControlSetDock(column, DOCK_FILL)
+			g_controls[columnIndex].size.x = v1.max(maxWidth, scrollerWidth - lineWidth)
+		}
+
+		//ControlPrint("column : ", column, false)
+		for k = 0; k < lineCount; k = k + 1 {
+			var line ControlId = g_controls[linesIndex].children[k]
+			var lineIndex i32 = line.control
+			if (i == 0) {
+				g_controls[lineIndex].size.x = 0.0
+			}
+			var currentWidth f32 = g_controls[lineIndex].size.x
+			g_controls[lineIndex].size.x = currentWidth + maxWidth
+			//printf("i %d, lineIndex %d, line %d, width %f\n", i, lineIndex, k, width)
+			//ControlPrint("line : ", line, false)
+			var item ControlId = g_controls[lineIndex].children[i]
+			var itemIndex i32 = item.control
+
+			g_controls[itemIndex].size.x = maxWidth
+			g_controls[itemIndex].selected = 0
+			g_controls[lineIndex].selected = 0
+			if ((i + 1) == columnCount) {
+				ControlSetDock(item, DOCK_FILL)
+				g_controls[itemIndex].size.x = v1.max(maxWidth, containerWidth - lineWidth)
+			}
+
+			/*var focusedItem i32 = g_controls[itemIndex].focused
+			if (focusedItem > 0) {
+				g_lists[listIndex].selectedLine = k
+				g_lists[listIndex].selectedItem = i
+			}*/
+			//ControlPrint("item : ", item, false)
+		}
+		lineWidth = lineWidth + maxWidth
+	}
+
+	var headerVisible i32 = g_controls[headerIndex].visible
+	var headerOffset i32 = 0
+	if (headerVisible <= 0) {
+		headerOffset = 1
+	}
+/*	if (lineCount > 0 && columnCount > 0) {
+
+		var selectedLine i32 = g_lists[listIndex].selectedLine
+		if (selectedLine < 0) {
+			selectedLine = headerOffset
+		}
+
+		var selectedItem i32 = g_lists[listIndex].selectedItem
+		if (selectedItem < 0) {
+			selectedItem = 0
+		}
+
+		var selectedLineId ControlId
+		if (selectedLine > headerOffset) {
+			var currentLine i32 = selectedLine - 1
+			selectedLineId = g_controls[linesIndex].children[currentLine]
+		} else {
+			selectedLineId = header
+		}
+		var selectedItemId ControlId = g_controls[selectedLineId.control].children[selectedItem]
+
+		var previousSelectedLine i32 = g_lists[listIndex].previousSelectedLine
+		var previousSelectedItem i32 = g_lists[listIndex].previousSelectedItem
+		if (selectedLine != previousSelectedLine || selectedItem != previousSelectedItem) {
+			printf("selectedLine child, %d, index %d, selectedItem child %d, index %d\n", selectedLineId.control, selectedLine, selectedItemId.control, selectedItem)
+			ForceFocus(selectedItemId)
+		}
+
+		g_lists[listIndex].previousSelectedLine = g_lists[listIndex].selectedLine
+		g_lists[listIndex].previousSelectedItem = g_lists[listIndex].selectedItem
+		g_lists[listIndex].selectedLine = selectedLine
+		g_lists[listIndex].selectedItem = selectedItem
+
+		//g_controls[selectedLineId.control].selected = 1
+		//g_controls[selectedItemId.control].selected = 1
+	}*/
+
+	g_controls[linesIndex].size.x = v1.max(lineWidth, containerWidth)
+
+	{
+		ControlResize(id.base)
+	}
+
+
+	var focusedLine ControlId = InvalidControl()
+	for i = 0; i < lineCount; i = i + 1 {
+		var line ControlId = g_controls[linesIndex].children[i]
+		var lineIndex i32 = line.control
+		if (g_controls[lineIndex].childFocused > 0) {
+			focusedLine = line
+			i = lineCount
+		}
+	}
+
+
+	/*if (IsValidControl(focusedLine)) {
+	   g_controls[linesIndex].position.x = g_lists[listIndex].offset.x
+	   g_controls[linesIndex].position.y = g_lists[listIndex].offset.y
+	}*/
+
+	//printf("columnCount %d\n", g_controls[headerIndex].childCount)
+}
+
+// ListRender ...
+func ListRender(id ListId, clip mat.v4, stack i32) () {
+	panicIfNot(IsValidList(id), "invalid id")
+	ControlRender(id.base, clip, stack)
+}
+
+

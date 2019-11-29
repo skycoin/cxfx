@@ -1,0 +1,742 @@
+package gui
+
+import "app"
+import "fps"
+import "gl"
+import "glfw"
+import "gfx"
+import "mat"
+
+// TODO : use callbacks instead of hardcoded if/else (compile only used type)
+// TODO : user controls
+// TODO : json serialization
+
+// Constants ...
+var GUI_INVALID     i32 =  0
+var GUI_CONTROL     i32 =  1
+var GUI_SCREEN      i32 =  2
+var GUI_PICTURE     i32 =  3
+var GUI_LABEL       i32 =  4
+var GUI_KEYBOARD    i32 =  5
+var GUI_WINDOW      i32 =  6
+var GUI_GRAPH       i32 =  7
+var GUI_SPLITTER    i32 =  8
+var GUI_LIST        i32 =  9
+var GUI_SCROLLER    i32 = 10
+var GUI_LIFTER      i32 = 11
+var GUI_BINDER      i32 = 12
+var GUI_COMBO       i32 = 13
+
+var STATE_CLOSED    i32 = 0
+var STATE_SHOWING   i32 = 1
+var STATE_OPENED    i32 = 2
+var STATE_CLOSING   i32 = 3
+
+var DOCK_NONE       i32 = 0
+var DOCK_LEFT       i32 = 1
+var DOCK_RIGHT      i32 = 2
+var DOCK_TOP        i32 = 3
+var DOCK_BOTTOM     i32 = 4
+var DOCK_FILL       i32 = 5
+
+var DIALOG_NONE      i32 = 0
+var DIALOG_OK        i32 = 1
+var DIALOG_OK_CANCEL i32 = 2
+var DIALOG_YES_NO    i32 = 3
+
+var ALIGN_NONE          i32 =  0
+var ALIGN_LEFT          i32 =  1
+var ALIGN_RIGHT         i32 =  2
+var ALIGN_HORZ          i32 =  3
+var ALIGN_BOTTOM        i32 =  4
+var ALIGN_LEFT_BOTTOM   i32 =  5
+var ALIGN_RIGHT_BOTTOM  i32 =  6
+var ALIGN_HORZ_BOTTOM   i32 =  7
+var ALIGN_TOP           i32 =  8
+var ALIGN_LEFT_TOP      i32 =  9
+var ALIGN_RIGHT_TOP     i32 = 10
+var ALIGN_HORZ_TOP      i32 = 11
+var ALIGN_VERT          i32 = 12
+var ALIGN_VERT_LEFT     i32 = 13
+var ALIGN_VERT_RIGHT    i32 = 14
+var ALIGN_CENTER        i32 = 15
+
+var AUTOSIZE_NONE   i32 = 0
+var AUTOSIZE_X      i32 = 1
+var AUTOSIZE_Y      i32 = 2
+var AUTOSIZE        i32 = 3
+
+var AUTORATIO_NONE  i32 = 0
+var AUTORATIO_X     i32 = 1
+var AUTORATIO_Y     i32 = 2
+
+var AUTOSCALE_NONE  i32 = 0
+var AUTOSCALE_X     i32 = 1
+var AUTOSCALE_Y     i32 = 2
+var AUTOSCALE       i32 = 3
+
+// Globals ...
+var g_opaqueVertexColoredLines      gfx.MeshId
+var g_opaqueVertexColoredTriangles  gfx.MeshId
+var g_alphaVertexColoredLines       gfx.MeshId
+var g_alphaVertexColoredTriangles   gfx.MeshId
+var g_fullscreenQuad                gfx.MeshId
+
+var g_skycoinTexture gfx.TextureId
+var g_skycoinAnim AnimationId
+
+var g_synthAnim AnimationId
+var g_synthAnim AnimationId
+
+var g_black             mat.v4 = v4.divf(v4.make( 30.0,  34.0,  39.0, 255.0), 255.0)
+var g_white             mat.v4 = v4.divf(v4.make(255.0, 251.0, 251.0, 255.0), 255.0)
+var g_blue              mat.v4 = v4.divf(v4.make(  0.0, 114.0, 255.0, 255.0), 255.0)
+var g_lightBlue         mat.v4 = v4.divf(v4.make(  0.0, 195.0, 255.0, 255.0), 255.0)
+var g_darkBlue          mat.v4 = v4.mul(g_blue, v4.make(0.5, 0.5, 0.5, 1.0))
+var g_green             mat.v4 = v4.divf(v4.make(  0.0, 223.0, 128.0, 255.0), 255.0)
+var g_red               mat.v4 = v4.divf(v4.make(255.0,   0.0,  78.0, 255.0), 255.0)
+var g_gold              mat.v4 = v4.divf(v4.make(255.0, 193.0,  37.0, 255.0), 255.0)
+var g_gray_0            mat.v4 = v4.divf(v4.make( 34.0,  38.0,  43.0, 255.0), 255.0)
+var g_gray_1            mat.v4 = v4.divf(v4.make( 41.0,  45.0,  50.0, 255.0), 255.0)
+var g_gray_2            mat.v4 = v4.divf(v4.make( 74.0,  77.0,  81.0, 255.0), 255.0)
+var g_gray_3            mat.v4 = v4.divf(v4.make(140.0, 142.0, 145.0, 255.0), 255.0)
+var g_gray_4            mat.v4 = v4.divf(v4.make(206.0, 207.0, 208.0, 255.0), 255.0)
+var g_gray_5            mat.v4 = v4.divf(v4.make(239.0, 240.0, 240.0, 255.0), 255.0)
+var g_gray_6            mat.v4 = v4.divf(v4.make(247.0, 247.0, 247.0, 255.0), 255.0)
+var g_gray_7            mat.v4 = v4.divf(v4.make(251.0, 251.0, 251.0, 255.0), 255.0)
+
+var g_black_a10 mat.v4 = v4.mul(g_black, v4.make(0.7, 0.7, 0.7, 0.8))
+var g_black_a50 mat.v4 = v4.mul(g_black, v4.make(0.7, 0.7, 0.7, 0.8))
+var g_blue_a50  mat.v4 = Alpha(g_blue, 0.5)
+var g_goldA50 mat.v4 = Alpha(g_gold, 0.5)
+
+var g_debugRedLayer LayerId
+var g_debugGreenLayer LayerId
+var g_debugBlueLayer LayerId
+var g_debugGoldLayer LayerId
+var g_goldLayer LayerId
+var g_goldBorderLayer LayerId
+var g_bootLayer LayerId
+var g_blackLayer LayerId
+var g_zeroBorderLayer LayerId
+var g_redLayer LayerId
+var g_greenLayer LayerId
+var g_blueLayer LayerId
+var g_hoverLayer LayerId
+var g_popupLayer LayerId
+var g_modalLayer LayerId
+var g_headerLayer LayerId
+var g_textboxLayer LayerId
+var g_focusedLayer LayerId
+var g_selectedLayer LayerId
+var g_borderFocusedLayer LayerId
+var g_stripLayer LayerId
+var g_pageFocusedBack LayerId
+var g_pageFocusedFront LayerId
+var g_pageSelectedBack LayerId
+var g_pageSelectedFront LayerId
+var g_zeroLayer LayerId
+
+var g_debugRedSkin SkinId
+var g_debugGreenSkin SkinId
+var g_debugBlueSkin SkinId
+var g_debugGoldSkin SkinId
+var g_bootSkin SkinId
+var g_blackSkin SkinId
+var g_blackHoverSkin SkinId
+var g_zeroBorderSkin SkinId
+var g_blackFocusedSkin SkinId
+var g_grayFocusedSkin SkinId
+var g_redSkin SkinId
+var g_greenSkin SkinId
+var g_blueSkin SkinId
+var g_hoverSkin SkinId
+var g_popupSkin SkinId
+var g_modalSkin SkinId
+var g_windowSkin SkinId
+var g_headerSkin SkinId
+var g_textboxSkin SkinId
+var g_buttonSkin SkinId
+var g_stripSkin SkinId
+var g_binderPageSkin SkinId
+var g_binderSkin SkinId
+var g_zeroSkin SkinId
+var g_goldBorderSkin SkinId
+var g_lineSkin SkinId
+var g_itemSkin SkinId
+
+var textureLogo str = "textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png"
+
+var g_boldFont FontId = InvalidFont()
+var g_regularFont FontId = InvalidFont()
+var g_awesomeBoldFont FontId = InvalidFont()
+
+var g_padding mat.v4 = v4.makef(3.0)
+var g_spacing_x mat.v2 = v2.make(0.0, 3.0)
+var g_spacing_y mat.v2 = v2.make(3.0, 0.0)
+var g_spacing mat.v2 = v2.makef(3.0)
+
+var g_fontSizeTitle i32 = 64
+var g_fontSizeHeader i32 = 35
+var g_fontSizeButton i32 = 30
+var g_fontSizeText i32 = 25
+var g_fontSizeSmall i32 = 20
+
+var g_hotScreen ScreenId
+var g_events []app.Event
+var CurrentEvent app.Event
+
+var g_profileRenderCurrentScreen fps.ProfileId
+var g_profileRenderNextScreen fps.ProfileId
+var g_profileRenderModalScreens fps.ProfileId
+var g_profileRenderScreenEffect fps.ProfileId
+var g_profileRenderModals fps.ProfileId
+var g_profileRenderDefaultFramebuffer fps.ProfileId
+var g_profileRenderScreenControl fps.ProfileId
+var g_profileRenderOpaqueVertexColoredTriangles fps.ProfileId
+var g_profileRenderOpaqueTexturedTriangles fps.ProfileId
+var g_profileRenderOpaqueVertexColoredLines fps.ProfileId
+var g_profileRenderAlphaVertexColoredTriangles fps.ProfileId
+var g_profileRenderAlphaTexturedTriangles fps.ProfileId
+var g_profileControlRender fps.ProfileId
+var g_profileControlRenderChild fps.ProfileId
+var g_profileRenderControlFull fps.ProfileId
+
+var g_freeTargets []TargetId
+var g_unlockedTargets []TargetId
+var g_allTargets []TargetId
+
+var g_renderExTarget TargetId
+
+func resizeFullscreenQuad(width i32, height i32) () {
+	gfx.MeshBegin(g_fullscreenQuad)
+	gfx.MeshAppendOrthoQuad(g_fullscreenQuad, gfx.gfx_viewportBounds, v4.make(0.0, 1.0, 1.0, 0.0), v4.ONE, gfx.gfx_viewportBounds, 0.0)
+	gfx.MeshEnd(g_fullscreenQuad)
+}
+
+// Init ...
+func Init(width i32, height i32, dataDir str) {
+	app.SetKeyboardCallback("gui", "ProcessKeyboard")
+	app.SetMouseButtonCallback("gui", "ProcessButton")
+	app.SetMousePositionCallback("gui", "ProcessCursor")
+	app.SetWindowResizeCallback("gui", "ProcessResize")
+
+	// meshes
+	g_opaqueVertexColoredTriangles = gfx.MeshCreate(gl.TRIANGLES, gl.UNSIGNED_SHORT, 2048 * 3, gfx.g_vertexLayout, 2048 * 3)
+	g_opaqueVertexColoredLines = gfx.MeshCreate(gl.LINES, gl.UNSIGNED_SHORT, 2048 * 2, gfx.g_vertexLayout, 2048 * 2)
+	g_alphaVertexColoredTriangles = gfx.MeshCreate(gl.TRIANGLES, gl.UNSIGNED_SHORT, 2048 * 3, gfx.g_vertexLayout, 2048 * 3)
+	g_alphaVertexColoredLines = gfx.MeshCreate(gl.LINES, gl.UNSIGNED_SHORT, 2048 * 2, gfx.g_vertexLayout, 2048 * 2)
+	g_fullscreenQuad = gfx.MeshCreate(gl.TRIANGLES, gl.UNSIGNED_SHORT, 6 * 3, gfx.g_vertexLayout, 6 * 3)
+    resizeFullscreenQuad(width, height)
+
+	// fonts
+	//  var skycoinRunes []ui32
+	//  skycoinRunes = append(skycoinRunes, 32)
+	//  skycoinRunes = append(skycoinRunes, 127)
+	//  printf("RUNES :%d\n", len(skycoinRunes))
+	//  skycoinRunes = ui32[]{ 32U, 127U
+
+	g_regularFont = FontCreate("skycoinRegular", sprintf("%s/fonts/Skycoin-Regular.ttf", dataDir),32, 127, gfx.TEXT_LEFT_TO_RIGHT)
+	FontAddSize(g_regularFont, g_fontSizeSmall)
+	FontAddSize(g_regularFont, g_fontSizeText)
+	FontAddSize(g_regularFont, g_fontSizeButton)
+	FontAddSize(g_regularFont, g_fontSizeHeader)
+	FontAddSize(g_regularFont, g_fontSizeTitle)
+
+	g_boldFont = FontCreate("skycoinBold", sprintf("%s/fonts/Skycoin-Bold.ttf", dataDir), 32, 127, gfx.TEXT_LEFT_TO_RIGHT)
+	FontAddSize(g_boldFont, g_fontSizeSmall)
+	FontAddSize(g_boldFont, g_fontSizeText)
+	FontAddSize(g_boldFont, g_fontSizeButton)
+	FontAddSize(g_boldFont, g_fontSizeHeader)
+	FontAddSize(g_boldFont, g_fontSizeTitle)
+
+	var awesomeRunes []i32
+	awesomeRunes = append(awesomeRunes, 61441)
+	awesomeRunes = append(awesomeRunes, 61444)
+	g_awesomeBoldFont = FontCreate("awesomeBold", sprintf("%s/fonts/fa-solid-900.ttf", dataDir), 61441, 61841, gfx.TEXT_LEFT_TO_RIGHT)
+	FontAddSize(g_awesomeBoldFont, g_fontSizeSmall)
+	FontAddSize(g_awesomeBoldFont, g_fontSizeText)
+	FontAddSize(g_awesomeBoldFont, g_fontSizeHeader)
+
+
+	// textures
+	g_skycoinTexture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", dataDir), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+
+	g_synthAnim = AnimationCreateFromPath(sprintf("%s/textures/synth.gif", dataDir))
+	g_skycoinAnim = AnimationCreateFromTexture(g_skycoinTexture)
+
+	// layers
+	g_blackLayer            = LayerCreate("black"            , g_black     , g_gray_3    , g_gray_3    , g_gray_3    , g_gray_3)
+	g_bootLayer             = LayerCreate("boot"             , v4.BLACK, v4.BLACK, v4.BLACK, v4.BLACK, v4.BLACK)
+	g_popupLayer            = LayerCreate("popup"            , g_black_a10 , v4.ZERO, v4.ZERO, v4.ZERO, v4.ZERO)
+	g_modalLayer            = LayerCreate("modal"            , g_black_a50 , v4.ZERO, v4.ZERO, v4.ZERO, v4.ZERO)
+	g_debugBlueLayer        = LayerCreate("debugBlue"        , g_blue      , g_gold      , g_gold      , g_gold      , g_gold  )
+	g_focusedLayer          = LayerCreate("focused"          , g_blue      , g_lightBlue , g_lightBlue , g_lightBlue , g_lightBlue)
+	g_pageFocusedBack       = LayerCreate("pageFocusedBack"  , g_blue      , v4.ZERO, v4.ZERO, v4.ZERO, v4.ZERO)
+	g_blueLayer             = LayerCreate("blue"             , g_blue      , v4.ZERO, v4.ZERO, v4.ZERO, v4.ZERO)
+	g_selectedLayer         = LayerCreate("selected"         , g_darkBlue  , g_blue      , g_blue      , g_blue      , g_blue)
+	g_pageSelectedBack      = LayerCreate("pageSelectedBack" , g_darkBlue  , v4.ZERO, v4.ZERO, v4.ZERO, v4.ZERO)
+	g_debugGoldLayer        = LayerCreate("debugGold"        , g_gold      , g_blue      , g_blue      , g_blue      , g_blue  )
+	g_goldLayer             = LayerCreate("gold"             , g_goldA50   , g_gold      , g_gold      , g_gold      , g_gold)
+	g_goldBorderLayer       = LayerCreate("gold"             , g_white     , g_gold      , g_gold      , g_gold      , g_gold)
+	g_textboxLayer          = LayerCreate("textbox"          , g_gray_1    , g_gray_3    , g_gray_3    , g_gray_3    , g_gray_3)
+	g_stripLayer            = LayerCreate("strip"            , g_gray_2    , g_gray_2    , g_gray_2    , g_gray_2    , g_gray_2)
+	g_headerLayer           = LayerCreate("header"           , g_gray_2    , g_gray_3    , g_gray_3    , g_gray_3    , g_gray_3)
+	g_debugGreenLayer       = LayerCreate("debugGreen"       , g_green     , g_gold      , g_gold      , g_gold      , g_gold  )
+	g_greenLayer            = LayerCreate("green"            , g_green     , v4.ZERO, v4.ZERO, v4.ZERO, v4.ZERO)
+	g_debugRedLayer         = LayerCreate("debugRed"         , g_red       , g_gold      , g_gold      , g_gold      , g_gold  )
+	g_redLayer              = LayerCreate("red"              , g_red       , v4.ZERO, v4.ZERO, v4.ZERO, v4.ZERO)
+	g_borderFocusedLayer    = LayerCreate("borderFocused"    , v4.ZERO, g_blue      , g_blue      , g_blue      , g_blue)
+	g_pageSelectedFront     = LayerCreate("pageSelectedFront", v4.ZERO, g_gray_3    , g_black     , g_gray_3    , g_gray_3)
+	g_zeroBorderLayer       = LayerCreate("zeroBorder"       , v4.ZERO, g_gray_3    , g_gray_3    , g_gray_3    , g_gray_3)
+	g_pageFocusedFront      = LayerCreate("pageFocusedFront" , v4.ZERO, g_lightBlue , g_lightBlue , g_lightBlue , g_lightBlue)
+	g_hoverLayer            = LayerCreate("blueA50"          , g_blue_a50  , g_lightBlue , g_lightBlue , g_lightBlue , g_lightBlue)
+	g_zeroLayer             = LayerCreate("zero"             , v4.ZERO, v4.ZERO, v4.ZERO, v4.ZERO, v4.ZERO)
+
+	// skins
+g_blackSkin      =SkinCreate("black"       , g_blackLayer     ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),g_borderFocusedLayer,InvalidLayer()   ,g_selectedLayer   ,InvalidLayer())
+g_blackHoverSkin =SkinCreate("blackHover"  , g_blackLayer     ,InvalidLayer(),InvalidLayer(),g_goldLayer    ,InvalidLayer(),InvalidLayer(),g_borderFocusedLayer,InvalidLayer()   ,g_selectedLayer   ,InvalidLayer())
+g_grayFocusedSkin=SkinCreate("grayFocused" , g_blackLayer     ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),g_focusedLayer      ,InvalidLayer()   ,g_selectedLayer   ,InvalidLayer())
+g_windowSkin     =SkinCreate("window"      , g_blackLayer     ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_binderSkin     =SkinCreate("binder"      , g_blackLayer     ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_blueSkin       =SkinCreate("blue"        , g_blueLayer      ,InvalidLayer(),InvalidLayer(),g_goldLayer    ,InvalidLayer(),InvalidLayer(),g_goldLayer         ,g_goldLayer       ,InvalidLayer()   ,g_goldLayer)
+g_bootSkin       =SkinCreate("boot"        , g_bootLayer      ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_zeroSkin       =SkinCreate("blackFocused", g_bootLayer      ,InvalidLayer(),InvalidLayer(),g_goldLayer    ,InvalidLayer(),InvalidLayer(),g_focusedLayer      ,InvalidLayer()   ,g_selectedLayer   ,InvalidLayer())
+g_debugRedSkin   =SkinCreate("debugRed"    , g_debugRedLayer  ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_debugGreenSkin =SkinCreate("debugGreen"  , g_debugGreenLayer,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_debugBlueSkin  =SkinCreate("debugBlue"   , g_debugBlueLayer ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_debugGoldSkin  =SkinCreate("debugGold"   , g_debugGoldLayer ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_goldBorderSkin =SkinCreate("goldBorder"  , g_goldBorderLayer,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_greenSkin      =SkinCreate("green"       , g_greenLayer     ,InvalidLayer(),InvalidLayer(),g_goldLayer    ,InvalidLayer(),InvalidLayer(),InvalidLayer()     ,g_goldLayer       ,InvalidLayer()   ,InvalidLayer())
+g_headerSkin     =SkinCreate("header"      , g_headerLayer    ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),g_focusedLayer      ,InvalidLayer()   ,g_selectedLayer   ,InvalidLayer())
+g_buttonSkin     =SkinCreate("button"      , g_headerLayer    ,InvalidLayer(),InvalidLayer(),g_goldLayer    ,InvalidLayer(),InvalidLayer(),g_focusedLayer      ,InvalidLayer()   ,g_selectedLayer   ,InvalidLayer())
+g_hoverSkin      =SkinCreate("blueA50"     , InvalidLayer()  ,g_hoverLayer   ,InvalidLayer(),g_goldLayer    ,InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_lineSkin       =SkinCreate("lineSkin"    , g_bootLayer      ,InvalidLayer(),InvalidLayer(),g_goldLayer    ,InvalidLayer(),InvalidLayer(),g_focusedLayer      ,InvalidLayer()   ,g_selectedLayer   ,InvalidLayer())
+g_itemSkin       =SkinCreate("itemSkin"    , g_zeroLayer      ,InvalidLayer(),InvalidLayer(),g_goldLayer    ,InvalidLayer(),InvalidLayer(),g_focusedLayer      ,InvalidLayer()   ,g_selectedLayer   ,InvalidLayer())
+g_modalSkin      =SkinCreate("popup"       , g_modalLayer     ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_popupSkin      =SkinCreate("modal"       , g_popupLayer     ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_redSkin        =SkinCreate("red"         , g_redLayer       ,InvalidLayer(),InvalidLayer(),g_goldLayer    ,InvalidLayer(),InvalidLayer(),InvalidLayer()     ,g_goldLayer       ,InvalidLayer()   ,InvalidLayer())
+g_stripSkin      =SkinCreate("strip"       , g_stripLayer     ,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer()     ,InvalidLayer()   ,InvalidLayer()   ,InvalidLayer())
+g_textboxSkin    =SkinCreate("textbox"     , g_textboxLayer   ,InvalidLayer(),InvalidLayer(),g_goldLayer    ,InvalidLayer(),InvalidLayer(),g_focusedLayer      ,InvalidLayer()   ,g_selectedLayer   ,InvalidLayer())
+g_binderPageSkin =SkinCreate("binderPage"  , g_textboxLayer   ,InvalidLayer(),InvalidLayer(),g_goldLayer    ,InvalidLayer(),InvalidLayer(),g_pageFocusedBack   ,g_pageFocusedFront,g_pageSelectedBack,g_pageSelectedFront)
+g_zeroBorderSkin =SkinCreate("blackFocused", g_zeroBorderLayer,InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),InvalidLayer(),g_focusedLayer      ,InvalidLayer()   ,g_selectedLayer   ,InvalidLayer())
+
+	g_profileRenderCurrentScreen = fps.CreateProfile("RenderCurrentScreen")
+	g_profileRenderNextScreen = fps.CreateProfile("RenderNextScreen")
+	g_profileRenderModalScreens = fps.CreateProfile("RenderModalScreens")
+	g_profileRenderScreenEffect = fps.CreateProfile("RenderScreenEffect")
+	g_profileRenderModals = fps.CreateProfile("RenderModals")
+	g_profileRenderDefaultFramebuffer = fps.CreateProfile("RenderDefaultFramebuffer")
+	g_profileRenderScreenControl = fps.CreateProfile("RenderScreenControl")
+	g_profileRenderOpaqueVertexColoredTriangles = fps.CreateProfile("OpaqueVertexColoredTriangles")
+	g_profileRenderOpaqueTexturedTriangles = fps.CreateProfile("OpaqueTexturedTriangles")
+	g_profileRenderOpaqueVertexColoredLines = fps.CreateProfile("OpaqueVertexColoredLines")
+	g_profileRenderAlphaVertexColoredTriangles = fps.CreateProfile("AlphaVertexColoredTriangles")
+	g_profileRenderAlphaTexturedTriangles = fps.CreateProfile("AlphaTexturedTriangles")
+	g_profileControlRender = fps.CreateProfile("ControlRender")
+	g_profileControlRenderChild = fps.CreateProfile("ControlRenderChild")
+	g_profileRenderControlFull = fps.CreateProfile("ControlRenderFull")
+}
+
+// Alpha ...
+func Alpha(color mat.v4, a f32) (out mat.v4) {
+	//out = v4.make(color.x, color.y, color.z, (color.w * a)) // ##issue_57  out.w == 0
+	out.x = color.x
+	out.y = color.y
+	out.z = color.z
+	out.w = color.w * a
+}
+
+// ComputeDepth ...
+func ComputeDepth(stack i32) (out f32) {
+	out = i32.f32(stack) / 100.0
+}
+
+// ProcessCursor ...
+func ProcessCursor(window str, x f64, y f64) {
+	var xx f32 = f64.f32(x)
+	var yy f32 = gfx.gfx_height - f64.f32(y)
+
+	//printf("cursor : %f, %f\n", xx, yy)
+	g_cursorPos.x = xx
+	g_cursorPos.y = yy
+
+	var event app.Event = app.InvalidEvent()
+	event.mouse.position = g_cursorPos
+	event.mouse.action = app.MOUSE_MOVE
+
+	g_events = append(g_events, event)
+}
+
+// ProcessButton ...
+func ProcessButton(window str, key i32, action i32, mods i32) {
+	//printf("button : %s, %d, %d, %d\n", window, key, action, mods)
+
+	var event app.Event = app.InvalidEvent()
+	event.mouse.button = key
+	event.mouse.action = action
+	event.mouse.mods = mods
+	event.mouse.position = g_cursorPos
+
+	g_events = append(g_events, event)
+}
+
+// ProcessKeyboard ...
+func ProcessKeyboard(window str, key i32, scancode i32, action i32, mods i32) () {
+	//printf("key pressed : %s, %d, scancode %d, action %d, mods %d\n", window, key, scancode, action, mods)
+
+	var event app.Event = app.InvalidEvent()
+	event.keyboard.key = key
+	event.keyboard.scancode = scancode
+	event.keyboard.action = action
+	event.keyboard.mods = mods
+
+	g_events = append(g_events, event)
+}
+
+// ProcessEvents ...
+func ProcessEvents() () {
+	var i i32 = 0
+	var eventCount i32 = len(g_events)
+	for i = 0; i < eventCount; i = i + 1 {
+		CurrentEvent = g_events[i]
+		ProcessEvent(&CurrentEvent)
+	}
+	g_events = resize(g_events, 0)
+}
+
+// ProcessEvent ...
+func ProcessEvent(event *app.Event) () {
+	var action i32 = (*event).keyboard.action
+	var key i32 = (*event).keyboard.key
+	var mods i32 = (*event).keyboard.mods
+
+	var button i32 = (*event).mouse.button
+	var buttonAction i32 = (*event).mouse.action
+
+	var currentScreen ScreenId = InvalidScreen()
+	var modalCount i32 = len(g_modals)
+	if (modalCount > 0) {
+		var modalIndex i32 = modalCount - 1
+		var modalScreen ScreenId = g_modals[modalIndex]
+		g_hotScreen = modalScreen
+		currentScreen = modalScreen
+		var floating bool = g_screens[modalScreen.screen].floating
+		if (ScreenProcessEvent(modalScreen, event) == app.EVENT_UNUSED) {
+			if ((key == app.KEYCODE_ESCAPE && action == app.KEY_PRESS) ||
+				(button == app.BUTTON_LEFT && buttonAction == app.MOUSE_PRESS && floating == true)) {
+				ScreenHideModal(modalScreen)
+				g_hotScreen = g_currentScreen
+			} else {
+				currentScreen = modalScreen
+				g_hotScreen = modalScreen
+			}
+		}
+	} else if (IsValidScreen(g_currentScreen)) {
+		g_hotScreen = g_currentScreen
+		if (ScreenProcessEvent(g_currentScreen, event) == app.EVENT_UNUSED) {
+			var screen i32 = g_currentScreen.screen
+			var state i32 = g_screens[screen].state
+			//if (g_screens[g_currentScreen.screen].state == STATE_OPENED) { // ##pending
+			//} else if (g_screens[g_currentScreen.screen].state == STATE_SHOWING) { // ##pending
+			if (state == STATE_OPENED || state == STATE_SHOWING) {
+				if (key == app.KEYCODE_ESCAPE && action == app.KEY_PRESS && mods == app.MOD_NONE) {
+					g_screens[screen].paused = true
+					var onExit ScreenId = g_screens[screen].on_exit
+					if (IsValidScreen(onExit) == true) {
+						ScreenShow(onExit)
+					}
+				} else if (key == app.KEYCODE_ENTER && action == app.KEY_PRESS && mods == app.MOD_NONE) {
+					g_screens[screen].paused = true
+					var onEnter ScreenId = g_screens[screen].on_enter
+					if (IsValidScreen(onEnter) == true) {
+						ScreenShow(onEnter)
+					}
+				} else if (key == app.KEYCODE_MENU && action == app.KEY_PRESS && mods == app.MOD_NONE) {
+					g_screens[screen].paused = true
+					var onMenu ScreenId = g_screens[screen].on_menu
+					if (IsValidScreen(onMenu) == true) {
+						ScreenShow(onMenu)
+					}
+				} else {
+					currentScreen = g_currentScreen
+					g_hotScreen = g_currentScreen
+				}
+			}
+		}
+	} else {
+		g_hotScreen = InvalidScreen()
+	}
+
+	if (IsValidScreen(currentScreen)) {
+		if action == app.KEY_PRESS {
+			if (mods == app.MOD_NONE || mods == app.MOD_CTRL) {
+				if (key == app.KEYCODE_LEFT ||
+					key == app.KEYCODE_UP) {
+					SetPreviousFocus(g_hotScreen)
+				} else if (key == app.KEYCODE_RIGHT ||
+						   key == app.KEYCODE_DOWN ||
+						   key == app.KEYCODE_TAB) {
+					SetNextFocus(g_hotScreen)
+				}
+			} else if (mods == app.MOD_SHIFT) {
+				if (key == app.KEYCODE_TAB) {
+					SetPreviousFocus(g_hotScreen)
+				}
+			} else if (mods == app.MOD_ALT) {
+				if key == app.KEYCODE_ENTER {
+					app.ToggleFullscreen()
+				}
+			}
+		}
+	}
+}
+
+
+// ProcessResize ...
+func ProcessResize(window str, width i32, height i32) (){
+	//printf("ProcessResize %s, %d, %d\n", window, width, height)
+	resizeFullscreenQuad(width, height)
+	app.Resize(width, height)
+	gfx.Resize(width, height)
+}
+
+// Update ...
+func Update(deltaTime f64)() { // ##1 rewrite
+	gfx.ClearBatches()
+	ProcessEvents()
+
+	freeTargets()
+
+	if (IsValidScreen(g_currentScreen)) {
+		ScreenUpdate(g_currentScreen, deltaTime)
+		if (ScreenStateChanged(g_currentScreen, STATE_OPENED, STATE_CLOSING)) {
+			g_nextScreen = g_screens[g_currentScreen.screen].on_next // ##issue_58 issue array index with struct
+			g_transitionTime = 0.0D
+			g_screens[g_currentScreen.screen].prevState= g_screens[g_currentScreen.screen].state
+		} else if (ScreenStateChanged(g_currentScreen, STATE_CLOSING, STATE_CLOSED)) {
+			g_screens[g_currentScreen.screen].time = 0.0D
+			g_screens[g_currentScreen.screen].prevState = g_screens[g_currentScreen.screen].state
+			g_currentScreen = g_nextScreen
+		}
+	}
+
+	if (g_currentScreen.screen != g_nextScreen.screen) {
+		if (IsValidScreen(g_nextScreen)) {
+			ScreenUpdate(g_nextScreen, deltaTime)
+		}
+
+		if (g_transitionTime <= 0.0D) {
+			g_transitionTime = g_transitionTime + deltaTime
+		} else if (g_transitionTime <= g_transitionDuration) {
+			g_transitionTime = g_transitionTime + deltaTime
+		} else {
+			if (IsValidScreen(g_currentScreen)) {
+				ScreenChangeState(g_currentScreen, STATE_CLOSED)
+			}
+
+			g_currentScreen = g_nextScreen
+			if (IsValidScreen(g_nextScreen)) {
+				var nextScreen ScreenId = g_screens[g_nextScreen.screen].on_next
+				ScreenChangeState(g_nextScreen, STATE_OPENED)
+				g_transitionTime = 0.0D
+			}
+		}
+	}
+}
+
+
+// Resize ...
+func Resize() () {
+	if (IsValidScreen(g_currentScreen)) {
+		ResetScope()
+		ScreenResize(g_currentScreen)
+		ControlRedock(g_currentScreen.base, v4.ZERO)
+		//ScreenResize(g_currentScreen)
+		//ControlRedock(g_currentScreen.base, v4.ZERO)
+	}
+	if (IsValidScreen(g_nextScreen) && g_currentScreen.screen != g_nextScreen.screen) {
+		ResetScope()
+		ScreenResize(g_nextScreen)
+		ControlRedock(g_nextScreen.base, v4.ZERO)
+		//ScreenResize(g_nextScreen)
+		//ControlRedock(g_nextScreen.base, v4.ZERO)
+	}
+
+	var i i32 = 0
+	var modalCount i32 = len(g_modals)
+	for i = 0; i < modalCount; i = i + 1 {
+		//ControlPrint("before resize : ", g_modals[i].base, false)
+		ResetScope()
+		ScreenResize(g_modals[i])
+		ControlRedock(g_modals[i].base, v4.ZERO)
+		//ScreenResize(g_modals[i])
+		//ControlRedock(g_modals[i].base, v4.ZERO)
+	}
+}
+
+func renderScreen(id ScreenId, prfScreen ProfileId) (renderTarget TargetId, renderEx bool) {
+	fps.StartProfile(prfScreen)
+	renderEx = false
+	renderTarget = gfx.InvalidTarget()
+	if IsValidScreen(id) {
+		renderEx = g_screens[id.screen].renderEx
+		if renderEx == false {
+			renderTarget = lockTarget()
+			gfx.ColorWrite(true, true, true, true)
+			gfx.DepthState(true, gl.GEQUAL, true)
+			//gfx.StencilState(true, gl.EQUAL, 0, 256, gl.KEEP, gl.KEEP, gl.KEEP, 0)
+			gfx.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT/* | gl.STENCIL_BUFFER_BIT*/, v4.BLACK, -1.0D, 255)
+		}
+		ScreenRender(id, gfx.gfx_viewportBounds, 0)
+		if renderEx {
+			renderTarget = g_renderExTarget
+		}
+	}
+	fps.StopProfile(prfScreen)
+}
+
+// Render ...
+func Render() () {
+
+	var width i32 = app.Width()
+	var height i32 = app.Height()
+
+	//gfx.SetViewport(gfx.gfx_viewportBounds)
+	//gfx.SetScissor(gfx.gfx_viewportBounds)
+
+	var currentScreen bool = IsValidScreen(g_currentScreen)
+	var nextScreen bool = IsValidScreen(g_nextScreen) && (g_currentScreen.screen != g_nextScreen.screen)
+	var modalCount i32 = len(g_modals)
+	var modalScreens bool = modalCount > 0
+
+	var renderEx0 bool
+	var renderEx1 bool
+
+	var target0 gfx.TargetId = gfx.InvalidTarget()
+	var target1 gfx.TargetId = gfx.InvalidTarget()
+	var target2 gfx.TargetId = gfx.InvalidTarget()
+
+	if currentScreen && nextScreen == false && modalScreens == false {
+		target0, renderEx0 = renderScreen(g_currentScreen, g_profileRenderCurrentScreen)
+		target2 = target0
+	} else {
+		target0, renderEx0 = renderScreen(g_currentScreen, g_profileRenderCurrentScreen)
+		target1, renderEx1 = renderScreen(g_nextScreen, g_profileRenderNextScreen)
+
+		fps.StartProfile(g_profileRenderScreenEffect)
+		target2 = lockTarget()
+		gfx.ColorWrite(true, true, true, true)
+		gfx.Clear(gl.COLOR_BUFFER_BIT, v4.ZERO, 0.0D, 0)
+		gfx.DisableDepth()
+		gfx.DisableStencil()
+		gfx.DisableBlending()
+		gfx.EffectUse(gfx.g_fxFade_0)
+		gfx.EffectAssignFloat(gfx.g_fxFade_0, gfx.UNIFORM_TIME, f64.f32(g_transitionTime / g_transitionDuration))
+		gfx.EffectAssignTexture(gfx.g_fxFade_0, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(target0, 0), gfx.g_nearestClamp)
+		gfx.EffectAssignTexture(gfx.g_fxFade_0, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(target1, 0), gfx.g_nearestClamp)
+		gfx.MeshRender(g_fullscreenQuad)
+		fps.StopProfile(g_profileRenderScreenEffect)
+
+		fps.StartProfile(g_profileRenderModals)
+		for i := 0; i < modalCount; i = i + 1 {
+			var target TargetId = gfx.InvalidTarget()
+			var renderEx bool
+			target, renderEx = renderScreen(g_modals[i], g_profileRenderModalScreens)
+
+			var target3 TargetId = lockTarget()
+			gfx.ColorWrite(true, true, true, true)
+			gfx.Clear(gl.COLOR_BUFFER_BIT, v4.ZERO, 0.0D, 0)
+			gfx.DisableDepth()
+			gfx.DisableStencil()
+			gfx.DisableBlending()
+			gfx.EffectUse(gfx.g_fxFade_1)
+			gfx.EffectAssignFloat(gfx.g_fxFade_1, gfx.UNIFORM_TIME, 1.0)
+			gfx.EffectAssignTexture(gfx.g_fxFade_1, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(target2, 0), gfx.g_nearestClamp)
+			gfx.EffectAssignTexture(gfx.g_fxFade_1, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(target, 0), gfx.g_nearestClamp)
+			gfx.MeshRender(g_fullscreenQuad)
+			if renderEx == false {
+				unlockTarget(target)
+			}
+			unlockTarget(target2)
+			target2 = target3
+		}
+		fps.StopProfile(g_profileRenderModals)
+	}
+
+	fps.StartProfile(g_profileRenderDefaultFramebuffer)
+	gfx.bindFramebuffer(0)
+	gfx.SetViewport(gfx.gfx_viewportBounds)
+	gfx.SetScissor(gfx.gfx_viewportBounds)
+	gfx.ColorWrite(true, true, true, true)
+	gfx.Clear(gl.COLOR_BUFFER_BIT, v4.ZERO, 0.0D, 0)
+	gfx.DisableDepth()
+	gfx.DisableStencil()
+	gfx.DisableBlending()
+	gfx.EffectUse(gfx.g_fxTexture2D)
+	gfx.EffectTryAssignTexture(gfx.g_fxTexture2D, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(target2, 0), gfx.g_nearestClamp)
+	gfx.MeshRender(g_fullscreenQuad)
+
+	if renderEx0 == false {
+		unlockTarget(target0)
+	}
+
+	if renderEx1 == false {
+		unlockTarget(target1)
+	}
+
+	if gfx.IsValidTarget(target0) == false || (target2.target != target0.target) {
+		unlockTarget(target2)
+	}
+	fps.StopProfile(g_profileRenderDefaultFramebuffer)
+}
+
+func freeTargets() {
+	//printf("FREE_TARGETS : TOTAL %d, FREE %d, UNLOCKED %d\n", len(g_allTargets), len(g_freeTargets), len(g_unlockedTargets))
+	var unlockedTargetCount i32 = len(g_unlockedTargets)
+	for i := 0; i < unlockedTargetCount; i++ {
+		var target gfx.TargetId = g_unlockedTargets[i]
+		var age i32 = gfx.TargetGetAge(target)
+		if age >= 1 {
+			g_freeTargets = append(g_freeTargets, target)
+			var newCount i32 = unlockedTargetCount - 1
+			g_unlockedTargets[i] = g_unlockedTargets[newCount]
+			g_unlockedTargets = resize(g_unlockedTargets, newCount)
+			gfx.TargetSetAge(target, 0)
+			i = i - 1
+			unlockedTargetCount = newCount
+		} else {
+			gfx.TargetSetAge(target, age + 1)
+		}
+	}
+}
+
+func lockTarget() (out TargetId) {
+	var count i32 = len(g_freeTargets)
+	if count > 0 {
+		var newCount i32 = count - 1
+		out = g_freeTargets[newCount]
+		g_freeTargets = resize(g_freeTargets, newCount)
+		//gfx.TargetBind(out)
+	} else {
+		out = gfx.TargetCreate(1, app.Width(), app.Height(), 1, true)
+		var color TextureId  = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, app.Width(), app.Height(), 0, true)
+		gfx.TextureSamplerState(color, gfx.g_nearestClamp)
+		gfx.TargetAttachColor(out, color, 0)
+		var test TextureId = gfx.TargetGetColor(out, 0)
+		var depthTexture TextureId  = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, app.Width(), app.Height(), 0, true)
+		gfx.TextureSamplerState(depthTexture, gfx.g_nearestClamp)
+		gfx.TargetAttachDepth(out, depthTexture)
+		g_allTargets = append(g_allTargets, out)
+	}
+	gfx.TargetBind(out)
+	//gfx.TargetPrint("lockTarget", out)
+}
+
+func unlockTarget(id TargetId) {
+	if gfx.IsValidTarget(id) {
+		g_unlockedTargets = append(g_unlockedTargets, id)
+	}
+}
+
+

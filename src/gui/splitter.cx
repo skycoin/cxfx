@@ -1,0 +1,188 @@
+package gui
+
+// Constants ...
+var SPLIT_NONE i32 = 0
+var SPLIT_LEFT i32 = 1
+var SPLIT_RIGHT i32 = 2
+var SPLIT_TOP i32 = 3
+var SPLIT_BOTTOM i32 = 4
+var SPLIT_HORZ i32 = 5
+var SPLIT_VERT i32 = 6
+
+// Globals ...
+var g_splitters[] Splitter
+
+// SplitterId ...
+type SplitterId struct {
+	base ControlId
+	splitter i32
+}
+
+// Splitter ...
+type Splitter struct {
+	id SplitterId
+	direction i32
+	master ControlId
+	slave ControlId
+
+}
+
+// NewSplitterId ...
+func NewSplitterId(base ControlId, splitter i32) (out SplitterId) {
+	out.base = base
+	out.splitter = splitter
+	panicIfNot(IsValidSplitter(out), "invalid id")
+}
+
+// IsValidSplitter ...
+func IsValidSplitter(id SplitterId) (out bool) {
+	out = id.splitter >= 0 && id.splitter < len(g_splitters) && IsValidControl(id.base)
+}
+
+// SplitterSetDirection ...
+func SplitterSetDirection(id SplitterId, direction i32) {
+	panicIfNot(IsValidSplitter(id), "invalid id")
+	g_splitters[id.splitter].direction = direction
+}
+
+// SplitterSetControls ...
+func SplitterSetControls(id SplitterId, master ControlId, slave ControlId) {
+	panicIfNot(IsValidSplitter(id), "invalid id")
+	ControlClearChildren(id.base)
+	g_splitters[id.splitter].master = master
+	ControlAddChild(id.base, master)
+
+	g_splitters[id.splitter].slave = slave
+	ControlAddChild(id.base, slave)
+}
+
+// SplitterCreate ...
+func SplitterCreate(name str) (out SplitterId) {
+	out.splitter = len(g_splitters)
+	out.base = controlCreate(name, GUI_SPLITTER, out.splitter)
+
+	var splitter Splitter
+
+	splitter.direction = SPLIT_NONE
+	splitter.master = InvalidControl()
+	splitter.slave = InvalidControl()
+
+	g_splitters = append(g_splitters, splitter)
+	panicIfNot(IsValidSplitter(out), "invalid id")
+}
+
+// SplitterProcessEvent ...
+func SplitterProcessEvent(id SplitterId, event *app.Event) (out i32) {
+	panicIfNot(IsValidSplitter(id), "invalid id")
+	out = ControlProcessEvent(id.base, event)
+}
+
+// SplitterResize ...
+func SplitterResize(id SplitterId) () {
+	panicIfNot(IsValidSplitter(id), "invalid id")
+	ControlResize(id.base)
+	//ControlPrint("SplitterResize : ", id.base, false)
+	var splitterIndex i32 = id.splitter
+	var direction i32 = g_splitters[splitterIndex].direction
+	//printf("SPLIT %d, %d, %d\n", id.splitter, g_splitters[id.splitter].direction, direction)
+
+	var master ControlId = g_splitters[splitterIndex].master
+	var slave ControlId = g_splitters[splitterIndex].slave
+
+	//ControlPrint("SplitterResize : ", id.base, false)
+	//printf("MASTER %d\n", master.control)
+	panicIfNot(IsValidControl(master), "invalid master")
+	var masterIndex i32 = master.control
+
+	panicIfNot(IsValidControl(slave), "invalid slave")
+	var slaveIndex i32 = slave.control
+
+	var controlIndex i32 = id.base.control
+	var splitterPosition mat.v2 = g_controls[controlIndex].renderPosition
+	var splitterSize mat.v2 = g_controls[controlIndex].size
+
+	var padding mat.v4 = g_controls[controlIndex].padding
+	var spacing mat.v2 = g_controls[controlIndex].spacing
+
+	if (direction == SPLIT_HORZ) {
+		var width f32 = (splitterSize.x - padding.x - padding.z - spacing.x) / 2.0
+		var height f32 = (splitterSize.y - padding.y - padding.w)
+
+		var masterPosition mat.v2 = v2.make(padding.x, padding.y)
+		var masterSize mat.v2 = v2.make(width, height)
+		g_controls[masterIndex].renderPosition = masterPosition
+		g_controls[masterIndex].size = masterSize
+
+		var slaveX f32 = padding.x + spacing.x + width
+		var slavePosition mat.v2 = v2.make(slaveX, padding.y)
+		var slaveSize mat.v2 = v2.make(width, height)
+		g_controls[slaveIndex].renderPosition = slavePosition
+		g_controls[slaveIndex].size = slaveSize
+	} else if (direction == SPLIT_VERT) {
+		var width f32 = (splitterSize.x - padding.x - padding.z)
+		var height f32 = (splitterSize.y - padding.y - padding.w - spacing.y) / 2.0
+
+		var masterPosition mat.v2 = v2.make(padding.x, padding.y)
+		var masterSize mat.v2 = v2.make(width, height)
+		g_controls[masterIndex].renderPosition = masterPosition
+		g_controls[masterIndex].size = masterSize
+
+		var slaveY f32 = padding.y + spacing.y + height
+		var slavePosition mat.v2 = v2.make(padding.x, slaveY)
+		var slaveSize mat.v2 = v2.make(width, height)
+		g_controls[slaveIndex].renderPosition = slavePosition
+		g_controls[slaveIndex].size = slaveSize
+	} else if (direction == SPLIT_BOTTOM) {
+		var oldMasterSize mat.v2 = g_controls[masterIndex].size
+		var width f32 = (splitterSize.x - padding.x - padding.z)
+		var height f32 = (splitterSize.y - padding.y - padding.w - spacing.y - oldMasterSize.y)
+
+		var masterPosition mat.v2 = v2.make(padding.x, padding.y)
+		var masterSize mat.v2 = v2.make(width, oldMasterSize.y)
+		g_controls[masterIndex].renderPosition = masterPosition
+		g_controls[masterIndex].size = masterSize
+
+		var slaveY f32 = padding.y + oldMasterSize.y + spacing.y
+		var slavePosition mat.v2 = v2.make(padding.x, slaveY)
+		var slaveSize mat.v2 = v2.make(width, height)
+		g_controls[slaveIndex].renderPosition = slavePosition
+		g_controls[slaveIndex].size = slaveSize
+	} else if (direction == SPLIT_LEFT) {
+		var oldMasterSize mat.v2 = g_controls[masterIndex].size
+		var width f32 = (splitterSize.x - padding.x - padding.z - spacing.x - oldMasterSize.x)
+		var height f32 = (splitterSize.y - padding.y - padding.w)
+
+		//ControlPrint("SplitterResize : ", master, false)
+		var masterPosition mat.v2 = v2.make(padding.x, padding.y)
+		var masterSize mat.v2 = v2.make(oldMasterSize.x, height)
+		g_controls[masterIndex].renderPosition = masterPosition
+		g_controls[masterIndex].size = masterSize
+
+		var slaveX f32 = padding.x + oldMasterSize.x + spacing.x
+		//printf("MASTER_POSITION %f\n", masterPosition.x)
+		//printf("SLAVE POSITION %f\n", slaveX)
+		var slavePosition mat.v2 = v2.make(slaveX + 10.0, padding.y)
+		var slaveSize mat.v2 = v2.make(width, height)
+		g_controls[slaveIndex].renderPosition = slavePosition
+		g_controls[slaveIndex].size = slaveSize
+	} else {
+		panicIfNot(false, "not implemented")
+	}
+}
+
+// SplitterRender ...
+func SplitterRender(id SplitterId, clip mat.v4, stack i32) () {
+	panicIfNot(IsValidSplitter(id), "invalid id")
+	ControlRender(id.base, clip, stack)
+
+	//var direction i32 = g_splitters[id.splitter].direction
+	//if (direction == SPLIT_LEFT) {
+	//ControlPrint("SplitterRender : ", id.base, false)
+	//var master ControlId = g_splitters[id.splitter].master
+	//var slave ControlId = g_splitters[id.splitter].slave
+	//ControlPrint("SplitterRender : MASTER :", master, false)
+	//ControlPrint("SplitterRender : SLAVE :", slave, false)
+	//}
+}
+
+

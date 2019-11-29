@@ -1,0 +1,148 @@
+package gui
+
+import "gfx"
+import "mat"
+import "v4"
+
+// Globals
+var g_layers []Layer
+
+// LayerId ...
+type LayerId struct {
+	layer i32
+}
+
+// Layer ...
+type Layer struct {
+	id LayerId
+	name str
+	surface mat.v4
+	left mat.v4
+	bottom mat.v4
+	right mat.v4
+	top mat.v4
+}
+
+// InvalidLayer ...
+func InvalidLayer() (out LayerId) {
+	out.layer = -1
+}
+
+// IsValidLayer ...
+func IsValidLayer(id LayerId) (out bool) {
+	out = id.layer >= 0 && id.layer < len(g_layers)
+}
+
+// LayerCreate ...
+func LayerCreate(name str, surface mat.v4, left mat.v4, bottom mat.v4, right mat.v4, top mat.v4) (out LayerId) {
+	out.layer = len(g_layers)
+
+	var layer Layer
+	layer.id = out
+	layer.name = name
+	layer.surface = surface
+	layer.left = left
+	layer.bottom = bottom
+	layer.right = right
+	layer.top = top
+
+	g_layers = append(g_layers, layer)
+	panicIfNot(IsValidLayer(out), "invalid id")
+}
+
+// LayerPrint ...
+func LayerPrint(message str, id LayerId) {
+	panicIfNot(IsValidLayer(id), "invalid id")
+	var index i32 = id.layer
+	printf("%s LAYER_SKIN %d - %s, SURFACE %f, %f, %f, %f, LEFT %f, %f, %f, %f, BOTTOM %f, %f, %f, %f, RIGHT %f, %f, %f, %f, TOP %f, %f, %f, %f\n",
+		message,
+		g_layers[index].id.layer,
+		g_layers[index].name,
+		g_layers[index].surface.x,
+		g_layers[index].surface.y,
+		g_layers[index].surface.z,
+		g_layers[index].surface.w,
+		g_layers[index].left.x,
+		g_layers[index].left.y,
+		g_layers[index].left.z,
+		g_layers[index].left.w,
+		g_layers[index].bottom.x,
+		g_layers[index].bottom.y,
+		g_layers[index].bottom.z,
+		g_layers[index].bottom.w,
+		g_layers[index].right.x,
+		g_layers[index].right.y,
+		g_layers[index].right.z,
+		g_layers[index].right.w,
+		g_layers[index].top.x,
+		g_layers[index].top.y,
+		g_layers[index].top.z,
+		g_layers[index].top.w)
+}
+
+// LayerRender ...
+func LayerRender(layer LayerId, renderBounds mat.v4, renderClips mat.v4, depth f32) {
+	if IsValidLayer(layer) {
+		RenderSurface(g_opaqueVertexColoredTriangles, g_alphaVertexColoredTriangles, renderBounds, g_layers[layer.layer].surface, renderClips, depth)
+		RenderBorder(g_opaqueVertexColoredLines, g_alphaVertexColoredLines,
+		renderBounds,
+		g_layers[layer.layer].left,
+		g_layers[layer.layer].bottom,
+		g_layers[layer.layer].right,
+		g_layers[layer.layer].top,
+		renderClips, depth + 0.00001)
+	}
+}
+
+// RenderSurface ...
+func RenderSurface(opaque gfx.MeshId, alpha gfx.MeshId, bounds mat.v4, color mat.v4, clip mat.v4, depth f32) () {
+	if (color.w > 0.0) {
+		var mesh gfx.MeshId = opaque
+		if (color.w < 1.0) {
+			mesh = alpha
+		}
+		gfx.MeshAppendOrthoQuad(mesh, bounds, v4.make(0.0, 0.0, 1.0, 1.0), color, clip, depth)
+	}
+}
+
+// RenderBorder ...
+func RenderBorder(opaque gfx.MeshId, alpha gfx.MeshId, bounds mat.v4, left mat.v4, bottom mat.v4, right mat.v4, top mat.v4, clip mat.v4, depth f32) () {
+	var x0 f32 = bounds.x
+	var y0 f32 = bounds.y
+	var x1 f32 = x0 + bounds.z
+	var y1 f32 = y0 + bounds.w
+
+	if (left.w > 0.0) {
+		var mesh gfx.MeshId = opaque
+		if (left.w < 1.0) {
+			mesh = alpha
+		}
+		gfx.MeshAppendOrthoLine(mesh, v4.make(x0, y0, x0, y1), left, clip, depth)
+	}
+
+	if (bottom.w > 0.0) {
+		var mesh gfx.MeshId = opaque
+		if (bottom.w < 1.0) {
+			mesh = alpha
+		}
+		gfx.MeshAppendOrthoLine(mesh, v4.make(x0, y0, x1, y0), bottom, clip, depth)
+	}
+
+	if (right.w > 0.0) {
+		var mesh gfx.MeshId = opaque
+		if (right.w < 1.0) {
+			mesh = alpha
+		}
+		gfx.MeshAppendOrthoLine(mesh, v4.make(x1, y0, x1, y1), right, clip, depth)
+	}
+
+	if (top.w > 0.0) {
+		var mesh gfx.MeshId = opaque
+		if (top.w < 1.0) {
+			mesh = alpha
+		}
+		gfx.MeshAppendOrthoLine(mesh, v4.make(x0, y1, x1, y1), top, clip, depth)
+	}
+}
+
+

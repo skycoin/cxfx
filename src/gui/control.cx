@@ -1,0 +1,1067 @@
+package gui
+
+import "app"
+import "mat"
+import "v1"
+import "v2"
+
+// Globals ...
+var g_controls []Control
+var g_cursorPos mat.v2
+
+// ControlId ...
+type ControlId struct {
+	control i32
+}
+
+// Control ...
+type Control struct {
+	id ControlId
+	name str
+	gui_type i32
+	gui_index i32
+
+	skin SkinId
+	parent ControlId
+
+	visible i32
+
+	focusIndex i32
+	focusable i32
+	focused i32
+	childFocused i32
+	selected i32
+
+	hovered i32
+
+	dock i32
+	align i32
+	autosize i32
+	autoscale i32
+
+	position mat.v2
+	size mat.v2
+	scale mat.v2
+	padding mat.v4
+	spacing mat.v2
+
+	renderPosition mat.v2
+	children []ControlId
+}
+
+// InvalidControl ...
+func InvalidControl() (out ControlId) {
+	out.control = -1
+}
+
+// NewControlId ...
+func NewControlId(control i32) (out ControlId) {
+	out.control = control
+	panicIfNot(IsValidControl(out), "invalid id")
+}
+
+// IsValidControl ...
+func IsValidControl(id ControlId) (out bool) {
+	out = id.control >= 0 && id.control < len(g_controls)
+}
+
+// ControlCreate ...
+func ControlCreate(name str) (out ControlId) {
+	out = controlCreate(name, GUI_CONTROL, len(g_controls))
+}
+
+func controlCreate(name str, gui_type i32, gui_index i32) (out ControlId) {
+	out.control = len(g_controls)
+
+	var control Control
+
+	control.id = out
+	control.parent = InvalidControl()
+	control.name = name
+	control.gui_type  = gui_type
+	control.gui_index = gui_index
+
+	control.skin = InvalidSkin()
+
+	control.focusIndex = -1
+	control.focusable = 0
+	control.focused = 0
+
+	control.visible = 1
+
+	control.dock	  = DOCK_NONE
+	control.align	 = ALIGN_NONE
+	control.autosize  = AUTOSIZE_NONE
+	control.autoscale = AUTOSCALE_NONE
+
+	control.position = v2.ZERO
+	control.size = v2.ZERO
+	control.scale = v2.ONE
+	control.padding = v4.ZERO
+	control.spacing = v2.ZERO
+
+	g_controls = append(g_controls, control)
+
+	panicIfNot(IsValidControl(out), "invalid control")
+	//ControlPrint("ControlCreate : ", out, true)
+}
+
+// ControlPrint ...
+func ControlPrint(message str, id ControlId, printSkin bool) {
+	panicIfNot(IsValidControl(id), "invalid control")
+	var index i32 = id.control
+	//if (index == 29 || index == 30) {
+	printf("%s - %d - %s, Type %d, Index %d, Focusable %d, Focusindex %d, Focused %d, ChildFocused %d, Selected %d, Visible %d, Skin %d, Dock %d, Align %d, Autosize %d, Autoscale %d, Padding %f, %f, %f, %f, Position %f, %f, RenderPosition %f, %f, Size %f, %f, Scale %f, %f, Children %d\n",
+		message,
+		g_controls[index].id.control,
+		g_controls[index].name,
+		g_controls[index].gui_type,
+		g_controls[index].gui_index,
+		g_controls[index].focusable,
+		g_controls[index].focusIndex,
+		g_controls[index].focused,
+		g_controls[index].childFocused,
+		g_controls[index].selected,
+		g_controls[index].visible,
+		g_controls[index].skin.skin,
+		g_controls[index].dock,
+		g_controls[index].align,
+		g_controls[index].autosize,
+		g_controls[index].autoscale,
+		g_controls[index].padding.x,
+		g_controls[index].padding.y,
+		g_controls[index].padding.z,
+		g_controls[index].padding.w,
+		g_controls[index].position.x,
+		g_controls[index].position.y,
+		g_controls[index].renderPosition.x,
+		g_controls[index].renderPosition.y,
+		g_controls[index].size.x,
+		g_controls[index].size.y,
+		g_controls[index].scale.x,
+		g_controls[index].scale.y,
+		len(g_controls[index].children))
+
+	if (printSkin == true && IsValidSkin(g_controls[index].skin)) {
+		SkinPrint("ControlPrint : ", g_controls[index].skin)
+	}
+	//}
+}
+
+// ControlSetSkin ...
+func ControlSetSkin(id ControlId, skin SkinId) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	panicIfNot(IsValidSkin(skin), "invalid skin")
+	g_controls[id.control].skin = skin
+}
+
+// ControlSetDock ...
+func ControlSetDock(id ControlId, dock i32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].dock = dock
+}
+
+// ControlSetAlign ...
+func ControlSetAlign(id ControlId, align i32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].align = align
+}
+
+// ControlSetAutosize ...
+func ControlSetAutosize(id ControlId, autosize i32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].autosize = autosize
+}
+
+// ControlSetAutoscale ...
+func ControlSetAutoscale(id ControlId, autoscale i32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].autoscale = autoscale
+}
+
+// ControlSetPosition ...
+func ControlSetPosition(id ControlId, position mat.v2) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].position = position
+}
+
+// ControlSetSize ...
+func ControlSetSize(id ControlId, size mat.v2) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].size = size
+}
+
+// ControlSetBounds ...
+func ControlSetBounds(id ControlId, bounds v4) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].position = v4.xy(bounds)
+	g_controls[id.control].size = v4.zw(bounds)
+}
+
+// ControlSetScale ...
+func ControlSetScale(id ControlId, scale mat.v2) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].scale = scale
+}
+
+// ControlSetVisible ...
+func ControlSetVisible(id ControlId, visible i32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].visible = visible
+}
+
+// ControlSetSelected ...
+func ControlSetSelected(id ControlId, selected i32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].selected = selected
+}
+
+// ControlAddChild ...
+func ControlAddChild(parent ControlId, child ControlId) {
+	panicIfNot(IsValidControl(parent), "invalid parent")
+	panicIfNot(IsValidControl(child), "invalid child")
+	var count i32 = len(g_controls[parent.control].children)
+	g_controls[child.control].focusIndex = count
+	g_controls[child.control].parent = parent
+	g_controls[parent.control].children = append(g_controls[parent.control].children, child)
+}
+
+// ControlClearChildren ...
+func ControlClearChildren(id ControlId) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].children = resize(g_controls[id.control].children, 0)
+}
+
+// ControlSetPadding ...
+func ControlSetPadding(id ControlId, padding mat.v4) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].padding = padding // ##1 id viewport resize
+}
+
+// ControlSetSpacing ...
+func ControlSetSpacing(id ControlId, spacing mat.v2) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].spacing = v2.mul(spacing, v2.make(1.0, gfx.gfx_ratio_y)) // ##1 id viewport resize
+}
+
+// ControlSetFocusIndex ...
+func ControlSetFocusIndex(id ControlId, value i32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].focusIndex = value
+}
+
+// ControlSetFocusable ...
+func ControlSetFocusable(id ControlId, value i32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	g_controls[id.control].focusable = value
+	//ControlPrint("SET_FOCUSABLE : ", id, false)
+}
+
+// ControlSetParentFocus ...
+func ControlSetParentFocus(id ControlId, child ControlId, value i32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	var parent ControlId = g_controls[id.control].parent
+	if (IsValidControl(parent)) {
+		g_controls[parent.control].childFocused = value
+		ControlSetParentFocus(parent, child, value)
+
+		var guiType i32 = g_controls[parent.control].gui_type
+		var guiIndex i32 = g_controls[parent.control].gui_index
+
+		if (guiType == GUI_INVALID) {
+			panicIfNot(false, "invalid gui type (GUI_INVALID)")
+		} else if (guiType == GUI_CONTROL) {
+			var dummy i32 = 0
+		} else if (guiType == GUI_SCREEN) {
+			var dummy i32 = 0
+		} else if (guiType == GUI_PICTURE) {
+			var dummy i32 = 0
+		} else if (guiType == GUI_LABEL) {
+			var dummy i32 = 0
+		} else if (guiType == GUI_KEYBOARD) {
+			var dummy i32 = 0
+		} else if (guiType == GUI_WINDOW) {
+			var dummy i32 = 0
+		} else if (guiType == GUI_GRAPH) {
+			var dummy i32 = 0
+		} else if (guiType == GUI_SPLITTER) {
+			var dummy i32 = 0
+		} else if (guiType == GUI_LIST) {
+			ListChildFocus(NewListId(parent, guiIndex), child, value)
+		} else if (guiType == GUI_SCROLLER) {
+			var dummy i32 = 0
+		} else if (guiType == GUI_LIFTER) {
+			var dummy i32 = 0
+		} else if (guiType == GUI_BINDER) {
+			var dummy i32 = 0
+		} else if (guiType == GUI_COMBO) {
+			var dummy i32 = 0
+		} else {
+			printf("GUI TYPE %d\n", guiType)
+			panicIfNot(false, "unknown gui type")
+		}
+
+		//ControlPrint("ControlSetParentFocus : ", parent, false)
+	}
+}
+
+/*func control_set_parent_select(id ControlId, value i32) {
+	//printf("set_parent_focus : %d\n", id.control)
+	panicIfNot(IsValidControl(id), "invalid id")
+	var parent ControlId = g_controls[id.control].parent
+	if (IsValidControl(parent)) {
+		g_controls[parent.control].childSelected = value
+		control_set_parent_select(parent, value)
+	}
+}*/
+
+// ControlParentVisible ...
+func ControlParentVisible(id ControlId) (out bool) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	var visible i32 = g_controls[id.control].visible
+	if (visible <= 0) {
+		out = false
+	} else {
+		out = true
+		var parent ControlId = g_controls[id.control].parent
+		if (IsValidControl(parent)) {
+			out = ControlParentVisible(parent)
+		}
+	}
+}
+
+// ControlHovered ...
+func ControlHovered(id ControlId) (out i32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	out = 0
+
+	var position mat.v2 = g_controls[id.control].renderPosition
+	var size mat.v2 = g_controls[id.control].size
+
+	var left f32 = position.x
+	var right f32 = left + size.x
+	var bottom f32 = position.y
+	var top f32 = bottom + size.y
+	if (g_cursorPos.x >= left && g_cursorPos.x <= right &&
+		g_cursorPos.y >= bottom && g_cursorPos.y <= top) {
+		out = 1
+	}
+	/*if (id.control == 158) {
+		ControlPrint("CONTROL_HOVERED : ", id, false)
+		printf("BOUNDS %f, %f, %f, %f, POS %f, %f", left, right, bottom, top, g_cursorPos.x, g_cursorPos.y)
+	}*/
+}
+
+// ControlFocused ...
+func ControlFocused(id ControlId) (out i32) { // ##pending issue bool
+	out = 0
+	panicIfNot(IsValidControl(id), "invalid id")
+	var focused i32 = g_controls[id.control].focused
+	if (focused > 0) {
+		out = focused
+	}
+
+	var childFocused i32 = g_controls[id.control].childFocused
+	if (childFocused > 0) {
+		out = childFocused
+	}
+}
+
+func controlResize(id ControlId, pixelBounds mat.v2, autoBounds mat.v2) () {
+	panicIfNot(IsValidControl(id), "invalid id")
+	var visible i32 = g_controls[id.control].visible
+	if (visible > 0) {
+	//ControlPrint("controlResize begin : ", id, false)
+	//printf("pixelBounds %f, %f, bounds %f, %f, autoBounds %f, %f\n", pixelBounds.x, pixelBounds.y, bounds.x, bounds.y, autoBounds.x, autoBounds.y)
+
+	var index i32 = id.control
+
+	var dock i32 = g_controls[index].dock
+	var autoscale i32 = g_controls[index].autoscale
+	var scale mat.v2 = g_controls[index].scale
+	var autosize i32 = g_controls[index].autosize
+
+	var padding mat.v4 = g_controls[index].padding
+	var newWidth f32 = g_controls[index].size.x
+	var newHeight f32 = g_controls[index].size.y
+
+	var paddingLeft f32 = padding.x
+	var paddingBottom f32 = padding.y
+	var paddingRight f32 = padding.z
+	var paddingTop f32 = padding.w
+	var paddingX f32 = paddingLeft + paddingRight
+	var paddingY f32 = paddingBottom + paddingTop
+	var maxWidth f32 = 0.0
+	var maxHeight f32 = 0.0
+
+	/*if (autosize == AUTOSIZE) {
+		ControlPrint("AUTOSIZE : ", id, false)
+	}*/
+
+
+	var minX f32 = v1.MAX
+	var minY f32 = v1.MAX
+
+	var maxX f32 = v1.MIN
+	var maxY f32 = v1.MIN
+
+	var count i32 = len(g_controls[index].children)
+	for i := 0; i < count; i = i + 1 {
+		var child ControlId = g_controls[index].children[i]
+		var childIndex i32 = child.control
+		panicIfNot(IsValidControl(child), "invalid child control")
+		var childVisible i32 = g_controls[child.control].visible
+		if (childVisible > 0) {
+			var guiType i32 = g_controls[childIndex].gui_type
+			var guiIndex i32 = g_controls[childIndex].gui_index
+
+			if (guiType == GUI_INVALID) {
+			   panicIfNot(false, "invalid gui type (GUI_INVALID)")
+			} else if (guiType == GUI_CONTROL) {
+				panicIfNot(guiIndex == childIndex, "unexpected error")
+				ControlResize(NewControlId(guiIndex))
+			} else if (guiType == GUI_SCREEN) {
+				panicIfNot(false, "unidd recursive screen")
+			} else if (guiType == GUI_PICTURE) {
+				PictureResize(NewPictureId(child, guiIndex))
+			} else if (guiType == GUI_LABEL) {
+				LabelResize(NewLabelId(child, guiIndex))
+			} else if (guiType == GUI_KEYBOARD) {
+				KeyboardResize(NewKeyboardId(child, guiIndex))
+			} else if (guiType == GUI_WINDOW) {
+				WindowResize(NewWindowId(child, guiIndex))
+			} else if (guiType == GUI_GRAPH) {
+				GraphResize(NewGraphId(child, guiIndex))
+			} else if (guiType == GUI_SPLITTER) {
+				SplitterResize(NewSplitterId(child, guiIndex))
+			} else if (guiType == GUI_LIST) {
+				ListResize(NewListId(child, guiIndex))
+			} else if (guiType == GUI_SCROLLER) {
+				ScrollerResize(NewScrollerId(child, guiIndex))
+			} else if (guiType == GUI_LIFTER) {
+				LifterResize(NewLifterId(child, guiIndex))
+			} else if (guiType == GUI_BINDER) {
+				BinderResize(NewBinderId(child, guiIndex))
+			} else if (guiType == GUI_COMBO) {
+				ComboResize(NewComboId(child, guiIndex))
+			} else {
+				printf("GUI TYPE %d\n", guiType)
+					panicIfNot(false, "unknown gui type")
+			}
+
+			var position mat.v2 = g_controls[child.control].renderPosition
+				var size mat.v2 = g_controls[child.control].size
+
+				maxWidth = v1.max(maxWidth, size.x)
+				maxHeight = v1.max(maxHeight, size.y)
+
+				minX = v1.min(minX, position.x)
+				minY = v1.min(minY, position.y)
+				maxX = v1.max(maxX, position.x + size.x)
+				maxY = v1.max(maxY, position.y + size.y)
+
+				/*if (index == 36) {
+				  ControlPrint("controlResize child ", child, false)
+				  printf("%s, %d/%d : MAXWIDTH %f, MAXHEIGHT %f, POSX %f, POSY %f, SIZEX %f, SIZEY %f\n",
+				  g_controls[child.control].name, i + 1, count, maxWidth, maxHeight,
+				  position.x, position.y, size.x, size.y)
+				  }*/
+		}
+	}
+
+
+	maxWidth = maxX - minX
+	maxHeight = maxY - minY
+	/*if (index == 36) {
+	  printf("MINY %f, MAXY %f, MAXHEIGHT %f, PADDINGY %f\n", minY, maxY, maxHeight, paddingY)
+	  }*/
+
+	var scaleW f32 = scale.x
+	var scaleH f32 = scale.y
+	if (autoscale == AUTOSCALE || autoscale == AUTOSCALE_X || autoscale == AUTOSCALE_Y) {
+		if (autoBounds.x > 0.0 && autoBounds.y > 0.0) {
+			//ControlPrint("AUTOSCALE : ", id, false)
+			//printf("scale %f, %f, newWidth %f, newHeight %f, autoBounds %f, %f\n", scale.x, scale.y, newWidth, newHeight, autoBounds.x, autoBounds.y)
+			if ((autoscale & AUTOSCALE_X) == AUTOSCALE_X) {
+				panicIfNot((autosize & AUTOSIZE_X) == 0, "AUTOSCALE_X is not compatible with AUTOSIZE_X")
+				var tmp f32 = scaleW
+				scaleW = newWidth / autoBounds.x
+				if autoscale == AUTOSCALE_X {
+					scaleH = scaleW * scaleH / tmp
+				}
+			}
+
+			if ((autoscale & AUTOSCALE_Y) == AUTOSCALE_Y) {
+				panicIfNot((autosize & AUTOSIZE_Y) == 0, "AUTOSCALE_Y is not compatible with AUTOSCALE_Y")
+				var tmp f32 = scaleH
+				scaleH = newHeight / autoBounds.y
+				if autoscale == AUTOSCALE_Y {
+					scaleW = scaleH * scaleW / tmp
+				}
+			}
+
+			if (autoscale == AUTOSCALE) {
+				if (scaleW < scaleH) {
+					scaleH = scaleW
+					var newScale mat.v2 = v2.make(scaleW, scaleH/* / gfx.gfx_ratio_y*/)
+					g_controls[index].scale = newScale
+					//ControlPrint("after_pop", id, false)
+
+				} else {
+					scaleW = scaleH
+					var newScale mat.v2 = v2.make(scaleW/* * gfx.gfx_ratio_x*/, scaleH) // TODO : remove tmp
+					g_controls[index].scale = newScale
+				}
+			} else {
+				var newScale mat.v2 = v2.make(scaleW, scaleH) // TODO : remove tmp
+				g_controls[index].scale = newScale
+			}
+		}
+	} else {
+		panicIfNot(autoscale == AUTOSCALE_NONE, "invalid AUTOSCALE value")
+	}
+
+	if (autosize == AUTOSIZE || autosize == AUTOSIZE_X || autosize == AUTOSIZE_Y) {
+		if ((autosize & AUTOSIZE_X) == AUTOSIZE_X) {
+			//panicIfNot(dock == DOCK_NONE || dock == DOCK_LEFT || dock == DOCK_RIGHT, "AUTOSIZE_X is not compatible with DOCK_Y")
+			panicIfNot((autoscale & AUTOSCALE_X) == 0, "AUTOSIZE_X is not compatible with AUTOSCALE_X")
+			newWidth = v1.max(maxWidth + paddingX, autoBounds.x) * scaleW// - paddingX
+			//if (index == 36) {
+			//	printf("NEW_WIDTH %f, MAX_WIDTH %f, AUTO_BOUNDS_X %f, PADDING %f\n", newWidth, maxWidth, autoBounds.x, paddingX)
+			//}
+		}
+		if ((autosize & AUTOSIZE_Y) == AUTOSIZE_Y) {
+			//panicIfNot(dock == DOCK_NONE || dock == DOCK_BOTTOM || dock == DOCK_TOP, "AUTOSIZE_Y is not compatible with DOCK_X")
+			panicIfNot((autoscale & AUTOSCALE_Y) == 0, "AUTOSIZE_Y is not compatible with AUTOSCALE_Y")
+			newHeight = v1.max(maxHeight +  paddingY, autoBounds.y) * scaleH// - paddingY
+			/*if (index == 36) {
+			  printf("NEW_HEIGHT %f, AUTO_BOUNDS_Y %f\n", maxHeight, autoBounds.y)
+			  }*/
+		}
+
+		g_controls[index].size = v2.make(newWidth, newHeight)
+		//ControlPrint("NEW_SIZE : ", id, false)
+	} else {
+		panicIfNot(autosize == AUTOSIZE_NONE, "invalid AUTOSIZE value")
+	}
+	/*if (id.control == 36) {
+	  ControlPrint("controlResize end", id, false)
+	  }*/
+	}
+}
+
+// ControlResize ...
+func ControlResize(id ControlId) () {
+	panicIfNot(IsValidControl(id), "invalid id")
+	var visible i32 = g_controls[id.control].visible
+	if (visible > 0) {
+		var pixelBounds mat.v2 = g_controls[id.control].size
+		//var pixelBounds mat.v2 = v2.mul(bounds, gfx.gfx_viewport_size)
+		controlResize(id, pixelBounds, v2.ZERO)
+	}
+}
+
+// ControlMeasure ...
+func ControlMeasure(id ControlId) (width f32, height f32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+
+	var index i32 = id.control
+
+	var guiType i32 = g_controls[index].gui_type
+	var guiIndex i32 = g_controls[index].gui_index
+
+	width = -1.0
+	height = -1.0
+	if (guiType == GUI_INVALID) {
+		panicIfNot(false, "invalid gui type (GUI_INVALID)")
+	} else if (guiType == GUI_CONTROL) {
+		panicIfNot(false, "not implemented")
+	} else if (guiType == GUI_SCREEN) {
+		panicIfNot(false, "not implemented")
+	} else if (guiType == GUI_PICTURE) {
+		width, height = PictureMeasure(NewPictureId(id, guiIndex))
+	} else if (guiType == GUI_LABEL) {
+		width, height = LabelMeasure(NewLabelId(id, guiIndex))
+	} else if (guiType == GUI_KEYBOARD) {
+		panicIfNot(false, "not implemented")
+	} else if (guiType == GUI_WINDOW) {
+		panicIfNot(false, "not implemented")
+	} else if (guiType == GUI_GRAPH) {
+		panicIfNot(false, "not implemented")
+	} else if (guiType == GUI_SPLITTER) {
+		panicIfNot(false, "not implemented")
+	} else if (guiType == GUI_LIST) {
+		panicIfNot(false, "not implemented")
+	} else if (guiType == GUI_SCROLLER) {
+		panicIfNot(false, "not implemented")
+	} else if (guiType == GUI_LIFTER) {
+		panicIfNot(false, "not implemented")
+	} else if (guiType == GUI_BINDER) {
+		panicIfNot(false, "not implemented")
+	} else if (guiType == GUI_COMBO) {
+		panicIfNot(false, "not implemented")
+	} else {
+		printf("GUI TYPE %d\n", guiType)
+		panicIfNot(false, "unknown gui type")
+	}
+}
+
+// ControlAlign ...
+func ControlAlign(id ControlId, align i32, posx f32, posy f32, width f32, height f32, contX f32, contY f32, contW f32, contH f32, padding mat.v4) (x f32, y f32) {
+	x = posx
+	y = posy
+
+	if (align == ALIGN_CENTER) {
+		x = contX + (contW - width) / 2.0
+		y = contY + (contH - height) / 2.0
+		/*if (id.control == 57) {
+		  ControlPrint("align_center : ", id, false)
+		  printf("ALIGN_CENTER CONTX %f, CONTY %f, CONTW %f, CONTH %f, WIDTH %f, HEIGHT %f OFFSET X %f, OFFSET Y %f\n", contX, contY, contW, contH, width, height, x, y)
+		  }*/
+	} else if (align == ALIGN_HORZ_BOTTOM) {
+		x = contX + (contW - width) / 2.0
+		y = contY + padding.y
+		//ControlPrint(index, "ALIGN_HORZ_BOTTOM : ")
+	} else if (align == ALIGN_HORZ_TOP) {
+		panicIfNot(false, "ALIGN_HORZ_TOP not implemented")
+	} else if (align == ALIGN_VERT_LEFT) {
+		panicIfNot(false, "ALIGN_VERT_LEFT not implemented")
+	} else if (align == ALIGN_VERT_RIGHT) {
+		panicIfNot(false, "ALIGN_VERT_RIGHT not implemented")
+	} else if (align == ALIGN_LEFT_BOTTOM) {
+		panicIfNot(false, "ALIGN_LEFT_BOTTOM not implemented")
+	} else if (align == ALIGN_RIGHT_BOTTOM) {
+		panicIfNot(false, "ALIGN_RIGHT_BOTTOM not implemented")
+	} else if (align == ALIGN_HORZ) {
+		panicIfNot(false, "ALIGN_HORZ not implemented")
+	} else if (align == ALIGN_VERT) {
+		panicIfNot(false, "ALIGN_VERT not implemented")
+	} else if (align == ALIGN_LEFT_TOP) {
+		panicIfNot(false, "ALIGN_LEFT_TOP not implemented")
+	} else if (align == ALIGN_RIGHT_TOP) {
+		panicIfNot(false, "ALIGN_RIGHT_TOP not implemented")
+	} else if (align == ALIGN_LEFT) {
+		panicIfNot(false, "ALIGN_LEFT not implemented")
+	} else if (align == ALIGN_RIGHT) {
+		x = contX + contW - width - padding.z
+		y = contY + padding.w + (contH - height - padding.y - padding.w) / 2.0
+		/*if (id.control == 153) {
+		  printf("ALIGN_CONTROL CONTX %f, CONTY %f, CONTW %f, CONTH %f, WIDTH %f, HEIGHT %f OFFSET X %f, OFFSET Y %f\n", contX, contY, contW, contH, width, height, x, y)
+		  }*/
+	} else if (align == ALIGN_BOTTOM) {
+		panicIfNot(false, "ALIGN_BOTTOM not implemented")
+	} else if (align == ALIGN_TOP) {
+		panicIfNot(false, "ALIGN_TOP not implemented")
+	} else if (align != ALIGN_NONE) {
+		//x = bounds.x
+		//y = bounds.y
+		//w = bounds.z
+		//h = bounds.w
+		//} else {
+		panicIfNot(false, "invalid align property")
+	}
+}
+
+// ControlRedock
+func ControlRedock(id ControlId, padding mat.v4) () {
+	panicIfNot(IsValidControl(id), "invalid id")
+	var visible i32 = g_controls[id.control].visible
+	if (visible > 0) {
+		/*if (id.control == 85) {
+		  ControlPrint("begin_ControlRedock : ", id, false)
+		  }*/
+
+		var index i32 = id.control
+		var w f32 = 0.0
+		var h f32 = 0.0
+		var x f32 = 0.0
+		var y f32 = 0.0
+
+		var dock i32 = g_controls[index].dock
+		var align i32 = g_controls[index].align
+		var autosize i32 = g_controls[index].autosize
+		var autoscale i32 = g_controls[index].autoscale
+		var size mat.v2 = g_controls[index].size
+		var position mat.v2 = g_controls[index].position
+		var parentPadding mat.v4 = g_controls[index].padding
+
+		var paddingLeft f32 = padding.x
+		var paddingBottom f32 = padding.y
+		var paddingRight f32 = padding.z
+		var paddingTop f32 = padding.w
+
+		var paddingX f32 = paddingLeft + paddingRight
+		var paddingY f32 = paddingBottom + paddingTop
+
+		/*if (dock != DOCK_NONE) {
+		  panicIfNot(align == ALIGN_NONE, "incompatible align & dock options")
+		  }*/
+
+		if (dock == DOCK_FILL) {
+			x = g_dock.left + paddingLeft
+			w = g_dock.right - g_dock.left - paddingX
+			h = g_dock.top - g_dock.bottom - paddingY
+			y = g_dock.bottom + paddingBottom
+			//panicIfNot(mat.is_nan(y) == false, "DOCK_FILL y nan")
+			//panicIfNot(autosize == AUTOSIZE_NONE, "DOCK_FILL is not compatible with AUTOSIZE")
+			/*if (index == 153) {
+			  ControlPrint("DOCK_FILL : ", id, false)
+			  }*/
+		} else if (dock == DOCK_LEFT) {
+			x = g_dock.left + paddingLeft
+			w = size.x
+			h = g_dock.top - g_dock.bottom - paddingY
+			y = g_dock.top - h - paddingTop
+			//panicIfNot(mat.is_nan(y) == false, "DOCK_LEFT y nan")
+			g_dock.left = x + w
+			//panicIfNot((autosize & AUTOSIZE_Y) == 0, "DOCK_LEFT is not compatible with AUTOSIZE_Y")
+		} else if (dock == DOCK_RIGHT) {
+			w = size.x
+			x = g_dock.right - w - paddingLeft
+			h = g_dock.top - g_dock.bottom - paddingY
+			y = g_dock.top - h - paddingTop
+			g_dock.right = x
+			//panicIfNot((autosize & AUTOSIZE_Y) == 0, "DOCK_RIGHT is not compatible with AUTOSIZE_Y")
+		} else if (dock == DOCK_TOP) {
+			x = g_dock.left + paddingLeft
+			w = g_dock.right - g_dock.left - paddingX
+			h = size.y
+			y = g_dock.top - h - paddingTop
+			//panicIfNot(mat.is_nan(y) == false, "DOCK_TOP y nan")
+			/*if (index == 29 || index == 30) {
+			  printf("DOCK_TOP %f, %f, %f, %f\n", g_dock.top, h, paddingTop, y)
+			  }*/
+			g_dock.top = y
+			//panicIfNot((autosize & AUTOSIZE_X) == 0, "DOCK_TOP is not compatible with AUTOSIZE_X")
+			//ControlPrint("DOCK_TOP : ", id, false)
+			//printf("DOCK_TOP %f, %f, %f\n", g_dock.top, y, h)
+		} else if (dock == DOCK_BOTTOM) {
+			x = g_dock.left + paddingLeft
+			w = g_dock.right - g_dock.left - paddingX
+			h = size.y
+			y = g_dock.bottom + paddingBottom// + h
+			g_dock.bottom = y + h
+			//panicIfNot(mat.is_nan(y) == false, "DOCK_BOTTOM y nan")
+			//panicIfNot((autosize & AUTOSIZE_X) == 0, "DOCK_BOTTOM is not compatible with AUTOSIZE_X")
+			//ControlPrint("DOCK_BOTTOM : ", id, false)
+		} else if (dock == DOCK_NONE) {
+			x = position.x
+			y = position.y
+			w = size.x
+			h = size.y
+			//panicIfNot(mat.is_nan(y) == false, "DOCK_NONE y nan")
+			/*if (index == 50) {
+			  ControlPrint("ControlRedock : ", id, false)
+			  printf("x %f, y %f, w %f, h %f\n", x, y, w, h)
+			  }*/
+		} else {
+			panicIfNot(false, "invalid dock value")
+		}
+
+		var contX f32 = g_dock.left
+		var contY f32 = g_dock.bottom
+		var contW f32 = g_offset.width//g_dock.right - g_dock.left//g_offset.width
+		var contH f32 = g_offset.height//g_dock.top - g_dock.bottom//g_offset.height
+
+		/*if (index == 153) {
+		  ControlPrint("befor align : ", id, false)
+		  printf("redock %f, %f\n", x, y)
+		  }*/
+		x, y = ControlAlign(id, align, x, y, size.x, size.y, contX, contY, contW, contH, padding)
+		/*if (index == 153) {
+		  ControlPrint("after align : ", id, false)
+		  printf("redock %f, %f\n", x, y)
+		  }*/
+		PushScope()
+
+		//panicIfNot(mat.is_nan(y) == false, "y nan")
+		g_offset.x = g_offset.x + x
+		g_offset.y = g_offset.y + y
+		g_offset.width = w
+		g_offset.height = h
+
+		g_dock.left = 0.0
+		g_dock.bottom = 0.0
+		g_dock.right = w
+		g_dock.top = h
+
+		//ControlPrint(index, "child")
+		var count i32 = len(g_controls[index].children)
+		for i := 0; i < count; i = i + 1 {
+			var child ControlId = g_controls[index].children[i]
+			panicIfNot(IsValidControl(child), "invalid child control")
+			var childVisible i32 = g_controls[child.control].visible
+			if (childVisible > 0) {
+				///printf("REDOCK_CHILD %d/%d\n", i + 1, count)
+				var childControl i32 = child.control
+				var guiType i32 = g_controls[childControl].gui_type
+				var guiIndex i32 = g_controls[childControl].gui_index
+
+				if (guiType == GUI_INVALID) {
+					panicIfNot(false, "invalid gui type (GUI_INVALID)")
+				} else if (guiType == GUI_CONTROL) {
+					panicIfNot(guiIndex == childControl, "unexpected error")
+					/*if (index == 85) {
+					  ControlPrint("REDOCK :", child, false)
+					  }*/
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else if (guiType == GUI_SCREEN) {
+					panicIfNot(false, "unidd recursive screen")
+				} else if (guiType == GUI_PICTURE) {
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else if (guiType == GUI_LABEL) {
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else if (guiType == GUI_KEYBOARD) {
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else if (guiType == GUI_WINDOW) {
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else if (guiType == GUI_GRAPH) {
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else if (guiType == GUI_SPLITTER) {
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else if (guiType == GUI_LIST) {
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else if (guiType == GUI_SCROLLER) {
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else if (guiType == GUI_LIFTER) {
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else if (guiType == GUI_BINDER) {
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else if (guiType == GUI_COMBO) {
+					ControlRedock(NewControlId(childControl), parentPadding)
+				} else {
+					//ControlPrint("ControlRedock parent : ", id, false)
+					//ControlPrint("ControlRedock child : ", child, false)
+					panicIfNot(false, "unknown gui type")
+				}
+			}
+		}
+
+		g_controls[index].renderPosition = v2.make(g_offset.x, g_offset.y)
+		//panicIfNot(mat.is_nan(g_offset.y) == false, "nan")
+		//ControlPrint("after ControlRedock : ", id, false)
+		//g_controls[index].renderSize = v2.make(g_offset.width, g_offset.height)
+		var newWidth f32 = g_offset.width
+		var newHeight f32 = g_offset.height
+
+		if ((autosize & AUTOSIZE_X) == AUTOSIZE_X) {
+			panicIfNot((autoscale & AUTOSCALE_X) == 0, "AUTOSIZE_X is not compatible with AUTOSCALE_X")
+			//panicIfNot(dock == DOCK_NONE || dock == DOCK_LEFT || dock == DOCK_RIGHT, "AUTOSIZE_X is not compatible with DOCK_Y")
+			newWidth = g_controls[index].size.x
+			//newWidth = newWidth - paddingX // ##pending_7
+			/*if (index == 36) {
+			  printf("AUTOSIZE NEW WIDTH %f, %f, %f\n", newWidth, g_controls[index].size.x, paddingX)
+			  }*/
+		}
+		if ((autosize & AUTOSIZE_Y) == AUTOSIZE_Y) {
+			panicIfNot((autoscale & AUTOSCALE_Y) == 0, "AUTOSIZE_Y is not compatible with AUTOSCALE_Y")
+			//panicIfNot(dock == DOCK_NONE || dock == DOCK_TOP || dock == DOCK_BOTTOM, "AUTOSIZE_Y is not compatible with DOCK_X")
+			newHeight = g_controls[index].size.y
+			//newHeight = newHeight - paddingY // ##pending_7
+			//printf("AUTOSIZE NEW HEIGHT %f, %f, %f\n", newHeight, g_controls[index].size.y, paddingY)
+		}
+		g_controls[index].size = v2.make(newWidth, newHeight)
+
+		/*if (id.control == 50) {
+		  ControlPrint("end_ControlRedock", id, false)
+		  }*/
+		PopScope()
+	}
+}
+
+// ControlRender ...
+func ControlRender(id ControlId, clip mat.v4, stack i32) () {
+	//fps.StartProfile(g_profileRenderControlFull)
+
+	panicIfNot(IsValidControl(id), "invalid control index")
+
+	var index i32 = id.control
+	var visible i32 = g_controls[index].visible
+	if (visible > 0) {
+		var renderBounds mat.v4 = v4.make_v22(g_controls[index].renderPosition, g_controls[index].size)
+		var renderClips mat.v4 = gfx.PushScissor(g_controls[index].name, renderBounds)
+		//fps.StartProfile(g_profileControlRender)
+		var skin SkinId = g_controls[index].skin
+		panicIfNot(IsValidSkin(skin) || skin.skin == -1, "invalid control skin")
+		if IsValidSkin(skin) {
+			var depth f32 = ComputeDepth(stack)
+			var focused i32 = g_controls[index].focused
+			var childFocused i32 = g_controls[index].childFocused
+			var selected i32 = g_controls[index].selected
+			var backLayer LayerId = g_skins[skin.skin].back
+			var frontLayer LayerId = g_skins[skin.skin].front
+
+			if (focused > 0 || childFocused > 0) {
+				var backFocusedLayer LayerId = g_skins[skin.skin].focused_back
+				if (IsValidLayer(backFocusedLayer)) {
+					backLayer = backFocusedLayer
+				}
+				var frontFocusedLayer LayerId = g_skins[skin.skin].focused_front
+				if (IsValidLayer(frontFocusedLayer)) {
+					frontLayer = frontFocusedLayer
+				}
+			} else if (selected > 0) {
+				var backSelectedLayer LayerId = g_skins[skin.skin].selected_back
+				if (IsValidLayer(backSelectedLayer)) {
+					backLayer = backSelectedLayer
+				}
+				var frontSelectedLayer LayerId = g_skins[skin.skin].selected_front
+				if (IsValidLayer(frontSelectedLayer)) {
+					frontLayer = frontSelectedLayer
+				}
+			}
+
+			var hovered i32 = g_controls[id.control].hovered
+			LayerRender(backLayer, renderBounds, renderClips, depth)
+			if (hovered > 0) {
+				LayerRender(g_skins[skin.skin].hoverBack, renderBounds, renderClips, depth + 0.05)
+			}
+			LayerRender(frontLayer, renderBounds, renderClips, depth + 0.1)
+			if (hovered > 0) {
+				LayerRender(g_skins[skin.skin].hoverFront, renderBounds, renderClips, depth + 0.15)
+			}
+		}
+		//fps.StopProfile(g_profileControlRender)
+
+		//fps.StartProfile(g_profileControlRenderChild)
+		var childStack i32 = stack + 1
+		var count i32 = len(g_controls[index].children)
+		for i := 0; i < count; i = i + 1 {
+			var child ControlId = g_controls[index].children[i]
+			panicIfNot(IsValidControl(child), "invalid child control")
+			var childVisible i32 = g_controls[child.control].visible
+			if (childVisible > 0) {
+				var guiType i32 = g_controls[child.control].gui_type
+				var guiIndex i32 = g_controls[child.control].gui_index
+
+				if (guiType == GUI_INVALID) {
+					panicIfNot(false, "invalid gui type (GUI_INVALID)")
+				} else if (guiType == GUI_CONTROL) {
+					//ControlPrint(guiIndex, "ControlRender_child GUI_CONTROL : ")
+					panicIfNot(child.control == guiIndex, "unexpected error")
+					ControlRender(child, renderBounds, childStack)
+				} else if (guiType == GUI_SCREEN) {
+					panicIfNot(false, "unidd recursive screen")
+				} else if (guiType == GUI_PICTURE) {
+					PictureRender(NewPictureId(child, guiIndex), renderBounds, childStack)
+				} else if (guiType == GUI_LABEL) {
+					LabelRender(NewLabelId(child, guiIndex), renderBounds, childStack)
+				} else if (guiType == GUI_KEYBOARD) {
+					KeyboardRender(NewKeyboardId(child, guiIndex), renderBounds, childStack)
+				} else if (guiType == GUI_WINDOW) {
+					WindowRender(NewWindowId(child, guiIndex), renderBounds, childStack)
+				} else if (guiType == GUI_GRAPH) {
+					GraphRender(NewGraphId(child, guiIndex), renderBounds, childStack)
+				} else if (guiType == GUI_SPLITTER) {
+					SplitterRender(NewSplitterId(child, guiIndex), renderBounds, childStack)
+				} else if (guiType == GUI_LIST) {
+					ListRender(NewListId(child, guiIndex), renderBounds, childStack)
+				} else if (guiType == GUI_SCROLLER) {
+					ScrollerRender(NewScrollerId(child, guiIndex), renderBounds, childStack)
+				} else if (guiType == GUI_LIFTER) {
+					LifterRender(NewLifterId(child, guiIndex), renderBounds, childStack)
+				} else if (guiType == GUI_BINDER) {
+					BinderRender(NewBinderId(child, guiIndex), renderBounds, childStack)
+				} else if (guiType == GUI_COMBO) {
+					ComboRender(NewComboId(child, guiIndex), renderBounds, childStack)
+				} else {
+					printf("GUI TYPE %d\n", guiType)
+					panicIfNot(false, "unknown gui type")
+				}
+			}
+		}
+		gfx.PopScissor()
+		//ControlPrint("after ControlRender : ", id, false)
+		//fps.StopProfile(g_profileControlRenderChild)
+	}
+	//fps.StopProfile(g_profileRenderControlFull)
+}
+
+func ControlProcessEvent(id ControlId, event *app.Event) (out i32) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	out = app.EVENT_UNUSED
+
+	var childHovered i32 = 0
+	var parent ControlId = g_controls[id.control].parent
+	if (IsValidControl(parent)) {
+		var parentHovered i32 = g_controls[parent.control].hovered
+		if (parentHovered > 0) {
+			childHovered = ControlHovered(id)
+		}
+	} else {
+		childHovered = ControlHovered(id)
+	}
+	g_controls[id.control].hovered = childHovered
+	var visible i32 = g_controls[id.control].visible
+	if (visible > 0) {
+		//ControlPrint("ControlProcessEvent : ", id, false)
+
+		if childHovered > 0 {
+			var focusable i32 = g_controls[id.control].focusable
+			if (focusable > 0) {
+				var action i32 = (*event).mouse.action
+				if (action == app.MOUSE_PRESS) {
+				   ForceFocus(id)
+				}
+			}
+		}
+
+		var index i32 = id.control
+		var count i32 = len(g_controls[index].children)
+		for i := 0; i < count; i = i + 1 {
+			var child ControlId = g_controls[index].children[i]
+			panicIfNot(IsValidControl(child), "invalid child control")
+			var childVisible i32 = g_controls[child.control].visible
+			if (childVisible > 0) {
+				var guiType i32 = g_controls[child.control].gui_type
+				var guiIndex i32 = g_controls[child.control].gui_index
+
+				if (guiType == GUI_INVALID) {
+				   panicIfNot(false, "invalid gui type (GUI_INVALID)")
+				} else if (guiType == GUI_CONTROL) {
+					panicIfNot(guiIndex == child.control, "unexpected error")
+					out = ControlProcessEvent(NewControlId(guiIndex), event)
+				} else if (guiType == GUI_SCREEN) {
+					out = ScreenProcessEvent(NewScreenId(child, guiIndex), event)
+				} else if (guiType == GUI_PICTURE) {
+					out = PictureProcessEvent(NewPictureId(child, guiIndex), event)
+				} else if (guiType == GUI_LABEL) {
+					out = LabelProcessEvent(NewLabelId(child, guiIndex), event)
+				} else if (guiType == GUI_KEYBOARD) {
+					out = KeyboardProcessEvent(NewKeyboardId(child, guiIndex), event)
+				} else if (guiType == GUI_WINDOW) {
+					out = WindowProcessEvent(NewWindowId(child, guiIndex), event)
+				} else if (guiType == GUI_GRAPH) {
+					out = GraphProcessEvent(NewGraphId(child, guiIndex), event)
+				} else if (guiType == GUI_SPLITTER) {
+					out = SplitterProcessEvent(NewSplitterId(child, guiIndex), event)
+				} else if (guiType == GUI_LIST) {
+					out = ListProcessEvent(NewListId(child, guiIndex), event)
+				} else if (guiType == GUI_SCROLLER) {
+					out = ScrollerProcessEvent(NewScrollerId(child, guiIndex), event)
+				} else if (guiType == GUI_LIFTER) {
+					out = LifterProcessEvent(NewLifterId(child, guiIndex), event)
+				} else if (guiType == GUI_BINDER) {
+					out = BinderProcessEvent(NewBinderId(child, guiIndex), event)
+				} else if (guiType == GUI_COMBO) {
+					out = ComboProcessEvent(NewComboId(child, guiIndex), event)
+				} else {
+					printf("GUI TYPE %d\n", guiType)
+					panicIfNot(false, "unknown gui type")
+				}
+			}
+
+			if (out == app.EVENT_CONSUMED) {
+				i = count // ##pending issue brue
+			} else if (out == app.EVENT_ERROR) {
+				panicIfNot(false, "app.EVENT_ERROR")
+			} else if (out != app.EVENT_UNUSED) {
+				panicIfNot(false, "invalid EVENT code")
+			}
+		}
+		//ControlPrint("ControlProcessEvent : ", id, false)
+		//printf("ControlProcessEvent : OUT %d\n", out)
+	}
+}
+
+

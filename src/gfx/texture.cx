@@ -1,0 +1,386 @@
+package gfx
+
+// TODO : texture array
+// TODO : texture 3d
+// TODO : texture compression
+// TODO : convert to pot
+// TODO : generate mipmap
+// TODO : compression
+
+// Constants ...
+var FORMAT_NONE i32 = 0
+var FORMAT_DEPTH24 i32 = 1
+var FORMAT_STENCIL8 i32 = 2
+var FORMAT_DEPTH24_STENCIL8 i32 = 3
+var FORMAT_R8_G8_B8_A8 i32 = 4
+var FORMAT_RGBA_16F i32 = 5
+var FORMAT_R8 i32 = 6
+
+// Globals ...
+var g_textures []Texture
+var g_nil []i32
+
+// TextureId ...
+type TextureId struct {
+	texture i32
+}
+
+// Texture ...
+type Texture struct {
+	id TextureId
+	path str
+	extension str
+	name i32
+	width i32
+	height i32
+	widthF32 f32
+	heightF32 f32
+	resizable bool
+	mipmap i32
+	format i32
+	internalFormat i32
+	pixelFormat i32
+	pixelType i32
+	target i32
+	face i32
+}
+
+// GetString ...
+func GfxString(value i32) (out str) {
+	if value == FORMAT_NONE {
+		out = "FORMAT_NONE"
+	} else if value == FORMAT_DEPTH24 {
+		out = "FORMAT_DEPTH24"
+	} else if value == FORMAT_R8_G8_B8_A8 {
+		out = "FORMAT_R8_G8_B8_A8"
+	} else if value == FORMAT_RGBA_16F {
+		out = "FORMAT_RGBA_F16"
+	} else if value == FORMAT_R8 {
+		out = "FORMAT_R8"
+	} else if value == FORMAT_STENCIL8 {
+		out = "FORMAT_STENCIL8"
+	} else if value == FORMAT_DEPTH24_STENCIL8 {
+		out = "FORMAT_DEPTH24_STENCIL8"
+	} else {
+		out = "unknown gfx enum"
+	}
+}
+
+// InvalidTexture ...
+func InvalidTexture() (out TextureId) {
+	out.texture = -1
+}
+
+// IsValidTexture ...
+func IsValidTexture(id TextureId) (out bool) {
+	out = id.texture >= 0 && id.texture < len(g_textures)
+}
+
+// TexturePrint ...
+func TexturePrint(message str, id TextureId) {
+	panicIfNot(IsValidTexture(id), "invalid id")
+	TextureBind(id)
+	var face i32 = g_textures[id.texture].target
+	var width i32 = gl.GetTexLevelParameteriv(face, 0, gl.TEXTURE_WIDTH);
+	panicIf(GlError(), "gl.GetTexLevelParameteriv")
+	var height i32 = gl.GetTexLevelParameteriv(face, 0, gl.TEXTURE_HEIGHT);
+	panicIf(GlError(), "gl.GetTexLevelParameteriv")
+	printf("%s : path '%s', name %d, width %d, height %d, mipmap %d, target %s, format %s, internal %s, pixel %s, type %s, glWidth %d, glHeight %d\n",
+		message,
+		g_textures[id.texture].path,
+		g_textures[id.texture].name,
+		g_textures[id.texture].width,
+		g_textures[id.texture].height,
+		g_textures[id.texture].mipmap,
+		GlString(g_textures[id.texture].target),
+		GfxString(g_textures[id.texture].format),
+		GlString(g_textures[id.texture].internalFormat),
+		GlString(g_textures[id.texture].pixelFormat),
+		GlString(g_textures[id.texture].pixelType),
+		width, height)
+}
+
+// TextureName ...
+func TextureName(id TextureId) (out i32) {
+	panicIfNot(IsValidTexture(id), "")
+	out = g_textures[id.texture].name
+}
+
+// TextureTarget ...
+func TextureTarget(id TextureId) (out i32) {
+	panicIfNot(IsValidTexture(id), "")
+	out = g_textures[id.texture].target
+}
+
+// TextureWidth ...
+func TextureWidth(id TextureId) (out i32) {
+	panicIfNot(IsValidTexture(id), "")
+	out = g_textures[id.texture].width
+}
+
+// TextureHeight ...
+func TextureHeight(id TextureId) (out i32) {
+	panicIfNot(IsValidTexture(id), "")
+	out = g_textures[id.texture].height
+}
+
+// TextureWidthF32 ...
+func TextureWidthF32(id TextureId) (out f32) {
+	panicIfNot(IsValidTexture(id), "")
+	out = g_textures[id.texture].widthF32
+}
+
+// TextureHeightF32 ...
+func TextureHeightF32(id TextureId) (out f32) {
+	panicIfNot(IsValidTexture(id), "")
+	out = g_textures[id.texture].heightF32
+}
+
+/*// TextureSetFormat ...
+func TextureSetFormat(id TextureId, internalFormat i32, pixelFormat i32, pixelType i32) {
+	panicIfNot(IsValidTexture(id), "")
+	g_textures[id.texture].internalFormat = internalFormat
+	g_textures[id.texture].pixelFormat = pixelFormat
+	g_textures[id.texture].pixelType = pixelType
+}
+
+// TextureSetMipmap ...
+func TextureSetMipmap(id TextureId, mipmap i32) {
+	panicIfNot(IsValidTexture(id), "")
+	g_textures[id.texture].mipmap = mipmap
+}
+
+// TextureSetResizable ...
+func TextureSetResizable(id TextureId, resizable bool) {
+	panicIfNot(IsValidTexture(id), "")
+	g_textures[id.texture].resizable = resizable
+}*/
+
+func textureCreate0(path str, extension str, target i32, format i32, width i32, height i32, mipmap i32, resizable bool) (out TextureId) {
+	var name i32
+	if (path == "") {
+		name = gl.GenTextures(1, name) // TODO : change gl.GenTextures signature
+		panicIf(GlError(), "gl.GenTextures")
+	} else {
+		var textureCount i32 = len(g_textures)
+		for t := 0; t < textureCount; t++ {
+			if g_textures[t].path == path &&
+			   g_textures[t].extension == extension &&
+			   g_textures[t].format == format {
+				out.texture = t
+				return
+			}
+		}
+
+		if target == gl.TEXTURE_2D {
+			name = gl.NewTexture(path)
+		} else if target == gl.TEXTURE_CUBE_MAP {
+			name = gl.NewTextureCube(path, extension)
+		}
+		panicIf(GlError(), "gl.NewTexture")
+	}
+
+	out = textureCreate(name, target, format, width, height, mipmap, resizable)
+	g_textures[out.texture].path = path
+	g_textures[out.texture].extension = extension
+}
+
+// TextureCreate ...
+func TextureCreate(path str, format i32, width i32, height i32, mipmap i32, resizable bool) (out TextureId) {
+	out = textureCreate0(path, "", gl.TEXTURE_2D, format, width, height, mipmap, resizable)
+}
+
+// TextureCreateCube ...
+func TextureCreateCube(path str, extension str, format i32, width i32, height i32, mipmap i32, resizable bool) (out TextureId) {
+	out = textureCreate0(path, extension, gl.TEXTURE_CUBE_MAP, format, width, height, mipmap, resizable)
+}
+
+// TextureResize ...
+func TextureResize(id TextureId, width i32, height i32) {
+	panicIfNot(IsValidTexture(id), "invalid id")
+	//gl.ActiveTexture(gl.TEXTURE0)
+	TextureBind(id)
+	//panicIfNot(g_textures[id.texture].resizable, "texture is not resizable")
+	//panicIf(g_textures[id.texture].mipmap != 0, "not implemented")
+
+	var target i32 = g_textures[id.texture].target
+	if g_textures[id.texture].width != width || g_textures[id.texture].height != height {
+		if target == gl.TEXTURE_2D {
+			gl.TexImage2D(gl.TEXTURE_2D, 0,
+				g_textures[id.texture].internalFormat,
+				width,
+				height,
+				0,
+				g_textures[id.texture].pixelFormat,
+				g_textures[id.texture].pixelType,
+				g_nil)
+			panicIf(GlError(), "gl.TexImage2D")
+			textureResize(id, width, height)
+		} else if target == gl.TEXTURE_CUBE_MAP {
+			for i := 0; i < 6; i++ {
+				gl.TexImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0,
+					g_textures[id.texture].internalFormat,
+					width,
+					height,
+					0,
+					g_textures[id.texture].pixelFormat,
+					g_textures[id.texture].pixelType,
+					g_nil)
+				panicIf(GlError(), "gl.TexImage2D")
+				textureResize(id, width, height)
+			}
+		}
+	}
+}
+
+// TextureBind ...
+func TextureBind(id TextureId) {
+	panicIfNot(IsValidTexture(id), "")
+	bindTexture(g_textures[id.texture].target, g_textures[id.texture].name)
+}
+
+// TextureFilter ...
+func TextureFilter(id TextureId, min i32, mag i32) {
+	panicIfNot(IsValidTexture(id), "")
+	TextureBind(id)
+
+	var target i32 = g_textures[id.texture].target
+	gl.TexParameteri(target, gl.TEXTURE_MIN_FILTER, min)
+	panicIf(GlError(), "gl.TexParameteri")
+
+	gl.TexParameteri(target, gl.TEXTURE_MAG_FILTER, mag)
+	panicIf(GlError(), "gl.TexParameteri")
+
+}
+
+// TextureWrap ...
+func TextureWrap(id TextureId, wrapS i32, wrapT i32, wrapR i32) {
+	panicIfNot(IsValidTexture(id), "")
+	TextureBind(id)
+
+	var target i32 = g_textures[id.texture].target
+	gl.TexParameteri(target, gl.TEXTURE_WRAP_S, wrapS)
+	panicIf(GlError(), "gl.TexParameteri")
+
+	gl.TexParameteri(target, gl.TEXTURE_WRAP_T, wrapT)
+	panicIf(GlError(), "gl.TexParameteri")
+
+	gl.TexParameteri(target, gl.TEXTURE_WRAP_R, wrapR)
+	panicIf(GlError(), "gl.TexParameteri")
+}
+
+// TextureSamplerState ...
+func TextureSamplerState(id TextureId, sampler SamplerState) {
+	TextureFilter(id, sampler.min, sampler.mag)
+	TextureWrap(id, sampler.s, sampler.t, sampler.r)
+}
+
+// TextureGenerateMipmap ...
+func TextureGenerateMipmap(id TextureId) {
+	panicIfNot(IsValidTexture(id), "invalid texture")
+
+	TextureBind(id)
+
+	var target i32 = g_textures[id.texture].target
+	gl.GenerateMipmap(target)
+	panicIf(GlError(), "gl.GenerateMipmap")
+
+	g_textures[id.texture].mipmap = -1
+}
+
+// DestroyTextures ...
+func DestroyTextures() () {
+	for i := 0; i < len(g_textures); i++ {
+		gl.DeleteTextures(1, g_textures[i].name)
+		panicIf(GlError(), "g.DeleteTextures")
+	}
+}
+
+// ResizeTextures ...
+/*func ResizeTextures(width i32, height i32)() {
+	printf("COUNT %d\n", len(g_textures))
+	for i := 0 ; i < len(g_textures); i++ {
+		TextureResize(g_textures[i].id, width, height)
+	}
+}*/
+
+func textureResize(id TextureId, width i32, height i32) {
+	panicIfNot(IsValidTexture(id), "")
+	g_textures[id.texture].width = width
+	g_textures[id.texture].height = height
+	g_textures[id.texture].widthF32 = i32.f32(width)
+	g_textures[id.texture].heightF32 = i32.f32(height)
+}
+
+func getGlFormat(format i32) (internalFormat i32, pixelFormat i32, pixelType i32) {
+	if format == FORMAT_DEPTH24 {
+		internalFormat = gl.DEPTH_COMPONENT24
+		pixelFormat = gl.DEPTH_COMPONENT
+		pixelType = gl.UNSIGNED_BYTE
+	} else if format == FORMAT_DEPTH24_STENCIL8 {
+		internalFormat = gl.DEPTH24_STENCIL8
+		pixelFormat = gl.DEPTH_STENCIL
+		pixelType = gl.UNSIGNED_INT_24_8
+	} else if format == FORMAT_STENCIL8 {
+		internalFormat = gl.STENCIL_INDEX8
+		pixelFormat = gl.STENCIL_INDEX
+		pixelType = gl.UNSIGNED_BYTE
+	} else if format == FORMAT_R8_G8_B8_A8 {
+		internalFormat = gl.RGBA8
+		pixelFormat = gl.RGBA
+		pixelType = gl.UNSIGNED_BYTE
+	} else if format == FORMAT_RGBA_16F {
+		internalFormat = gl.RGBA16F
+		pixelFormat = gl.RGBA
+		pixelType = gl.HALF_FLOAT
+	} else if format == FORMAT_R8 {
+		internalFormat = gl.R8
+		pixelFormat = gl.RED
+		pixelType = gl.UNSIGNED_BYTE
+	}
+}
+
+func textureCreate(name i32, target i32, format i32, width i32, height i32, mipmap i32, resizable bool) (out TextureId) {
+	out.texture = len(g_textures)
+
+	var texture Texture
+	texture.id = out
+	texture.resizable = resizable
+	texture.mipmap = mipmap
+	texture.target = target
+	texture.format = format
+	texture.internalFormat, texture.pixelFormat, texture.pixelType = getGlFormat(format)
+	texture.name = name
+	texture.target = target
+
+	var face i32 = 0
+	if target == gl.TEXTURE_2D {
+		face = gl.TEXTURE_2D
+	} else if target == gl.TEXTURE_CUBE_MAP {
+		face = gl.TEXTURE_CUBE_MAP_POSITIVE_X
+	}
+
+	texture.face = face
+	g_textures = append(g_textures, texture)
+
+	gl.BindTexture(target, texture.name)
+	panicIf(GlError(), "gl.BindTexture")
+
+	if (width > 0 && height > 0) {
+		TextureResize(out, width, height)
+	} else {
+		width = gl.GetTexLevelParameteriv(face, 0, gl.TEXTURE_WIDTH);
+		panicIf(GlError(), "gl.GetTexLevelParameteriv")
+		height = gl.GetTexLevelParameteriv(face, 0, gl.TEXTURE_HEIGHT);
+		panicIf(GlError(), "gl.GetTexLevelParameteriv")
+		textureResize(out, width, height)
+	}
+
+	if texture.mipmap != 0 {
+		TextureGenerateMipmap(out)
+	}
+
+	panicIfNot(IsValidTexture(out), "")
+}
+
+

@@ -1,0 +1,23 @@
+uniform sampler2D u_t2Src;
+uniform sampler2D u_t2Dst;
+uniform float u_fTime;
+
+in vec2 v_v2Texcoord;
+
+out vec4 o_v4Color;
+
+void main()
+{
+	vec4 color_0 = texture2D(u_t2Src, v_v2Texcoord);
+	vec4 color_1 = texture2D(u_t2Dst, v_v2Texcoord);
+
+#ifdef USE_PASS_0
+	o_v4Color = mix(color_0, color_1, u_fTime);
+#elif defined(USE_PASS_1)
+	float alpha = color_1.w;
+	float time = u_fTime * alpha;
+	o_v4Color = vec4(mix(color_0.rgb, color_1.rgb, time), 1.0);
+#endif
+
+
+}

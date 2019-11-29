@@ -1,0 +1,302 @@
+package gui
+
+import "app"
+import "gfx"
+import "mat"
+import "v2"
+import "v4"
+
+// Globals ...
+var g_labels []Label
+
+// LabelId ...
+type LabelId struct {
+	base ControlId
+	label i32
+}
+
+// Label ...
+type Label struct {
+	id LabelId
+	font FontId
+	batch gfx.BatchId
+	text str
+	rune i32
+	textSize i32
+	textAlign i32
+	textPosition mat.v2
+	color_0 mat.v4
+	color_1 mat.v4
+	onState func_i32_i32_id
+}
+
+// NewLabelId ...
+func NewLabelId(base ControlId, label i32) (out LabelId) {
+	out.base = base
+	out.label = label
+	panicIfNot(IsValidLabel(out), "invalid id")
+}
+
+// IsValidLabel ...
+func IsValidLabel(id LabelId) (out bool) {
+	out = id.label >= 0 && id.label < len(g_labels) && IsValidControl(id.base)
+}
+
+// LabelCreate ...
+func LabelCreate(name str) (out LabelId) {
+	out.label = len(g_labels)
+	out.base = controlCreate(name, GUI_LABEL, out.label)
+
+	var label Label
+	label.id = out
+	label.font = InvalidFont()
+	label.batch = gfx.InvalidBatch()
+	label.text = ""
+	label.rune = -1
+	label.textSize = 16
+	label.textAlign = ALIGN_NONE
+	label.textPosition = v2.ZERO
+	label.color_0 = g_red
+	label.color_1 = g_green
+	label.onState = invalid_func_i32_i32()
+
+	g_labels = append(g_labels, label)
+	panicIfNot(IsValidLabel(out), "invalid id")
+}
+
+// LabelSetFont ...
+func LabelSetFont(id LabelId, font FontId) {
+	panicIfNot(IsValidLabel(id), "invalid id")
+	panicIfNot(IsValidFont(font), "invalid font")
+	g_labels[id.label].font = font
+}
+
+// LabelSetRune ...
+func LabelSetRune(id LabelId, rune i32) {
+	panicIfNot(IsValidLabel(id), "invalid id")
+	g_labels[id.label].rune = rune
+	LabelSetFont(id, g_awesomeBoldFont) // ##0 workaround
+}
+
+// LabelSetText ...
+func LabelSetText(id LabelId, text str) {
+	panicIfNot(IsValidLabel(id), "invalid id")
+	g_labels[id.label].text = text
+}
+
+// LabelSetAlign ...
+func LabelSetAlign(id LabelId, align i32) {
+	panicIfNot(IsValidLabel(id), "invalid id")
+	g_labels[id.label].textAlign = align
+}
+
+// LabelSetSize ...
+func LabelSetSize(id LabelId, size i32) {
+	panicIfNot(IsValidLabel(id), "invalid id")
+		g_labels[id.label].textSize = size
+}
+
+// LabelSetColor ...
+func LabelSetColor(id LabelId, color mat.v4) {
+	panicIfNot(IsValidLabel(id), "invalid id")
+	g_labels[id.label].color_0 = color
+	g_labels[id.label].color_1 = color
+}
+
+// LabelSetOnState ...
+func LabelSetOnState(i_id LabelId, packageName str, functionName str) {
+	panicIfNot(IsValidLabel(i_id), "invalid id")
+	g_labels[i_id.label].onState = func_i32_i32(packageName, functionName)
+	var onState func_i32_i32_id = g_labels[i_id.label].onState
+	panicIfNot(onState.index >= 0, "invalid function")
+}
+
+// LabelProcessEvent ...
+func LabelProcessEvent(id LabelId, event *app.Event) (out i32) {
+	panicIfNot(IsValidLabel(id), "invalid label")
+	out = ControlProcessEvent(id.base, event)
+
+	if (out == app.EVENT_UNUSED) {
+		var index i32 = id.base.control
+		var focused i32 = g_controls[index].focused
+		var mods i32 = ((*event).keyboard).mods
+
+		if (mods == app.MOD_NONE) {
+
+			var callAction i32 = 0
+			var call bool = false
+			var button i32 = (*event).mouse.button
+			if (button == app.BUTTON_LEFT) {
+				var action i32 = (*event).mouse.action
+				if (action == app.MOUSE_PRESS || action == app.MOUSE_RELEASE) {
+					//printf("app.MOUSE_PRESS\n")
+					var hovered i32 = g_controls[id.base.control].hovered
+					if (hovered > 0) {
+						call = true
+						callAction = action
+					}
+				}
+			} else if (focused > 0) {
+				var key i32 = (*event).keyboard.key
+				if (key == app.KEYCODE_ENTER || key == app.KEYCODE_SPACE) {
+					var action i32 = ((*event).keyboard).action
+					if (action == app.KEY_PRESS || action == app.KEY_RELEASE) {
+						call = true
+						callAction = action
+					}
+				}
+			}
+
+			if (call == true) {
+				var function func_i32_i32_id = g_labels[id.label].onState
+				var functionIndex i32 = function.index
+				if functionIndex >= 0 {
+					//printf("------------------------------------------------------------>>>>> ON_STATE %d\n", functionIndex)
+					call_i32_i32(function, index, callAction)
+					//printf("LabelProcessEvent\n")
+					out = app.EVENT_CONSUMED
+				}
+			}
+		}
+	}
+}
+
+// LabelMeasure ...
+func LabelMeasure(id LabelId) (width f32, height f32) { // ##1 factorize with LabelResize
+	panicIfNot(IsValidLabel(id), "invalid id")
+	//ControlPrint("LabelResize : ", id.base, false)
+	var text str = g_labels[id.label].text
+
+	var fontId FontId = g_labels[id.label].font
+	var fontIndex i32 = fontId.font
+	panicIfNot(IsValidFont(fontId), "invalid font")
+
+	var fontSize i32 = g_labels[id.label].textSize
+	//printf("fontID %d, fontSize %d\n", fontId.font, fontSize)
+	var textureIndex i32 = FontGetTextureIndex(fontId, fontSize)
+
+	//printf("fontIndex %d, textureIndex %d\n", fontIndex, textureIndex)
+	var fontName str = g_fonts[fontIndex].names[textureIndex] // ##0 auto select best size
+
+	var i32Width i32 = 0
+	var i32Height i32 = 0
+	var rune i32 = g_labels[id.label].rune
+	if (rune >= 0) {
+		i32Width, i32Height = gfx.MeasureGlyph(fontName, rune)
+	} else {
+		i32Width, i32Height = gfx.MeasureText(fontName, text)
+	}
+
+	var pixelBounds mat.v2 = v2.make(i32.f32(i32Width), i32.f32(i32Height))
+
+	var padding mat.v4 = g_controls[id.base.control].padding
+	var paddingX f32 = padding.x + padding.z
+	var paddingY f32 = padding.y + padding.w
+	//var bounds mat.v2 = v2.div(pixelBounds, gfx.gfx_viewport_size)
+	var autoBounds mat.v2 = v2.add(pixelBounds, v2.make(paddingX, paddingY))
+
+	width = autoBounds.x
+	height = autoBounds.y
+}
+
+// LabelResize ...
+func LabelResize(id LabelId) () {
+	panicIfNot(IsValidLabel(id), "invalid id")
+	//ControlPrint("LabelResize : ", id.base, false)
+	var text str = g_labels[id.label].text
+
+	var fontId FontId = g_labels[id.label].font
+	var fontIndex i32 = fontId.font
+	panicIfNot(IsValidFont(fontId), "invalid font")
+
+	var fontSize i32 = g_labels[id.label].textSize
+	//printf("fontID %d, fontSize %d\n", fontId.font, fontSize)
+	var textureIndex i32 = FontGetTextureIndex(fontId, fontSize)
+
+	//printf("fontIndex %d, textureIndex %d\n", fontIndex, textureIndex)
+	var fontName str = g_fonts[fontIndex].names[textureIndex] // ##0 auto select best size
+	var i32Width i32 = 0
+	var i32Height i32 = 0
+	var rune i32 = g_labels[id.label].rune
+	if (rune >= 0) {
+		i32Width, i32Height = gfx.MeasureGlyph(fontName, rune)
+	} else {
+		i32Width, i32Height = gfx.MeasureText(fontName, text)
+	}
+
+	var pixelBounds mat.v2 = v2.make(i32.f32(i32Width), i32.f32(i32Height))
+
+	var controlIndex i32 = id.base.control
+	var padding mat.v4 = g_controls[controlIndex].padding
+	var paddingX f32 = padding.x + padding.z
+	var paddingY f32 = padding.y + padding.w
+	//var bounds mat.v2 = v2.div(pixelBounds, gfx.gfx_viewport_size)
+	var autoBounds mat.v2 = v2.add(pixelBounds, v2.make(paddingX, paddingY))
+	/*if (id.base.control == 36) {
+	  printf("AUTOBOUNDS %f, %f, PADDING %f, %f\n", bounds.x, bounds.y, paddingX, paddingY)
+	  }*/
+	controlResize(id.base, pixelBounds, autoBounds)
+
+	var position mat.v2 = g_controls[controlIndex].renderPosition
+	//var size mat.v2 = g_controls[controlIndex].renderSize
+	var size mat.v2 = g_controls[controlIndex].size
+	var scale mat.v2 = g_controls[controlIndex].scale
+	//printf("LABEL_SCALE %f, %f, width %f, height %f, scale.x * width %f, scale.y * height %f\n", scale.x, scale.y, width, height, scale.x * width, scale.y * height)
+
+	var newSize mat.v2 = v2.mul(scale, pixelBounds)
+	/*if (id.base.control == 57) {
+	  printf("PIXEL_BOUNDS %f, %f, AUTO_BOUNSD %f, %f, SCALE %f, %f\n", pixelBounds.x, pixelBounds.y, autoBounds.x, autoBounds.y, scale.x, scale.y)
+	  }*/
+
+	position.x, position.y = ControlAlign(id.base, g_labels[id.label].textAlign, 0.0, 0.0, newSize.x, newSize.y, position.x, position.y, size.x, size.y, padding)
+	//position.y = position.y - newSize.y / 2.0
+	g_labels[id.label].textPosition = position
+	//printf("LABEL_TEXT_POSITION %f, %f\n", position.x, position.y)
+	var fontTexture gfx.TextureId = g_fonts[fontIndex].textures[textureIndex]
+	g_labels[id.label].batch = gfx.GetBatch(gfx.g_fxTexture2D, fontTexture, 0, gfx.g_linearWrap, true, 4096) // ##0 panic if g_fonts[fontIndex].textures[textureIndex] is used as arg0
+	//ControlPrint("LabelResize :", id.base, false)
+}
+
+// LabelRender ...
+func LabelRender(id LabelId, clip mat.v4, stack i32) () {
+	panicIfNot(IsValidLabel(id), "invalid id")
+	//ControlPrint("LabelRender : ", id.base, false)
+	ControlRender(id.base, clip, stack)
+
+	var fontId FontId = g_labels[id.label].font
+	panicIfNot(IsValidFont(fontId), "invalid font")
+
+	var fontSize i32 = g_labels[id.label].textSize
+	var textureIndex i32 = FontGetTextureIndex(fontId, fontSize)
+
+	var fontTexture gfx.TextureId = g_fonts[fontId.font].textures[textureIndex] // ##0 auto select best size
+	var fontName str = g_fonts[fontId.font].names[textureIndex]
+
+	//printf("LabelRender : using font %s - %d, %d, %d\n", fontName, fontTexture.name, fontTexture.width, fontTexture.height)
+
+	var control i32 = id.base.control
+	var renderPosition mat.v2 = g_labels[id.label].textPosition
+	var batch gfx.BatchId = g_labels[id.label].batch
+
+	if (gfx.IsValidBatch(batch)) {
+		panicIfNot(gfx.IsValidBatch(batch), "invalid batch")
+		//gfx.append_text(&(gfx.g_meshes[g_batches[batch.batch].mesh.mesh]), fontTexture, fontName, // ##pending
+		var meshId gfx.MeshId = gfx.BatchGetMesh(batch)
+		var renderBounds mat.v4 =  v4.make_v22(renderPosition, g_controls[control].size)
+		//ControlPrint("LabelRender : renderBounds ", id.base, false)
+		var renderClips mat.v4 = gfx.PushScissor(g_controls[control].name, renderBounds)
+		//gfx.g_debugMesh = g_opaqueVertexColoredTriangles
+		var rune i32 = g_labels[id.label].rune
+		if (rune >= 0) {
+			gfx.MeshAppendGlyph(meshId, fontTexture, fontName,
+			renderPosition, g_controls[control].scale,
+			v4.make(1.0, 1.0, 1.0, 1.0), rune, true, g_labels[id.label].color_0, g_labels[id.label].color_1, renderClips, ComputeDepth(stack))
+		} else {
+			gfx.MeshAppendText(meshId, fontTexture, fontName,
+			renderPosition, g_controls[control].scale,
+			v4.make(1.0, 1.0, 1.0, 1.0), g_labels[id.label].text, true, g_labels[id.label].color_0, g_labels[id.label].color_1, renderClips, ComputeDepth(stack))
+		}
+		gfx.PopScissor()
+	}
+}
+

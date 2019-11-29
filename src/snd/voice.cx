@@ -1,0 +1,165 @@
+package snd
+
+// REFACTOR : logic in sounds.cx
+// TODO : audio from buffer
+//
+
+// Constants ...
+var VOICE_STOPPED i32 = 0
+var VOICE_PLAYING i32 = 1
+var VOICE_PAUSED  i32 = 2
+
+// Globals ...
+var g_voices []Voice
+var g_used []VoiceId
+
+// VoiceId ...
+type VoiceId struct {
+	voice i32
+}
+
+// Voice ...
+type Voice struct {
+	id VoiceId
+	audio AudioId
+	state i32
+	source i32
+	used i32
+}
+
+// IsValidVoice ...
+func IsValidVoice(id VoiceId) (out bool) {
+	out = id.voice >= 0 && id.voice < len(g_voices)
+}
+
+// VoiceState ...
+func VoiceState(id VoiceId) (out i32) {
+	panicIfNot(IsValidVoice(id), "invalid id")
+	out = g_voices[id.voice].state
+}
+
+// VoiceCreate ...
+func VoiceCreate(id AudioId) (out VoiceId) {
+	panicIfNot(IsValidAudio(id), "invalid id")
+
+	out.voice = len(g_voices)
+
+	var voice Voice
+	voice.id = out
+	voice.audio = id
+	voice.state = VOICE_STOPPED
+	voice.source = -1
+
+	g_voices = append(g_voices, voice)
+
+	panicIfNot(IsValidVoice(out), "")
+}
+
+// VoicePlay ...
+func VoicePlay(id VoiceId) {
+	panicIfNot(IsValidVoice(id), "invalid id")
+
+	var state i32 = g_voices[id.voice].state
+
+	var sources []i32
+	var source i32 = g_voices[id.voice].source
+	if source < 0 {
+		panicIf(state != VOICE_STOPPED, "")
+		var sourceCount i32 = len(g_freeSources)
+		if sourceCount > 0 {
+			sourceCount--
+			source = g_freeSources[sourceCount]
+			sources = append(sources, source)
+			g_freeSources = resize(g_freeSources, sourceCount)
+		} else {
+			sources = al.GenSources(1) // ISSUE : can't use short declaration
+			panicIf(AlError(), "al.GenSources")
+			source = sources[0]
+			//g_freeSources = append(g_freeSources, source) // ISSUE : check before removing
+		}
+	}
+
+	panicIf(source < 0, "")
+	panicIf(len(sources) <= 0, "")
+
+	if state == VOICE_STOPPED {
+		var audio AudioId = g_voices[id.voice].audio
+		var buffer i32 = g_audios[audio.audio].buffer
+		panicIf(buffer <= 0, "")
+		var buffers []i32
+		buffers = append(buffers, buffer)
+
+		al.SourceQueueBuffers(source, buffers)
+		panicIf(AlError(), "al.SourceQueueBuffers")
+
+		al.PlaySources(sources)
+		panicIf(AlError(), "al.PlaySources")
+
+		g_voices[id.voice].used = len(g_used)
+		g_used = append(g_used, id)
+	} else if state == VOICE_PLAYING {
+		al.RewindSources(sources)
+		panicIf(AlError(), "al.RewindSources")
+	} else if state == VOICE_PAUSED {
+		al.PlaySources(sources)
+		panicIf(AlError(), "al.PlaySources")
+	} else {
+		panicIf(true, "invalid state")
+	}
+	g_voices[id.voice].state = VOICE_PLAYING
+	g_voices[id.voice].source = source
+}
+
+// VoicePause ...
+func VoicePause(id VoiceId) {
+	panicIfNot(IsValidVoice(id), "invalid id")
+
+	var state i32 = g_voices[id.voice].state
+	panicIf(state != VOICE_PLAYING, "")
+	if  state == VOICE_PLAYING {
+		var source i32 = g_voices[id.voice].source
+		panicIf(source < 0, "")
+		if source >= 0 {
+			var sources []i32
+			sources = append(sources, source)
+			al.PauseSources(sources)
+		}
+	}
+	g_voices[id.voice].state = VOICE_PAUSED
+}
+
+func removeVoice(id VoiceId) {
+	var used i32 = g_voices[id.voice].used
+	g_voices[id.voice].state = VOICE_STOPPED
+	panicIf(g_used[used].voice != id.voice, "")
+
+	var usedCount i32 = len(g_used)
+	panicIf(usedCount <= 0, "")
+	if usedCount > 0 {
+		var newCount i32 = usedCount - 1
+		if usedCount > 1 {
+			g_used[used] = g_used[newCount]
+		}
+		g_used = resize(g_used, newCount)
+	}
+}
+
+// VoiceStop ...
+func VoiceStop(id VoiceId) {
+	panicIfNot(IsValidVoice(id), "invalid id")
+
+	var state i32 = g_voices[id.voice].state
+	panicIf(state != VOICE_PLAYING && state != VOICE_PAUSED, "")
+	if state == VOICE_PLAYING || state == VOICE_PAUSED {
+		var source i32 = g_voices[id.voice].source
+		panicIf(source < 0, "")
+		if source >= 0 {
+			var sources []i32
+			sources = append(sources, source)
+			al.StopSources(sources)
+		}
+	}
+
+	removeVoice(id)
+}
+

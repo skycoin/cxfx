@@ -1,0 +1,12 @@
+uniform samplerCube u_tcEnvironmentDiffuse;
+uniform vec4 DEBUG_0;
+
+in vec3 v_v3Position;
+
+out vec4 o_v4Color;
+
+void main()
+{
+	o_v4Color = textureCube(u_tcEnvironmentDiffuse, normalize(v_v3Position));
+}
+

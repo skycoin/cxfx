@@ -1,0 +1,126 @@
+package snd
+
+// Globals ...
+var g_audios []Audio
+
+// AudioId ...
+type AudioId struct {
+	audio i32
+}
+
+// Audio ...
+type Audio struct {
+	id AudioId
+	path str
+	audioFormat i32
+	numChannels i32
+	sampleRate i32
+	byteRate i32
+	blockAlign i32
+	bitsPerSample i32
+	samples i32
+	duration i64
+	data []ui8
+	source i32
+	buffer i32
+}
+
+// IsValidAudio ...
+func IsValidAudio(id AudioId) (out bool) {
+	out = id.audio >= 0 && id.audio < len(g_audios)
+}
+
+// AudioCreate ...
+func AudioCreate(path str)(out AudioId) {
+	var buffer i32 = -1
+	var bufferCount i32 = len(g_freeBuffers)
+	if bufferCount > 0 {
+		bufferCount--
+		buffer = g_freeBuffers[bufferCount]
+		g_freeBuffers = resize(g_freeBuffers, bufferCount)
+	} else {
+		var buffers []i32 = al.GenBuffers(1) // ISSUE : can't use short declaration
+		panicIf(AlError(), "al.GenBuffers")
+		buffer = buffers[0]
+	//	g_freeBuffers = append(g_freeBuffers, buffer)
+	}
+	panicIf(buffer <= 0, "invalid buffer name")
+
+	var audioFormat i32
+	var numChannels i32
+	var sampleRate i32
+	var byteRate i32
+	var blockAlign i32
+	var bitsPerSample i32
+	var samples i32
+	var duration i64
+	var data []ui8
+
+	audioFormat, numChannels, sampleRate, byteRate, blockAlign, bitsPerSample, samples, duration, data = al.LoadWav(path)
+
+	var mono bool
+	if numChannels == 1 {
+		mono = true
+	} else if numChannels == 2 {
+		mono = false
+	} else {
+		panicIf(true, "numChannels")
+	}
+
+	var bit8 bool
+	if bitsPerSample == 8 {
+		bit8 = true
+	} else if bitsPerSample == 16 {
+		bit8 = false
+	} else {
+		panicIf(true, "bitsPerSample")
+	}
+
+	var alFormat i32
+	if audioFormat == al.WavFormatPCM {
+		if mono {
+			if bit8 {
+				alFormat = al.FormatMono8
+			} else {
+				alFormat = al.FormatMono16
+			}
+		} else {
+			if bit8 {
+				alFormat = al.FormatStereo8
+			} else {
+				alFormat = al.FormatStereo16
+			}
+		}
+	} else if audioFormat == al.WavFormatIEEEFloat {
+		panicIf(true, "WavFormatIEEEFloat")
+	} else {
+		panicIf(true, "audioFormat")
+	}
+
+	//printf("buffer %d, audioFormat %d, alFormat %d, numChannels %d, sampleRate %d, byteRate %d, blockAlign %d, bitsPerSample %d, samples %d, duration %d\n",
+	//		buffer, audioFormat, alFormat, numChannels, sampleRate, byteRate, blockAlign, bitsPerSample, samples, duration)
+
+	al.BufferData(buffer, alFormat, data, sampleRate)
+	panicIf(AlError(), "al.BufferData")
+
+	out.audio = len(g_audios)
+
+	var audio Audio
+	audio.id = out
+	audio.path = path
+	audio.audioFormat = audioFormat
+	audio.numChannels = numChannels
+	audio.sampleRate = sampleRate
+	audio.byteRate = byteRate
+	audio.blockAlign = blockAlign
+	audio.bitsPerSample = bitsPerSample
+	audio.samples = samples
+	audio.duration = duration
+	audio.buffer = buffer
+	audio.source = -1
+
+	g_audios = append(g_audios, audio)
+
+	panicIfNot(IsValidAudio(out), "invalid id")
+}
+

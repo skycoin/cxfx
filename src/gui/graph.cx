@@ -1,0 +1,367 @@
+package gui
+
+// Globals ...
+var g_graphs []Graph
+
+// GraphId ...
+type GraphId struct {
+	base ControlId
+	graph i32
+}
+
+// Graph ...
+type Graph struct {
+	id GraphId
+	unit mat.v2
+	scale mat.v2
+	offset mat.v2
+	expX i32
+	expY i32
+	coord mat.v2
+	labels [] LabelId
+	labelCount i32
+	horz [] GraphLine
+	vert [] GraphLine
+	graphClips mat.v4
+}
+
+type GraphLine struct {
+	color mat.v4
+	bounds mat.v4
+}
+
+// NewGraphId ...
+func NewGraphId(base ControlId, graph i32) (out GraphId) {
+	out.base = base
+	out.graph = graph
+	panicIfNot(IsValidGraph(out), "invalid id")
+}
+
+// IsValidGraph ...
+func IsValidGraph(id GraphId) (out bool) {
+	out = id.graph >= 0 && id.graph < len(g_graphs) && IsValidControl(id.base)
+}
+
+// GraphCreate ...
+func GraphCreate(name str) (out GraphId) {
+	out.base = controlCreate(name, GUI_GRAPH, out.graph)
+	ControlSetFocusable(out.base, 1)
+
+	out.graph = len(g_graphs)
+
+	var graph Graph
+	graph.id = out
+	graph.unit = v2.makef(50.0)
+	graph.scale = v2.ONE
+	graph.offset = v2.ZERO
+	graph.expX = 0
+	graph.expY = 0
+	graph.labelCount = 0
+
+	g_graphs = append(g_graphs, graph)
+	panicIfNot(IsValidGraph(out), "invalid id")
+}
+
+// GraphGetLabel ...
+func GraphGetLabel(id GraphId) (label LabelId) {
+	panicIfNot(IsValidGraph(id), "invalid id")
+	var size i32 = len(g_graphs[id.graph].labels)
+	var count i32 = g_graphs[id.graph].labelCount
+	if count < size {
+		var l LabelId = g_graphs[id.graph].labels[count] // ##0 memory garbage in count if assigning the out value
+		label = l
+	} else {
+		label = LabelCreate(sprintf("graphLabel_%d", count))
+		g_graphs[id.graph].labels = append(g_graphs[id.graph].labels, label)
+	}
+	g_graphs[id.graph].labelCount = count + 1
+}
+
+// GraphProcessEvent ...
+func GraphProcessEvent(id GraphId, event *app.Event) (out i32) {
+	panicIfNot(IsValidGraph(id), "invalid id")
+	//ControlPrint("GraphProcessEvent : ", id.base, false)
+
+	out = ControlProcessEvent(id.base, event)
+	if (out == app.EVENT_UNUSED) {
+		var controlIndex i32 = id.base.control
+		var focused i32 = g_controls[controlIndex].focused
+		var childFocused i32 = g_controls[controlIndex].childFocused
+		if (focused > 0 || childFocused > 0) {
+			var key i32 = ((*event).keyboard).key
+			var action i32 = ((*event).keyboard).action
+			var mods i32 = ((*event).keyboard).mods
+			var graphIndex i32 = id.graph
+			var unit mat.v2 = g_graphs[graphIndex].unit
+			var scale mat.v2 = g_graphs[graphIndex].scale
+			var offset mat.v2 = g_graphs[graphIndex].offset
+			if (mods == app.MOD_CTRL) {
+				if (action == app.KEY_PRESS ||
+					action == app.KEY_REPEAT) {
+					if (key == app.KEYCODE_LEFT) {
+						out = app.EVENT_CONSUMED
+						scale.x = scale.x * 0.9
+					} else if (key == app.KEYCODE_RIGHT) {
+						out = app.EVENT_CONSUMED
+						scale.x = scale.x * 1.1
+					} else if (key == app.KEYCODE_DOWN) {
+						out = app.EVENT_CONSUMED
+						scale.y = scale.y * 0.9
+					} else if (key == app.KEYCODE_UP) {
+						out = app.EVENT_CONSUMED
+						scale.y = scale.y * 1.1
+					}
+					if (scale.x > 1.0) {
+						scale.x = 0.1
+						g_graphs[graphIndex].expX = g_graphs[graphIndex].expX + 1
+					} else if (scale.x < 0.1) {
+						scale.x = 1.0
+						g_graphs[graphIndex].expX = g_graphs[graphIndex].expX - 1
+					}
+
+					if (scale.y > 1.0) {
+						scale.y = 0.1
+						g_graphs[graphIndex].expY = g_graphs[graphIndex].expY + 1
+					} else if (scale.y < 0.1) {
+						scale.y = 1.0
+						g_graphs[graphIndex].expY = g_graphs[graphIndex].expY - 1
+					}
+					g_graphs[graphIndex].scale = scale
+					g_graphs[graphIndex].unit = unit
+				}
+			} else if (mods == app.MOD_NONE) {
+				if (action == app.KEY_PRESS ||
+						action == app.KEY_REPEAT) {
+					if (key == app.KEYCODE_LEFT) {
+						out = app.EVENT_CONSUMED
+						offset.x = offset.x - unit.x * 0.1 * scale.x
+					} else if (key == app.KEYCODE_RIGHT) {
+						out = app.EVENT_CONSUMED
+						offset.x = offset.x + unit.x * 0.1 * scale.x
+					} else if (key == app.KEYCODE_DOWN) {
+						out = app.EVENT_CONSUMED
+						offset.y = offset.y - unit.y * 0.1 * scale.y
+					} else if (key == app.KEYCODE_UP) {
+						out = app.EVENT_CONSUMED
+						offset.y = offset.y + unit.y * 0.1 * scale.y
+					}
+					g_graphs[graphIndex].offset = offset
+				}
+			}
+		}
+	}
+}
+
+// GraphResize ...
+func GraphResize(id GraphId) () {
+	panicIfNot(IsValidGraph(id), "invalid id")
+	ControlClearChildren(id.base)
+	ControlResize(id.base)
+
+	var graphIndex i32 = id.graph
+	g_graphs[graphIndex].coord = v2.makef(32.0)
+
+	g_graphs[graphIndex].horz = resize(g_graphs[graphIndex].horz, 0)
+	g_graphs[graphIndex].vert = resize(g_graphs[graphIndex].vert, 0)
+	g_graphs[graphIndex].labelCount = 0
+
+	var offset mat.v2 = g_graphs[graphIndex].offset
+	var unit mat.v2 = g_graphs[graphIndex].unit
+	var scale mat.v2 = g_graphs[graphIndex].scale
+
+	var controlIndex i32 = id.base.control
+
+	var width f32 = g_controls[controlIndex].size.x
+	var height f32 = g_controls[controlIndex].size.y
+
+	var size mat.v2 = g_controls[controlIndex].size
+	var position mat.v2 = g_controls[controlIndex].renderPosition
+
+	var coord mat.v2 = g_graphs[graphIndex].coord
+
+	var stepX f32 = unit.x * scale.x
+	var stepY f32 = unit.y * scale.y
+
+	var i i32 = 0
+	var ix i32 = 0
+	var iy i32 = 0
+
+	var offsetX f32 = offset.x
+	if (offsetX > 0.0) {
+		for (offsetX > 0.0) {
+			offsetX = offsetX - stepX
+			ix = ix - 1
+		}
+	} else if (offsetX < 0.0) {
+		for ((offsetX + stepX) < 0.0) {
+			offsetX = offsetX + stepX
+			ix = ix + 1
+		}
+	}
+
+	var offsetY f32 = offset.y
+	if (offsetY > 0.0) {
+		for (offsetY > 0.0) {
+			offsetY = offsetY - stepY
+			iy = iy - 1
+		}
+	} else if (offsetY < 0.0) {
+		for ((offsetY + stepY) < 0.0) {
+			offsetY = offsetY + stepY
+			iy = iy + 1
+		}
+	}
+
+	var graphPosition mat.v2
+	graphPosition.x = position.x + offsetX + coord.x
+	graphPosition.y = position.y + offsetY + coord.y
+
+	var endX f32 = graphPosition.x + size.x - offsetX - coord.x
+	var endY f32 = graphPosition.y + size.y - offsetY - coord.y
+
+	g_graphs[graphIndex].graphClips = v4.make(graphPosition.x, graphPosition.y, size.x - coord.x, size.y - coord.y)
+
+	var graphLine GraphLine
+	var font FontId
+
+	i = 0
+	var labelX f32 = coord.x + offsetX //- stepX / 2.0
+	var x f32 = graphPosition.x
+	for (x < endX) {
+		var color mat.v4 = g_gray_2
+
+		var labelBounds mat.v4 = v4.make(labelX, 0.0, stepX, coord.y)
+		var big f32 = labelX - 2.0 * stepX
+		var bigW f32 = stepX * 4.0
+		if ((ix % 100) == 0) {
+			color = g_gray_3
+			font = g_boldFont
+			labelBounds = v4.make(big, 0.0, bigW, coord.y)
+		} else if ((ix % 10) == 0) {
+			color = v4.lerpf(g_gray_2, g_gray_3, scale.x)
+			font = g_boldFont
+			labelBounds = v4.make(big, 0.0, bigW, coord.y)
+		} else {
+			color = v4.lerpf(g_gray_0, g_gray_2, scale.x)
+			font = g_regularFont
+			var fTmp f32 = labelX - stepX / 2.0
+			labelBounds = v4.make(fTmp, 0.0, stepX, coord.y)
+		}
+
+		graphLine.color = color
+		graphLine.bounds = v4.make(x, graphPosition.y, x, endY)
+		g_graphs[graphIndex].horz = append(g_graphs[graphIndex].horz, graphLine)
+
+		var label LabelId = GraphGetLabel(id)
+		ControlAddChild(id.base, label.base)
+		ControlSetBounds(label.base, labelBounds)
+		ControlSetAutoscale(label.base, AUTOSCALE)
+		LabelSetFont(label, g_regularFont)
+		LabelSetColor(label, color)
+		LabelSetText(label, "0")
+		LabelSetAlign(label, ALIGN_CENTER)
+		LabelSetSize(label, 10)
+		LabelResize(label)
+		ControlSetBounds(label.base, labelBounds)
+
+		labelX = labelX + stepX
+		x = x + stepX
+		ix = ix + 1
+		i = i + 1
+	}
+
+	i = 0
+	var labelY f32 = coord.y + offsetY// - stepY / 2.0
+	var y f32 = graphPosition.y
+	for (y < endY) {
+		var color mat.v4 = g_gray_2
+		//var font FontId
+
+		var fTmp f32 = labelY - stepY / 2.0
+		var labelBounds mat.v4 = v4.make(0.0, fTmp, coord.x, coord.y)
+		//var big f32 = labelY - 2.0 * stepY
+		//var bigW f32 = stepY * 4.0
+		if ((iy % 100) == 0) {
+			color = g_gray_3
+			font = g_boldFont
+			var fTmp0 f32 = labelY - coord.y / 2.0
+			labelBounds = v4.make(0.0, fTmp0, coord.x, coord.y)
+		} else if ((iy % 10) == 0) {
+			color = v4.lerpf(g_gray_2, g_gray_3, scale.y)
+			font = g_boldFont
+			var fTmp0 f32 = labelY - coord.y / 2.0
+			labelBounds = v4.make(0.0, fTmp0, coord.x, coord.y)
+		} else {
+			color = v4.lerpf(g_gray_0, g_gray_2, scale.y)
+			font = g_regularFont
+			labelBounds = v4.make(0.0, fTmp, coord.x, stepY)
+		}
+
+		graphLine.color = color
+		graphLine.bounds = v4.make(graphPosition.x, y, endX, y)
+		g_graphs[graphIndex].vert = append(g_graphs[graphIndex].vert, graphLine)
+
+		var label LabelId = GraphGetLabel(id)
+		ControlAddChild(id.base, label.base)
+		ControlSetBounds(label.base, labelBounds)
+		ControlSetAutoscale(label.base, AUTOSCALE)
+		LabelSetFont(label, g_regularFont)
+		LabelSetColor(label, color)
+		LabelSetText(label, "0")
+		LabelSetAlign(label, ALIGN_CENTER)
+		LabelSetSize(label, 50)
+		LabelResize(label)
+		ControlSetBounds(label.base, labelBounds)
+
+		labelY = labelY + stepY
+		y = y + stepY
+		iy = iy + 1
+		i = i + 1
+	}
+
+	//ControlResize(id.base)
+}
+
+// GraphRender ...
+func GraphRender(id GraphId, clip mat.v4, stack i32) () {
+	panicIfNot(IsValidGraph(id), "invalid id")
+	ControlRender(id.base, clip, stack)
+
+	var controlIndex i32 = id.base.control
+	var graphIndex i32 = id.graph
+
+	var renderBounds mat.v4 = v4.make_v22(g_controls[controlIndex].renderPosition, g_controls[controlIndex].size)
+	//ControlPrint("GraphRender : renderBounds ", id.base, false)
+	//  printf("renderBounds %f, %f, %f, %f\n", renderBounds.x, renderBounds.y, renderBounds.z, renderBounds.w)
+	var renderClips mat.v4 = gfx.PushScissor(g_controls[controlIndex].name, renderBounds)
+	//ControlPrint("GraphRender : graphClips ", id.base, false)
+	var graphClips mat.v4 = g_graphs[graphIndex].graphClips
+	//  printf("graphClips %f, %f, %f, %f\n", graphClips.x, graphClips.y, graphClips.z, graphClips.w)
+	renderClips = gfx.PushScissor(g_controls[controlIndex].name, graphClips)
+
+	var i i32 = 0
+	var horzCount i32 = len(g_graphs[graphIndex].horz)
+	for i = 0; i < horzCount; i = i + 1 {
+		var bounds mat.v4 = g_graphs[graphIndex].horz[i].bounds
+		var color mat.v4 = g_graphs[graphIndex].horz[i].color
+		gfx.MeshAppendOrthoLine(g_opaqueVertexColoredLines, bounds, color, renderClips, ComputeDepth(stack))
+	}
+
+	var vertCount i32 = len(g_graphs[graphIndex].vert)
+	for i = 0; i < vertCount; i = i + 1 {
+		var bounds mat.v4 = g_graphs[graphIndex].vert[i].bounds
+		var color mat.v4 = g_graphs[graphIndex].vert[i].color
+		/*if (i == 3) {
+		  color = v4.make(0.0, 1.0, 0.0, 1.0)
+		  bounds.y = bounds.y + 0.01
+		  bounds.w = bounds.w + 0.01
+		  }*/
+		//		printf("II %d, COLOR %f, %f, %f, %f, BOUNDS %f, %f, %f, %f\n",
+		//		  i, color.x, color.y, color.z, color.w, bounds.x, bounds.y, bounds.z, bounds.w)
+		gfx.MeshAppendOrthoLine(g_opaqueVertexColoredLines, bounds, color, renderClips, ComputeDepth(stack))
+	}
+	gfx.PopScissor()
+	gfx.PopScissor()
+}
+
+

@@ -1,0 +1,119 @@
+package main
+
+import "app"
+import "fps"
+import "gam"
+import "gfx"
+import "gui"
+import "m44"
+import "mat"
+import "q4"
+import "v3"
+import "v4"
+
+// Globals ...
+var gameScreen gui.ScreenId
+
+var mesh gfx.MeshId
+var texture gfx.TextureId
+
+var dx f32 = 0.0
+var dy f32 = 0.0
+var dz f32 = -50.0
+var ry f32 = 0.0
+var world mat.m44
+
+var projection mat.m44
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func gameOnEvent(controlIndex i32, controlAction i32) {
+	var key i32 = gui.CurrentEvent.keyboard.key
+	var action i32 = gui.CurrentEvent.keyboard.action
+	var mods i32 = gui.CurrentEvent.keyboard.mods
+	if mods == app.MOD_NONE {
+		if key == app.KEYCODE_ESCAPE && action == app.KEY_PRESS {
+			app.Exit()
+		}
+	}
+
+	if key == app.KEYCODE_LEFT {
+		dx = dx + 1.0
+	}
+	if key == app.KEYCODE_RIGHT {
+		dx = dx - 1.0
+	}
+	if key == app.KEYCODE_DOWN {
+		if mods > 0 {
+			dy = dy + 1.0
+		} else {
+			dz = dz - 1.0
+		}
+	}
+	if key == app.KEYCODE_UP {
+		if mods > 0 {
+			dy = dy - 1.0
+		} else {
+			dz = dz + 1.0
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func gameOnUpdate(controlIndex i32, controlAction i32) {
+	projection = m44.make_project(0.1, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y)
+
+	ry = ry + f64.f32(fps.DeltaSecond())
+	world = m44.makef_AT(0.0, 1.0, 0.0, ry, dx, dy, dz)
+
+	gfx.MeshBegin(mesh)
+	gfx.MeshAppendBox(mesh, false, false,
+		v3.ZERO,
+		v3.make(10.0, 0.0, 0.0),
+		v3.make(0.0, 10.0, 0.0),
+		v3.make(0.0, 0.0, 10.0),
+		v4.ONE)
+	gfx.MeshEnd(mesh)
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func gameOnRender(controlIndex i32, controlAction i32) {
+	gfx.DisableBlending()
+	gfx.DepthState(true, gfx.LESS, true)
+	gfx.Clear(gfx.COLOR_BUFFER_BIT | gfx.DEPTH_BUFFER_BIT, v4.make(0.3, 0.5, 0.6, 1.0), 1.0D, 0)
+	gfx.EffectUse(gfx.g_fxTexture3D)
+	gfx.EffectAssignTexture(gfx.g_fxTexture3D, gfx.SAMPLER_COLOR_0, texture, gfx.g_linearWrap)
+	gfx.EffectAssignM44(gfx.g_fxTexture3D, gfx.UNIFORM_WORLD, world, false)
+	gfx.EffectAssignM44(gfx.g_fxTexture3D, gfx.UNIFORM_VIEW, m44.IDENTITY, false)
+	gfx.EffectAssignM44(gfx.g_fxTexture3D, gfx.UNIFORM_PROJECTION, projection, false)
+	gfx.MeshRender(mesh)
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+	// init
+	gam.Init("Perspective Tutorial", 800, 600, 60, "")
+	mesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 36)
+	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()),
+		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
+
+	// gameScreen
+	gameScreen = gui.ScreenCreate("gameScreen")
+	gui.ControlSetDock(gameScreen.base, gui.DOCK_FILL)
+	gui.ScreenSetDuration(gameScreen, -1.0D)
+	gui.ScreenSetOnEvent(gameScreen, "main", "gameOnEvent")
+	gui.ScreenSetOnUpdate(gameScreen, "main", "gameOnUpdate")
+	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
+
+	// run
+	gui.ScreenShow(gameScreen)
+	gam.Run(2U)
+
+	// destroy
+	gfx.MeshUnlock(mesh)
+	gam.Destroy()
+}
+

@@ -1,0 +1,36 @@
+package main
+
+import "app"
+import "fps"
+
+func main()() {
+	var o app.Options
+	o.fps = 60
+	o.Parse()
+
+	var f fps.Framerate
+	f.Init(i32.f64(o.fps))
+
+	var prfFrame fps.ProfileId = fps.CreateProfile("frame")
+	var prfUpdate fps.ProfileId = fps.CreateProfile("update")
+	var prfRender fps.ProfileId = fps.CreateProfile("render")
+
+	var running bool = true
+	for running == true { // ISSUE : can't use 1, can't use true
+		f.BeginUpdate(2.0D)
+
+		fps.StartProfile(prfFrame) // ISSUE : can't use member function
+
+		fps.StartProfile(prfUpdate)
+		// Update ...
+		fps.StopProfile(prfUpdate)
+
+		fps.StartProfile(prfRender)
+		// Render ...
+		fps.StopProfile(prfRender)
+
+		fps.StopProfile(prfFrame)
+
+		f.EndUpdate()
+	}
+}

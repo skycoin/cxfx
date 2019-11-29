@@ -1,0 +1,22 @@
+package main
+
+import "app"
+import "fps"
+
+func main()() {
+	var o app.Options
+	o.fps = 60
+	o.Parse()
+
+	var f fps.Framerate
+	f.Init(i32.f64(o.fps))
+
+	var running bool = true
+	for running == true {
+		f.BeginUpdate(1.0D)
+
+		// ...
+
+		f.EndUpdate()
+	}
+}
