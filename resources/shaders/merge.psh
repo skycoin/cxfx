@@ -1,0 +1,81 @@
+
+uniform sampler2D u_t2Opaque;
+uniform sampler2D u_t2Alpha0;
+uniform sampler2D u_t2Alpha1;
+uniform sampler2D u_t2Depth;
+
+uniform vec4 u_v4TargetSize;
+uniform vec4 DEBUG_0;
+
+in vec2 v_v2Texcoord;
+in vec4 v_v4Distance;
+
+out vec4 o_v4Color;
+
+
+vec3 gamma(vec3 color) // REMOVE : duplicate
+{
+	return pow(color, vec3(2.2));
+}
+
+vec3 invgamma(vec3 color) // REMOVE : duplicate
+{
+	return pow(color, vec3(1.0 / 2.2));
+}
+
+bool valid(float f) {
+	return isinf(abs(f)) == false && isnan(f) == false;
+}
+
+bool valid2(vec2 v) {
+	return valid(v.x) && valid(v.y);
+}
+
+bool valid3(vec3 v) {
+	return valid(v.x) && valid(v.y) && valid(v.z);
+}
+
+bool valid4(vec4 v) {
+	return valid(v.x) && valid(v.y) && valid(v.z) && valid(v.w);
+}
+
+float intensity(in vec4 color){
+	return sqrt((color.x*color.x)+(color.y*color.y)+(color.z*color.z));
+}
+
+void main()
+{
+#ifdef USE_EDGE
+	float tl = texture2D(u_t2Depth, v_v2Texcoord + vec2(-u_v4TargetSize.z, u_v4TargetSize.w)).r;
+	float l = texture2D(u_t2Depth, v_v2Texcoord + vec2(-u_v4TargetSize.z, 0)).r;
+	float bl = texture2D(u_t2Depth, v_v2Texcoord + vec2(-u_v4TargetSize.z, -u_v4TargetSize.w)).r;
+	float t = texture2D(u_t2Depth, v_v2Texcoord + vec2(0, u_v4TargetSize.w)).r;
+	float b = texture2D(u_t2Depth, v_v2Texcoord + vec2(0, -u_v4TargetSize.w)).r;
+	float tr = texture2D(u_t2Depth, v_v2Texcoord + vec2(u_v4TargetSize.z, u_v4TargetSize.w)).r;
+	float r = texture2D(u_t2Depth, v_v2Texcoord + vec2(u_v4TargetSize.z, 0)).r;
+	float br = texture2D(u_t2Depth, v_v2Texcoord + vec2(u_v4TargetSize.z, -u_v4TargetSize.w)).r;
+	float x =  tl + 2.0*l + bl - tr - 2.0*r - br;
+	float y = -tl - 2.0*t - tr + bl + 2.0*b + br;
+	float e = sqrt((x*x) + (y*y));
+	o_v4Color = vec4(e, e, e, 1.0);
+#endif
+
+#ifdef USE_STENCIL
+	float edge = texture2D(u_t2Depth, v_v2Texcoord).r;
+	if (edge < 0.01) {
+		discard;
+	}
+	o_v4Color = vec4(0, 1, 0, 1);
+#endif
+
+#ifdef USE_MERGE
+	vec3 opaque = gamma(texture2D(u_t2Opaque, v_v2Texcoord).rgb);
+	vec4 alpha0 = texture2D(u_t2Alpha0, v_v2Texcoord);
+	vec4 alpha1 = texture2D(u_t2Alpha1, v_v2Texcoord);
+
+	vec4 accum = vec4(alpha0.rgb, alpha0.a);
+	float reveal = alpha0.a;
+
+	o_v4Color = vec4(invgamma(mix(opaque, 2.0 * accum.rgb / max(accum.a, 1e-5), clamp(0.3 * accum.a, 0, 1))), 1.0);
+#endif
+}

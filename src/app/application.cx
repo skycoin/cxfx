@@ -1,0 +1,280 @@
+package app
+
+import "args"
+import "cx"
+import "glfw"
+import "os"
+
+// TODO : handle position in options
+// TODO : handle fullscreen in options
+
+// Globals ...
+var g_application Application
+
+// Constants ...
+var APP_HINT_NONE i32       = 0
+var APP_HINT_DEBUG i32      = 1
+var APP_HINT_FULLSCREEN i32 = 2
+var APP_HINT_RESIZABLE i32  = 4
+
+// Options ...
+type Options struct {
+	width i32
+	height i32
+	fps i32
+	hints i32
+	dataDir str
+}
+
+// Application ...
+type Application struct {
+	options Options
+	exit bool
+	name str
+	window str
+	major i32
+	minor i32
+	x i32
+	y i32
+	width i32
+	height i32
+	fullscreen bool
+}
+
+// Help ...
+func Help(message str, exitCode i32) {
+	printf(message)
+	printf("Usage:\n")
+	printf("++help   : Prints this message.\n")
+	printf("++width  : Width in pixels\n")
+	printf("++height : Height in pixels\n")
+	printf("++fps    : Target framerate, vsyng disabled when >= 0\n")
+	printf("++hints  : Window hint flags (fullscreen, resizable)\n")
+	printf("++data   : Resource path\n")
+	os.Exit(exitCode)
+}
+
+// Width ...
+func Width()(out i32) {
+	out = g_application.width
+}
+
+// Height ...
+func Height()(out i32) {
+	out = g_application.height
+}
+
+// DataDir ...
+func DataDir()(out str) {
+	out = g_application.options.dataDir
+}
+
+// Fps ...
+func Fps()(out i32) {
+	out = g_application.options.fps
+}
+
+// Name ...
+func Name()(out str) {
+	out = g_application.name
+}
+
+// WindowName ...
+func WindowName()(out str) {
+	out = g_application.window
+}
+
+// Parse ...
+func Parse() {
+	var argc i32 = len(os.Args) // ISSUE : doubious compilation error : function 'len' expected receiving variable of type 'i32'; 'str' was provided
+
+	// >> tmp issue #214
+	var width i32
+	var height i32
+	var fps i32
+	var hints i32
+	var dataDir str
+	var help bool
+	// << tmp issue #214
+
+	var helpMatch bool
+	var widthMatch bool
+	var heightMatch bool
+	var fpsMatch bool
+	var hintsMatch bool
+	var dataDirMatch bool
+
+	var hintNames []str
+	hintNames = []str {"fullscreen", "resizable" }
+	var hintValues []i32
+	hintValues = []i32 {APP_HINT_FULLSCREEN, APP_HINT_RESIZABLE}
+
+	for a := 0; a < argc; a++ {
+		arg := os.Args[a]
+
+		if args.Bool(arg, "help", &help, &helpMatch) {
+			Help("", 0)
+		}
+
+		if args.I32(arg, "width", &width, &widthMatch) {
+			if (width < 0 || width > 65536) {
+				 Help(sprintf("invalid value %s\n", arg), cx.PANIC)
+			}
+			g_application.options.width = width
+			continue
+		}
+
+		if args.I32(arg, "height", &height, &heightMatch) {
+			if (height < 0 || height > 65536) {
+				 Help(sprintf("invalid value %s\n", arg), cx.PANIC)
+			}
+			g_application.options.height = height
+			continue
+		}
+
+		if args.I32(arg, "fps", &fps, &fpsMatch) {
+			if (fps < 0 || fps > 65536) {
+				 Help(sprintf("invalid value %s\n", arg), cx.PANIC)
+			}
+			g_application.options.fps = fps
+			continue
+		}
+
+		if args.Str(arg, "data", &dataDir, &dataDirMatch) {
+			g_application.options.dataDir = dataDir
+			continue
+		}
+
+		if args.Flags(arg, "hints", &hints, &hintsMatch, hintNames, hintValues) {
+			continue
+		}
+
+		Help(sprintf("invalid argument %s", arg), cx.ASSERT)
+	}
+}
+
+// Init ...
+func Init(name str, window str, major i32, minor i32) {
+
+	g_application.exit = false
+	g_application.window = window
+	g_application.name = name
+	g_application.major = major
+	g_application.minor = minor
+
+	Parse()
+
+	printf("starting %s...\n", g_application.name)
+
+	glfw.Init() // ##0 terminate
+
+	var resizable i32 = glfw.False
+	if (g_application.options.hints & APP_HINT_RESIZABLE) == APP_HINT_RESIZABLE {
+		resizable = glfw.True
+	}
+
+	glfw.WindowHint(glfw.Resizable, resizable)
+	glfw.WindowHint(glfw.ContextVersionMajor, g_application.major)
+	glfw.WindowHint(glfw.ContextVersionMinor, g_application.minor)
+	glfw.CreateWindow(g_application.window, g_application.options.width, g_application.options.height, g_application.name)
+	glfw.MakeContextCurrent(g_application.window)
+	glfw.SetWindowPosCallback(g_application.window, "windowPosCallback", "app")
+	glfw.SetWindowSizeCallback(g_application.window, "windowSizeCallback", "app")
+
+	g_application.x, g_application.y = glfw.GetWindowPos(g_application.window)
+	g_application.width, g_application.height = glfw.GetWindowSize(g_application.window)
+
+	var swapInterval i32 = 0
+	if g_application.options.fps > 0 {
+		swapInterval = 1 // should be based on targetFps
+	}
+
+	glfw.SwapInterval(swapInterval)
+
+	if (g_application.options.hints & APP_HINT_FULLSCREEN) == APP_HINT_FULLSCREEN {
+		ToggleFullscreen()
+	}
+}
+
+// Exit ...
+func Exit() {
+	printf("exiting %s...\n", g_application.name)
+	g_application.exit = true
+}
+
+// ToggleFullscreen ...
+func ToggleFullscreen() {
+	var fullscreen bool = g_application.fullscreen == false
+	if fullscreen {
+		g_application.fullscreen = fullscreen
+	}
+	glfw.Fullscreen(g_application.window, fullscreen, g_application.x, g_application.y, g_application.options.width, g_application.options.height)
+	g_application.fullscreen = fullscreen
+}
+
+// Running ...
+func Running()(out bool) { // ISSUE : member function does not contain expressions
+	out = (glfw.ShouldClose(g_application.window) == false && g_application.exit == false)
+}
+
+// Resize ...
+func Resize(width i32, height i32) {
+	/*if g_application.fullscreen == false {
+		g_application.options.width = width
+		g_application.options.height = height
+	}*/
+
+	g_application.width = width
+	g_application.height = height
+}
+
+// Destroy ...
+func Destroy()() {
+	glfw.MakeContextCurrent(g_application.window)
+}
+
+// BeginFrame ...
+func BeginFrame() {
+	glfw.MakeContextCurrent(g_application.window)
+}
+
+// EndFrame ...
+func EndFrame() {
+	glfw.PollEvents()
+	glfw.SwapBuffers(g_application.window)
+}
+
+// SetKeyboardCallback ...
+func SetKeyboardCallback(packageName str, functionName str) {
+	glfw.SetKeyCallbackEx(g_application.window, functionName, packageName)
+}
+
+// SetMouseButtonCallback ...
+func SetMouseButtonCallback(packageName str, functionName str) {
+	glfw.SetMouseButtonCallbackEx(g_application.window, functionName, packageName)
+}
+
+// SetMousePositionCallback ...
+func SetMousePositionCallback(packageName str, functionName str) {
+	glfw.SetCursorPosCallbackEx(g_application.window, functionName, packageName)
+}
+
+// SetWindowResizeCallback ...
+func SetWindowResizeCallback(packageName str, functionName str) {
+	glfw.SetFramebufferSizeCallback(g_application.window, functionName, packageName)
+}
+
+func windowPosCallback(window str, x i32, y i32) {
+	if g_application.fullscreen == false {
+		g_application.x = x
+		g_application.y = y
+	}
+}
+
+func windowSizeCallback(window str, w i32, h i32) {
+	if g_application.fullscreen == false {
+		g_application.options.width = w
+		g_application.options.height = h
+	}
+}
+

@@ -1,0 +1,74 @@
+package main
+
+import "app"
+import "gam"
+import "gfx"
+import "gui"
+import "mat"
+import "v4"
+
+// Globals ...
+var mesh gfx.MeshId
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func gameOnEvent(controlIndex i32, controlAction i32) {
+	var key i32 = gui.CurrentEvent.keyboard.key
+	var action i32 = gui.CurrentEvent.keyboard.action
+	var mods i32 = gui.CurrentEvent.keyboard.mods
+	if mods == app.MOD_NONE {
+		if key == app.KEYCODE_ESCAPE && action == app.KEY_PRESS {
+			app.Exit()
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func gameOnUpdate(controlIndex i32, controlAction i32) {
+	var w f32 = 200.0
+	var h f32 = 200.0
+	var x f32 = (gfx.gfx_viewportSize.x - w) / 2.0
+	var y f32 = (gfx.gfx_viewportSize.y - h) / 2.0
+
+	gfx.MeshBegin(mesh)
+	gfx.MeshAppendOrthoQuad(mesh,
+			v4.make(x, y, w, h),
+			v4.BLUE,
+			v4.GREEN,
+			v4.make(0.0, 0.0, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y),
+			0.0)
+	gfx.MeshEnd(mesh)
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func gameOnRender(controlIndex i32, controlAction i32) {
+	gfx.EffectUse(gfx.g_fxVertexColor2D)
+	gfx.MeshRender(mesh)
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+	// init
+	gam.Init("Colored Quad Tutorial", 800, 600, 60, "")
+	var mesh gfx.MeshId = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6, gfx.g_vertexLayout, 4)
+
+	// gameScreen
+	var gameScreen gui.ScreenId = gui.ScreenCreate("gameScreen")
+	gui.ControlSetDock(gameScreen.base, gui.DOCK_FILL)
+	gui.ScreenSetDuration(gameScreen, -1.0D)
+	gui.ScreenSetOnEvent(gameScreen, "main", "gameOnEvent")
+	gui.ScreenSetOnUpdate(gameScreen, "main", "gameOnUpdate")
+	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
+
+	// run
+	gui.ScreenShow(gameScreen)
+	gam.Run(2U)
+
+	// destroy
+	gfx.MeshUnlock(mesh)
+	gam.Destroy()
+}
+

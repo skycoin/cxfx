@@ -1,0 +1,738 @@
+package gam
+
+import "app"
+import "gfx"
+import "gui"
+import "mat"
+import "m44"
+import "q4"
+import "v1"
+import "v2"
+import "v3"
+import "v4"
+
+// TODO : rotation based on mouse
+// TODO : translation based on at vector
+// TODO : apply on gfx.State
+// FIX : matrix ordering
+//
+
+// Globals ...
+var g_cameras []Camera
+
+// CameraId ...
+type CameraId struct {
+    camera i32
+}
+
+// CameraState ...
+type CameraState struct {
+    near f32
+    far f32
+    fov f32
+    width f32
+    height f32
+    position v3
+    yaw f32
+    pitch f32
+    //orientation v4
+}
+
+// Camera ...
+type Camera struct {
+    id CameraId
+
+    previous CameraState
+    current CameraState
+    next CameraState
+
+    nearTime f32
+    farTime f32
+    fovTime f32
+    widthTime f32
+    heightTime f32
+    positionTime f32
+    yawTime f32
+    pitchTime f32
+    //orientationTime f32
+
+    pitchQuaternion v4
+    yawQuaternion v4
+
+    transform m44
+    view m44
+    projection m44
+    viewProj m44
+    invViewProj m44
+    invProj m44
+
+    xdir f32
+    zdir f32
+    leftDrag f32
+    leftDragVelocity f32
+    dragPosition mat.v2
+    dragDelta mat.v2
+    previousTarget mat.v3
+
+    translationSpeed f32
+    //rotationSpeed f32
+    yawSpeed f32
+    pitchSpeed f32
+}
+
+// CameraIsValid ...
+func CameraIsValid(id CameraId) (out bool) {
+    out = id.camera >= 0 && id.camera < len(g_cameras)
+}
+
+// CameraGetPosition ...
+func CameraGetPosition(id CameraId) (out mat.v3) {
+    panicIfNot(CameraIsValid(id), "")
+    out = g_cameras[id.camera].current.position
+}
+
+// CameraGetPitchQuaternion ...
+func CameraGetPitchQuaternion(id CameraId) (out mat.v4) {
+    panicIfNot(CameraIsValid(id), "")
+    out = g_cameras[id.camera].pitchQuaternion
+}
+
+// CameraGetYawQuaternion ...
+func CameraGetYawQuaternion(id CameraId) (out mat.v4) {
+    panicIfNot(CameraIsValid(id), "")
+    out = g_cameras[id.camera].yawQuaternion
+}
+
+// CameraGetTransform. ...
+func CameraGetTransform(id CameraId) (out m44) {
+    panicIfNot(CameraIsValid(id), "")
+    out = g_cameras[id.camera].transform
+}
+
+// CameraGetView ...
+func CameraGetView(id CameraId) (out m44) {
+    panicIfNot(CameraIsValid(id), "")
+    out = g_cameras[id.camera].view
+}
+
+// CameraGetViewProj ...
+func CameraGetViewProj(id CameraId) (out m44) {
+    panicIfNot(CameraIsValid(id), "")
+    out = g_cameras[id.camera].viewProj
+}
+
+// CameraGetInvProj ...
+func CameraGetInvProj(id CameraId) (out m44) {
+    panicIfNot(CameraIsValid(id), "")
+    out = g_cameras[id.camera].invProj
+}
+
+
+// CameraGetInvViewProj ...
+func CameraGetInvViewProj(id CameraId) (out m44) {
+    panicIfNot(CameraIsValid(id), "")
+    out = g_cameras[id.camera].invViewProj
+}
+
+// CameraGetAt ...
+func CameraGetAt(id CameraId) (out mat.v3) {
+    panicIfNot(CameraIsValid(id), "")
+    var view m44 = g_cameras[id.camera].view
+    out = v3.make(view.v02, view.v12, view.v22)
+}
+
+// CameraGetRight ...
+func CameraGetRight(id CameraId) (out mat.v3) {
+    panicIfNot(CameraIsValid(id), "")
+    var view m44 = g_cameras[id.camera].view
+    out = v3.make(view.v00, view.v10, view.v20)
+}
+
+// CameraGetProjection ...
+func CameraGetProjection(id CameraId) (out m44) {
+    panicIfNot(CameraIsValid(id), "")
+    out = g_cameras[id.camera].projection
+}
+
+// CameraCreate ...
+func CameraCreate() (out CameraId) {
+    out.camera = len(g_cameras)
+
+    var camera Camera
+    camera.id = out
+
+    camera.transform = m44.IDENTITY
+    camera.view = m44.IDENTITY
+    camera.projection = m44.IDENTITY
+    camera.viewProj = m44.IDENTITY
+    camera.invViewProj = m44.IDENTITY
+    camera.invProj = m44.IDENTITY
+
+    g_cameras = append(g_cameras, camera)
+
+    panicIfNot(CameraIsValid(out), "")
+}
+
+// CameraSetProjection ...
+func CameraSetProjection(id CameraId, near f32, far f32, fov f32, width f32, height f32, force bool) {
+    panicIfNot(CameraIsValid(id), "")
+
+    var cameraIndex i32 = id.camera
+
+    var previous CameraState = g_cameras[cameraIndex].previous
+    var current CameraState = g_cameras[cameraIndex].current
+    var next CameraState = g_cameras[cameraIndex].next
+
+    var time f32 = 0.0
+    if force == true {
+        time = 1.0
+    }
+
+    if next.near != near {
+        next.near = near
+        previous.near = current.near
+        g_cameras[cameraIndex].nearTime = time
+    }
+
+    if next.far != far {
+        next.far = far
+        previous.far = current.far
+        g_cameras[cameraIndex].farTime = time
+    }
+
+    if next.fov != fov {
+        next.fov = fov
+        previous.fov = current.fov
+        g_cameras[cameraIndex].fovTime = time
+    }
+
+    if next.width != width {
+        next.width = width
+        previous.width = current.width
+        g_cameras[cameraIndex].widthTime = time
+    }
+
+    if next.height != height {
+        next.height = height
+        previous.height = current.height
+        g_cameras[cameraIndex].heightTime = time
+    }
+
+    g_cameras[cameraIndex].previous = previous
+    g_cameras[cameraIndex].next = next
+}
+
+// CameraSetPosition...
+func CameraSetPosition(id CameraId, position mat.v3, force bool) {
+    panicIfNot(CameraIsValid(id), "")
+
+    var cameraIndex i32 = id.camera
+
+    var previous CameraState = g_cameras[cameraIndex].previous
+    var current CameraState = g_cameras[cameraIndex].current
+    var next CameraState = g_cameras[cameraIndex].next
+
+    var time f32 = 0.0
+    if force == true {
+        time = 1.0
+        previous.position = current.position
+        next.position = position
+        current.position = position
+    } else {
+
+    if v3.equ(next.position, position) == false {
+        next.position = position
+        previous.position = current.position
+        g_cameras[cameraIndex].positionTime = time
+    }
+    }
+
+    g_cameras[cameraIndex].previous = previous
+    g_cameras[cameraIndex].next = next
+    g_cameras[cameraIndex].current = current
+}
+
+// CameraSetYawPitch ...
+func CameraSetYawPitch(id CameraId, yaw f32, pitch f32, force bool) {
+    panicIfNot(CameraIsValid(id), "")
+
+    var cameraIndex i32 = id.camera
+
+    var previous CameraState = g_cameras[cameraIndex].previous
+    var current CameraState = g_cameras[cameraIndex].current
+    var next CameraState = g_cameras[cameraIndex].next
+
+    var time f32 = 0.0
+    if force == true {
+        time = 1.0
+        previous.yaw = current.yaw
+        next.yaw = yaw
+        current.yaw = yaw
+
+        previous.pitch = current.pitch
+        next.pitch = pitch
+        current.pitch = pitch
+    } else {
+
+    if next.yaw != yaw {
+        next.yaw = yaw
+        previous.yaw = current.yaw
+        g_cameras[cameraIndex].yawTime = time
+
+    }
+
+    if next.pitch != pitch {
+        next.pitch = pitch
+        previous.pitch = current.pitch
+        g_cameras[cameraIndex].pitchTime = time
+    }
+    }
+
+    g_cameras[cameraIndex].previous = previous
+    g_cameras[cameraIndex].next = next
+    g_cameras[cameraIndex].current = current
+}
+
+
+// CameraSetPositionAndTarget ...
+/*func CameraSetPositionAndTarget(id CameraId, position mat.v3, target mat.v3, force bool) {
+    panicIfNot(CameraIsValid(id), "")
+
+    var direction mat.v3 = v3.normalize(v3.sub(position, target))
+    CameraSetPositionAndDirection(id, position, direction, force)
+}*/
+
+// CameraSetPositionAndDirection ...
+/*func CameraSetPositionAndDirection(id CameraId, position mat.v3, direction mat.v3, force bool) {
+    panicIfNot(CameraIsValid(id), "")
+
+    var at mat.v3 = direction
+    //at.x = 0.0 - direction.x
+    //at.y = 0.0 - direction.y
+    //at.z = 0.0 - direction.z
+    at = v3.normalize(at)
+
+    var up mat.v3 = v3.make(0.0, 1.0, 0.0)
+    if f32.abs(v3.dot(at, up)) > 0.9999 {
+        up = v3.UP
+    }
+
+    var right mat.v3 = v3.normalize(v3.cross(up, at))
+    up = v3.normalize(v3.cross(at, right))
+
+    var m00 f32 = right.x
+    var m01 f32 = up.x
+    var m02 f32 = at.x
+
+    var m10 f32 = right.y
+    var m11 f32 = up.y
+    var m12 f32 = at.y
+
+    var m20 f32 = right.z
+    var m21 f32 = up.z
+    var m22 f32 = at.z
+
+    var ox f32
+    var oy f32
+    var oz f32
+    var ow f32
+
+    var num8 f32 = m00 + m11 + m22
+    if num8 > 0.0 {
+        var num f32 = f32.sqrt(num8 + 1.0)
+        ow = num * 0.5
+        num = 0.5 / num
+        ox = (m12 - m21) * num
+        oy = (m20 - m02) * num
+        oz = (m01 - m10) * num
+    } else if (m00 >= m11) && (m00 >= m22) {
+        var num7 f32 = f32.sqrt(1.0 + m00 - m11 - m22)
+        var num4 f32 = 0.5 / num7
+        ox = 0.5 * num7
+        oy = (m01 + m10) * num4
+        oz = (m02 + m20) * num4
+        ow = (m12 - m21) * num4
+    } else if (m11 > m22) {
+        var num6 f32 = f32.sqrt(1.0 + m11 - m00 - m22)
+        var num3 f32 = 0.5 / num6
+        ox = (m10 + m01) * num3
+        oy = 0.5 * num6
+        oz = (m21 + m12) * num3
+        ow = (m20 - m02) * num3
+    } else {
+        var num5 f32 = f32.sqrt(1.0 + m22 - m00 - m11)
+        var num2 f32 = 0.5 / num5
+        ox = (m20 + m02) * num2
+        oy = (m21 + m12) * num2
+        oz = 0.5 * num5
+        ow = (m01 - m10) * num2
+    }
+
+    CameraSetPositionAndOrientation(id, position, v4.make(0.0-ox, 0.0-oy, 0.0-oz, ow), force)
+}*/
+
+// CameraSetPositionAndOrientation ...
+/*func CameraSetPositionAndOrientation(id CameraId, position mat.v3, orientation mat.v4, force bool) {
+    panicIfNot(CameraIsValid(id), "")
+
+    var cameraIndex i32 = id.camera
+
+    var previous CameraState = g_cameras[cameraIndex].previous
+    var current CameraState = g_cameras[cameraIndex].current
+    var next CameraState = g_cameras[cameraIndex].next
+
+    var time f32 = 0.0
+    if force == true {
+        time = 1.0
+    }
+
+    if v3.equ(next.position, position) == false {
+        next.position = position
+        previous.position = current.position
+        g_cameras[cameraIndex].positionTime = time
+    }
+
+    var diff f32 = v4.sqlength(v4.sub(next.orientation, orientation))
+    if diff > 0.0001 {
+        next.orientation = orientation
+        previous.orientation = current.orientation
+        g_cameras[cameraIndex].orientationTime = time
+    }
+
+    g_cameras[cameraIndex].previous = previous
+    g_cameras[cameraIndex].next = next
+}*/
+
+// TpsCameraProcess ...
+func TpsCameraProcess(id CameraId, event *app.Event)() {
+    panicIfNot(CameraIsValid(id), "")
+    cameraProcessMouse(id, event)
+}
+
+// TpsCameraUpdate ...
+func TpsCameraUpdate(id CameraId, deltaTime f64, target mat.v3, distance f32)() {
+    panicIfNot(CameraIsValid(id), "")
+
+    var cameraIndex i32 = id.camera
+
+    var deltaPosition mat.v3 = v3.sub(target, g_cameras[cameraIndex].previousTarget)
+    g_cameras[cameraIndex].previousTarget = target
+
+    var yawPitch  mat.v2 = cameraUpdateYawPitch(id, deltaTime)
+    var qyaw mat.v4 = q4.from_yaw_pitch_roll(yawPitch.x, 0.0, 0.0)
+    var qpitch mat.v4 = q4.from_yaw_pitch_roll(0.0, yawPitch.y, 0.0)
+    var orientation mat.v4 = q4.mul(qyaw, qpitch)
+    orientation = v4.normalize(orientation)
+    //var orientation mat.v4 = q4.from_yaw_pitch_roll(yawPitch.x, yawPitch.y, 0.0)
+
+    var direction mat.v3
+    direction.x = (2.0 * orientation.x * orientation.z + 2.0 * orientation.y * orientation.w)
+    direction.y = (2.0 * orientation.y * orientation.z - 2.0 * orientation.x * orientation.w)
+    direction.z = 1.0 - 2.0 * orientation.x * orientation.x - 2.0 * orientation.y * orientation.y
+    direction = v3.mulf(v3.normalize(direction), distance)
+
+    var currentPosition mat.v3 = g_cameras[cameraIndex].current.position
+    currentPosition = v3.add(currentPosition, deltaPosition)
+    CameraSetPosition(id, currentPosition, true)
+
+    var position mat.v3 = v3.add(target, direction)
+    CameraSetPosition(id, position, false)
+    CameraSetYawPitch(id, yawPitch.x, yawPitch.y, false)
+    cameraUpdate(id, deltaTime)
+}
+
+// FpsCameraProcess ...
+func FpsCameraProcess(id CameraId, event *app.Event)() {
+    panicIfNot(CameraIsValid(id), "")
+    cameraProcessMouse(id, event)
+}
+
+// FpsCameraUpdate ...
+func FpsCameraUpdate(id CameraId, deltaTime f64, position mat.v3)() {
+    panicIfNot(CameraIsValid(id), "")
+    var yawPitch mat.v2 = cameraUpdateYawPitch(id, deltaTime)
+    CameraSetPosition(id, position, true)
+    CameraSetYawPitch(id, yawPitch.x, yawPitch.y, false)
+    cameraUpdate(id, deltaTime)
+}
+
+// FreeCameraProcess ...
+func FreeCameraProcess(id CameraId, event *app.Event) {
+    panicIfNot(CameraIsValid(id), "")
+    cameraProcessKeyboard(id, event)
+    cameraProcessMouse(id, event)
+}
+
+// FreeCameraUpdate ...
+func FreeCameraUpdate(id CameraId, deltaTime f64) {
+    panicIfNot(CameraIsValid(id), "")
+
+    var rotationSpeed f32 = 0.5
+    var translationSpeed f32 = 30.0
+
+    var dt f32 = f64.f32(deltaTime)
+
+    var cameraIndex i32 = id.camera
+    var view m44 = g_cameras[cameraIndex].view
+
+    var right mat.v3 = v3.make(view.v00, view.v10, view.v20)
+    var up mat.v3    = v3.make(view.v01, view.v11, view.v21)
+    var at mat.v3    = v3.make(view.v02, view.v12, view.v22)
+
+    var dx f32 = g_cameras[cameraIndex].xdir * dt * translationSpeed
+    var dz f32 = g_cameras[cameraIndex].zdir * dt * translationSpeed
+
+    var position mat.v3 = g_cameras[cameraIndex].next.position
+    position.x = position.x + dx * right.x + dz * at.x
+    position.y = position.y + dx * right.y + dz * at.y
+    position.z = position.z + dx * right.z + dz * at.z
+
+    var yawPitch mat.v2 = cameraUpdateYawPitch(id, deltaTime)
+    CameraSetPosition(id, position, false)
+    CameraSetYawPitch(id, yawPitch.x, yawPitch.y, false)
+    cameraUpdate(id, deltaTime)
+}
+
+func cameraProcessKeyboard(id CameraId, event *app.Event)() {
+    var key i32 = gui.CurrentEvent.keyboard.key
+    var action i32 = gui.CurrentEvent.keyboard.action
+    var mods i32 = gui.CurrentEvent.keyboard.mods
+
+    var cameraIndex i32 = id.camera
+    var xdir f32 = g_cameras[cameraIndex].xdir
+    var zdir f32 = g_cameras[cameraIndex].zdir
+
+    if mods <= 0 {
+        if key == app.KEYCODE_LEFT || key == app.KEYCODE_A {
+            if action == app.KEY_PRESS {
+                xdir = xdir - 1.0
+            } else if action == app.KEY_RELEASE {
+                xdir = xdir + 1.0
+            }
+        } else if key == app.KEYCODE_RIGHT || key == app.KEYCODE_D {
+            if action == app.KEY_PRESS {
+                xdir = xdir + 1.0
+            } else if action == app.KEY_RELEASE {
+                xdir = xdir - 1.0
+            }
+        } else if key == app.KEYCODE_DOWN || key == app.KEYCODE_S {
+            if action == app.KEY_PRESS {
+                zdir = zdir + 1.0
+            } else if action == app.KEY_RELEASE {
+                zdir = zdir - 1.0
+            }
+        } else if key == app.KEYCODE_UP || key == app.KEYCODE_W {
+            if action == app.KEY_PRESS {
+                zdir = zdir - 1.0
+            } else if action == app.KEY_RELEASE {
+                zdir = zdir + 1.0
+            }
+        }
+    }
+
+    g_cameras[cameraIndex].xdir = xdir
+    g_cameras[cameraIndex].zdir = zdir
+}
+
+func cameraProcessMouse(id CameraId, event *app.Event)() {
+    panicIfNot(CameraIsValid(id), "")
+
+    var mods i32 = gui.CurrentEvent.keyboard.mods
+    var button i32 = gui.CurrentEvent.mouse.button
+    var state i32 = gui.CurrentEvent.mouse.action
+
+    var cameraIndex i32 = id.camera
+
+    var leftDrag f32 = g_cameras[cameraIndex].leftDrag
+    var leftDragVelocity f32 = g_cameras[cameraIndex].leftDragVelocity
+    var dragDelta mat.v2
+    var dragPosition mat.v2 = g_cameras[cameraIndex].dragPosition
+
+    if mods <= 0 {
+        if button == app.BUTTON_LEFT {
+            if state == app.MOUSE_PRESS {
+                leftDrag = 1.0
+                leftDragVelocity = 1.0
+            } else if state == app.MOUSE_RELEASE {
+                leftDrag = 0.0
+            }
+        }
+
+        if state == app.MOUSE_MOVE {
+            dragDelta = v2.sub(gui.CurrentEvent.mouse.position, dragPosition)
+            g_cameras[cameraIndex].dragPosition = gui.CurrentEvent.mouse.position
+            leftDragVelocity = 1.0
+        }
+    }
+
+    leftDragVelocity = leftDragVelocity * 0.98
+    g_cameras[cameraIndex].leftDrag = leftDrag
+    g_cameras[cameraIndex].leftDragVelocity = leftDragVelocity
+    g_cameras[cameraIndex].dragDelta = dragDelta
+}
+
+/*func cameraYawPitchToQuaternion(yaw f32, pitch f32) (out mat.v4) {
+}*/
+
+func cameraUpdateYawPitch(id CameraId, deltaTime f64) (out mat.v2) {
+    panicIfNot(CameraIsValid(id), "")
+    var rotationSpeed f32 = 0.5
+
+    var dt f32 = f64.f32(deltaTime)
+    var cameraIndex i32 = id.camera
+
+    out.x = g_cameras[cameraIndex].next.yaw
+    out.y = g_cameras[cameraIndex].next.pitch
+
+    var leftDrag f32 = g_cameras[cameraIndex].leftDrag
+    var leftDragVelocity f32 = g_cameras[cameraIndex].leftDragVelocity
+    if (leftDrag * leftDragVelocity) > 0.0 {
+        var dragDelta mat.v2 = g_cameras[cameraIndex].dragDelta
+
+        out.x = out.x - leftDrag * dragDelta.x * dt * rotationSpeed
+        out.y = out.y + leftDrag * dragDelta.y * dt * rotationSpeed
+        g_cameras[cameraIndex].dragDelta = v2.ZERO
+
+        /*var qyaw mat.v4 = q4.from_yaw_pitch_roll(yaw, 0.0, 0.0)
+        var qpitch mat.v4 = q4.from_yaw_pitch_roll(0.0, pitch, 0.0)
+        orientation = q4.mul(qyaw, orientation)
+        orientation = q4.mul(orientation, qpitch)
+        orientation = v4.normalize(orientation)*/
+    }
+
+}
+
+func cameraUpdate(id CameraId, deltaTime f64) {
+    panicIfNot(CameraIsValid(id), "")
+
+    var cameraIndex i32 = id.camera
+
+    var previous CameraState = g_cameras[cameraIndex].previous
+    var next CameraState = g_cameras[cameraIndex].next
+    var current CameraState = g_cameras[cameraIndex].current
+
+    var nearTime f32 = g_cameras[cameraIndex].nearTime
+    var farTime f32 = g_cameras[cameraIndex].farTime
+    var fovTime f32 = g_cameras[cameraIndex].fovTime
+    var widthTime f32 = g_cameras[cameraIndex].widthTime
+    var heightTime f32 = g_cameras[cameraIndex].heightTime
+    var positionTime f32 = g_cameras[cameraIndex].positionTime
+    //var orientationTime f32 = g_cameras[cameraIndex].orientationTime
+    var yawTime f32 = g_cameras[cameraIndex].yawTime
+    var pitchTime f32 = g_cameras[cameraIndex].pitchTime
+
+    var dt f32 = f64.f32(deltaTime)
+    nearTime = nearTime + dt
+    farTime = farTime + dt
+    fovTime = fovTime + dt
+    widthTime = widthTime + dt
+    heightTime = heightTime + dt
+
+    var translationSpeed f32 = g_cameras[cameraIndex].translationSpeed
+    //var rotationSpeed f32 = g_cameras[cameraIndex].rotationSpeed
+    var yawSpeed f32 = g_cameras[cameraIndex].yawSpeed
+    var pitchSpeed f32 = g_cameras[cameraIndex].pitchSpeed
+
+    var currentPosition mat.v3 = current.position
+    var nextPosition mat.v3 = next.position
+    if v3.equ(currentPosition, nextPosition) == false {
+        translationSpeed = 6.0
+    }
+
+    /*var currentOrientation mat.v4 = current.orientation
+    var nextOrientation mat.v4 = next.orientation
+    if v4.equ(currentOrientation, nextOrientation) == false {
+        rotationSpeed = 5.0
+    }*/
+
+    //var maxYawLerp f32 = 1.0
+    //var maxPitchLerp f32 = 1.0
+
+    var currentYaw f32 = current.yaw
+    var nextYaw f32 = next.yaw
+    if currentYaw != nextYaw {
+        yawSpeed = 6.0
+    }
+
+    var currentPitch f32 = current.pitch
+    var nextPitch f32 = next.pitch
+    if currentPitch != nextPitch {
+        pitchSpeed = 6.0
+    }
+
+    positionTime = positionTime + dt * translationSpeed
+    //orientationTime = orientationTime + dt * rotationSpeed
+    yawTime = yawTime + dt * yawSpeed
+    pitchTime = pitchTime + dt * pitchSpeed
+
+    translationSpeed = f32.max(0.0, translationSpeed - 12.0 * dt)
+    //rotationSpeed = f32.max(0.0, rotationSpeed - 50.0 * dt)
+    yawSpeed =  f32.max(0.0, yawSpeed - 12.0 * dt)
+    pitchSpeed = f32.max(0.0, pitchSpeed - 12.0 * dt)
+
+    // TODO : don't lerp if not changes
+    current.near = v1.lerpsat(previous.near, next.near, nearTime)
+    current.far = v1.lerpsat(previous.far, next.far, farTime)
+    current.fov = v1.lerpsat(previous.fov, next.fov, fovTime)
+    current.width = v1.lerpsat(previous.width, next.width, widthTime)
+    current.height = v1.lerpsat(previous.height, next.height, heightTime)
+    current.position = v3.lerpsatf(previous.position, nextPosition, positionTime)
+    //current.orientation = v4.lerpsatf(previous.orientation, nextOrientation, orientationTime)
+    //current.orientation = q4.slerp(previous.orientation, next.orientation, v1.sat(orientationTime))
+    //current.orientation = v4.normalize(current.orientation)
+
+    //g_cameras[cameraIndex].previous.pitch = current.pitch
+    //g_cameras[cameraIndex].previous.yaw = current.yaw
+
+    current.yaw = v1.lerpsat(previous.yaw, nextYaw, yawTime)// v1.clamp(yawTime, 0.0, maxYawLerp))
+    current.pitch = v1.lerpsat(previous.pitch, nextPitch, pitchTime)// v1.clamp(pitchTime, 0.0, maxPitchLerp))
+
+
+    g_cameras[cameraIndex].nearTime = v1.sat(nearTime)
+    g_cameras[cameraIndex].farTime = v1.sat(farTime)
+    g_cameras[cameraIndex].fovTime = v1.sat(fovTime)
+    g_cameras[cameraIndex].widthTime = v1.sat(widthTime)
+    g_cameras[cameraIndex].heightTime = v1.sat(heightTime)
+    g_cameras[cameraIndex].positionTime = v1.sat(positionTime)
+    g_cameras[cameraIndex].yawTime = v1.sat(yawTime)
+    g_cameras[cameraIndex].pitchTime = v1.sat(pitchTime)
+
+    //g_cameras[cameraIndex].orientationTime = v1.sat(orientationTime)
+    g_cameras[cameraIndex].translationSpeed = translationSpeed
+    //g_cameras[cameraIndex].rotationSpeed = rotationSpeed
+    g_cameras[cameraIndex].yawSpeed = yawSpeed
+    g_cameras[cameraIndex].pitchSpeed = pitchSpeed
+
+    g_cameras[cameraIndex].current = current
+
+    var projection m44 = m44.make_project(current.near, current.far, current.fov, current.width, current.height)
+    g_cameras[cameraIndex].projection = projection
+
+    var position mat.v3 = current.position
+
+    var qyaw mat.v4 = q4.from_yaw_pitch_roll(current.yaw, 0.0, 0.0)
+    var qpitch mat.v4 = q4.from_yaw_pitch_roll(0.0, current.pitch, 0.0)
+    var orientation mat.v4 = q4.mul(qyaw, qpitch)
+    orientation = v4.normalize(orientation)
+    g_cameras[cameraIndex].yawQuaternion = qyaw
+    g_cameras[cameraIndex].pitchQuaternion = qpitch
+    /*orientation = q4.mul(qyaw, orientation)
+    orientation = q4.mul(orientation, qpitch)
+    orientation = v4.normalize(orientation)*/
+
+    var transform m44 = m44.makev_QT(orientation, position)
+    g_cameras[cameraIndex].transform = transform
+
+    var view m44 = m44.inverse(transform) // TODO : compute view matrix without MatrixInvert
+    g_cameras[cameraIndex].view = view
+
+    var invProj m44 = m44.inverse(projection)
+    g_cameras[cameraIndex].invProj = invProj
+
+    var viewProj m44 = m44.mulISSUE(view, projection)
+    g_cameras[cameraIndex].viewProj = viewProj
+
+    var invViewProj m44 = m44.inverse(viewProj)
+    g_cameras[cameraIndex].invViewProj = invViewProj
+}
+

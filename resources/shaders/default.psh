@@ -1,0 +1,412 @@
+// TODO : refactor in header
+#ifdef USE_PBR_UNI
+#define USE_PBR
+#elif defined(USE_PBR_MAP)
+#define USE_PBR
+#endif
+
+#ifdef USE_PBR
+#define USE_NORMAL
+#elif defined(USE_NORMAL_VTX)
+#define USE_NORMAL
+#elif defined(USE_NORMAL_MAP)
+#define USE_NORMAL
+#endif
+
+#ifdef USE_COLOR_MAP
+#define USE_TEXCOORD
+#elif defined(USE_NORMAL_MAP)
+#define USE_TEXCOORD
+#elif defined(USE_PBR)
+#define USE_TEXCOORD
+#elif defined(USE_OCCLUSION_MAP)
+#define USE_TEXCOORD
+#elif defined(USE_EMISSIVE_MAP)
+#define USE_TEXCOORD
+#endif
+
+#ifdef USE_PARTICLE
+#define USE_OIT
+#endif
+
+#ifdef USE_NORMAL
+#ifndef USE_TANGENT_VTX
+#ifndef USE_TEXCOORD
+#define USE_TEXCOORD
+#endif
+#endif
+#endif
+
+// Constants ...
+const float REMOVE = 0.0000001;
+const float M_PI = 3.141592653589793;
+const float c_MinRoughness = 0.04;
+const vec3 c_v3LightColor = vec3(1, 1, 1);
+
+// Samplers ...
+#ifdef USE_COLOR_MAP
+uniform sampler2D u_t2Color;
+#endif
+
+#ifdef USE_NORMAL_MAP
+uniform sampler2D u_t2Normal;
+#endif
+
+#ifdef USE_PBR
+uniform sampler2D u_t2BRDF;
+uniform samplerCube u_tcEnvironmentSpecular;
+uniform samplerCube u_tcEnvironmentDiffuse;
+#endif
+
+#ifdef USE_PBR_MAP
+uniform sampler2D u_t2MetalRough;
+#endif
+
+#ifdef USE_EMISSIVE_MAP
+uniform sampler2D u_t2Emissive;
+#endif
+
+#ifdef USE_OCCLUSION_MAP
+uniform sampler2D u_t2Occlusion;
+#endif
+
+#ifdef USE_OIT
+uniform sampler2D u_t2Depth;
+uniform vec4 u_v4TargetSize;
+#endif
+
+// Uniforms ...
+uniform vec4 DEBUG_0;
+uniform vec4 u_v4Color;
+uniform mat4 u_m44World;
+uniform vec4 u_v4CameraPosition;
+uniform vec4 u_v4MetalRough;
+uniform vec4 u_v4Emissive;
+
+#ifdef USE_PARTICLE
+uniform vec4 u_v4Particle;
+#endif
+
+// Varyings ...
+in vec3 v_v3Position;
+#ifdef USE_NORMAL
+#ifdef USE_TANGENT_VTX
+in mat3 v_m3Tbn;
+#else
+in vec3 v_v3Normal;
+#endif
+#endif
+
+#ifdef USE_COLOR_VTX
+in vec4 v_v4Color;
+#endif
+
+#ifdef USE_TEXCOORD
+in vec2 v_v2Texcoord;
+#endif
+
+in vec2 v_v2Screen;
+
+#ifdef USE_SKIN
+#ifdef DEBUG_SKIN
+in vec4 v_v4Joint;
+in vec4 v_v4Weight;
+#endif
+#endif
+
+#ifdef USE_PARTICLE
+/*in vec3 v_v3Velocity;
+in vec3 v_v4Orientation;
+in vec3 v_v4AngularVelocity;
+in vec3 v_v3Scale;
+in vec3 v_v3ScaleVelocity;*/
+in vec4 v_v4Particle;
+#endif
+
+// Outputs ...
+out vec4 o_v4Color;
+#ifdef USE_OIT
+out vec4 o_v4Color1;
+#endif
+#
+struct pbr_s
+{
+	float NdotL;
+	float NdotV;
+	float NdotH;
+	float LdotH;
+	float VdotH;
+	float perceptualRoughness;	// roughness value, as authored by the model creator (input to shader)
+	float metalness;		    // metallic value at the surface
+	vec3 reflectance0;			// full reflectance color (normal incidence angle)
+	vec3 reflectance90;		    // reflectance color at grazing angle
+	float alphaRoughness;		// roughness mapped to a more linear change in the roughness (proposed by [2])
+	vec3 diffuseColor;			// color contribution from diffuse lighting
+	vec3 specularColor;		    // color contribution from specular lighting
+};
+
+vec3 gamma(vec3 color)
+{
+	return pow(color, vec3(2.2));
+}
+
+vec3 invgamma(vec3 color)
+{
+	return pow(color, vec3(1.0 / 2.2));
+}
+
+float A = 0.15;
+float B = 0.50;
+float C = 0.10;
+float D = 0.20;
+float E = 0.02;
+float F = 0.30;
+float W = 11.2;
+
+vec3 uncharted2(vec3 color)
+{
+	 return ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - E / F;
+}
+
+vec3 tonemap(vec3 color)
+{
+	return uncharted2(color);
+}
+
+#ifdef USE_PBR
+vec3 getIBLContribution(pbr_s pbrInputs, vec3 n, vec3 reflection)
+{
+	float mipCount = 11.0; // resolution of 512x512
+	float lod = (pbrInputs.perceptualRoughness * mipCount);
+	// retrieve a scale and bias to F0. See [1], Figure 3
+	vec3 brdf = gamma(texture2D(u_t2BRDF, vec2(pbrInputs.NdotV, 1.0 - pbrInputs.perceptualRoughness)).rgb);
+	vec3 diffuseLight = gamma(textureCubeLod(u_tcEnvironmentDiffuse, vec3(-n.x, n.y, -n.z), lod).rgb);
+
+	vec3 specularLight = gamma(textureCubeLod(u_tcEnvironmentSpecular, reflection, lod).rgb);
+
+	vec3 diffuse = diffuseLight * pbrInputs.diffuseColor;
+	vec3 specular = specularLight * (pbrInputs.specularColor * brdf.x + brdf.y);
+
+	// For presentation, this allows us to disable IBL terms
+	//diffuse *= u_ScaleIBLAmbient.x;
+	//specular *= u_ScaleIBLAmbient.y;
+
+	return (diffuse + specular) * 2.0;
+}
+
+vec3 diffuse(pbr_s pbrInputs)
+{
+	return pbrInputs.diffuseColor / M_PI;
+}
+
+vec3 specularReflection(pbr_s pbrInputs)
+{
+	return pbrInputs.reflectance0 + (pbrInputs.reflectance90 - pbrInputs.reflectance0) * pow(clamp(1.0 - pbrInputs.VdotH, 0.0, 1.0), 5.0);
+}
+
+float geometricOcclusion(pbr_s pbrInputs)
+{
+	float NdotL = pbrInputs.NdotL;
+	float NdotV = pbrInputs.NdotV;
+	float r = pbrInputs.alphaRoughness;
+
+	float attenuationL = 2.0 * NdotL / (NdotL + sqrt(r * r + (1.0 - r * r) * (NdotL * NdotL)));
+	float attenuationV = 2.0 * NdotV / (NdotV + sqrt(r * r + (1.0 - r * r) * (NdotV * NdotV)));
+	return attenuationL * attenuationV;
+}
+
+float microfacetDistribution(pbr_s pbrInputs)
+{
+	float roughnessSq = pbrInputs.alphaRoughness * pbrInputs.alphaRoughness;
+	float f = (pbrInputs.NdotH * roughnessSq - pbrInputs.NdotH) * pbrInputs.NdotH + 1.0;
+	return roughnessSq / (M_PI * f * f);
+}
+#endif
+
+#ifdef USE_NORMAL
+vec3 getNormal()
+{
+	// Retrieve the tangent space matrix
+#ifdef USE_TANGENT_VTX
+	mat3 tbn = v_m3Tbn;
+#else
+	vec3 pos_dx = dFdx(v_v3Position);
+	vec3 pos_dy = dFdy(v_v3Position);
+	vec3 tex_dx = dFdx(vec3(v_v2Texcoord, 0.0));
+	vec3 tex_dy = dFdy(vec3(v_v2Texcoord, 0.0));
+	vec3 t = (tex_dy.t * pos_dx - tex_dx.t * pos_dy) / (tex_dx.s * tex_dy.t - tex_dy.s * tex_dx.t);
+
+#ifdef USE_NORMAL_VTX
+	vec3 ng = normalize(v_v3Normal);
+#else
+	vec3 ng = cross(pos_dx, pos_dy);
+#endif
+
+	t = normalize(t - ng * dot(ng, t));
+	vec3 b = normalize(cross(ng, t));
+	mat3 tbn = mat3(t, b, ng);
+#endif
+
+#ifdef USE_NORMAL_MAP
+	vec3 n = texture2D(u_t2Normal, v_v2Texcoord).rgb;
+	n = normalize(tbn * ((2.0 * n - 1.0) /** vec3(u_NormalScale, u_NormalScale, 1.0)*/)); // TODO : implement u_v3NormalScale
+#else
+	vec3 n = normalize(tbn[2].xyz);
+#endif
+
+	return n;
+}
+#endif
+
+void main()
+{
+	vec3 v3Light = normalize(vec3(-287.7438660, 204.4289093, -409.5520630));
+
+#ifdef USE_PBR
+	vec3 v3Normal = getNormal();
+	vec3 v3Direction = normalize(u_v4CameraPosition.xyz - v_v3Position);
+	vec3 v3Half = normalize(v3Light + v3Direction);
+
+	vec3 v3Reflect = -normalize(reflect(v3Direction, v3Normal));
+	float NdotL = clamp(dot(v3Normal, v3Light), 0.001, 1.0);
+	float NdotV = clamp(abs(dot(v3Normal, v3Direction)), 0.001, 1.0);
+	float NdotH = clamp(dot(v3Normal, v3Half), 0.0, 1.0);
+	float LdotH = clamp(dot(v3Light, v3Half), 0.0, 1.0);
+	float VdotH = clamp(dot(v3Direction, v3Half), 0.0, 1.0);
+#endif
+
+	vec4 v4Base = vec4(1);
+#ifdef USE_COLOR_UNI
+	v4Base *= u_v4Color;
+#endif
+
+#ifdef USE_COLOR_VTX
+	v4Base *= v_v4Color;
+#endif
+
+#ifdef USE_COLOR_MAP
+	v4Base *= texture2D(u_t2Color, v_v2Texcoord);
+#endif
+
+	v4Base = vec4(gamma(v4Base.rgb), v4Base.a);
+
+#ifdef USE_PARTICLE
+	float fade = clamp((u_v4Particle.x + v_v4Particle.x) / v_v4Particle.z, 0.0, 1.0) *
+				 clamp((v_v4Particle.y - v_v4Particle.x - u_v4Particle.x) / v_v4Particle.w, 0.0, 1.0);
+	v4Base.a *= fade;
+#endif
+
+#ifdef USE_PBR_UNI
+	float rough = u_v4MetalRough.y;
+	float metal = u_v4MetalRough.z;
+#elif defined(USE_PBR_MAP)
+	vec4 v4MetalRough = texture2D(u_t2MetalRough, v_v2Texcoord);
+	float rough = v4MetalRough.y * u_v4MetalRough.y;
+	float metal = v4MetalRough.z * u_v4MetalRough.z;
+#else
+	//float rough = 1.0;
+	//float metal = 1.0;
+#endif
+
+#ifdef USE_PBR
+	rough = clamp(rough, c_MinRoughness, 1.0);
+
+	vec3 f0 = vec3(0.04);
+	vec3 f1 = vec3(1.0) - f0;
+
+	vec3 v3Diffuse = v4Base.rgb* f1 * (1.0 - metal);
+	vec3 v3Specular = mix(f0, v4Base.rgb, metal);
+
+	float reflectance = max(max(v3Specular.r, v3Specular.g), v3Specular.b);
+	float reflectance90 = clamp(reflectance * 25.0, 0.0, 1.0);
+
+	vec3 specularEnvironmentR0 = v3Specular;
+	vec3 specularEnvironmentR90 = vec3(reflectance90);
+
+
+	pbr_s pbrInputs = pbr_s(
+		NdotL,
+		NdotV,
+		NdotH,
+		LdotH,
+		VdotH,
+		rough,
+		metal,
+		specularEnvironmentR0,
+		specularEnvironmentR90,
+		rough * rough,
+		v3Diffuse,
+		v3Specular
+	);
+
+	vec3 F = specularReflection(pbrInputs);
+	float G = geometricOcclusion(pbrInputs);
+	float D = microfacetDistribution(pbrInputs);
+
+	// Calculation of analytical lighting contribution
+	vec3 diffuseContrib = (1.0 - F) * diffuse(pbrInputs);
+	vec3 specContrib = F * G * D / (4.0 * NdotL * NdotV);
+
+	vec3 color = NdotL * c_v3LightColor * (diffuseContrib + specContrib);
+
+	// Calculate lighting contribution from image based lighting source (IBL)
+	color += getIBLContribution(pbrInputs, v3Normal, v3Reflect);
+#else
+	vec3 color = v4Base.rgb;
+#endif
+
+#ifdef USE_DEBUG_A
+#endif
+
+#ifdef USE_OCCLUSION_MAP
+	float ao = texture2D(u_t2Occlusion, v_v2Texcoord).r; // TODO : pack with metalRoughTexture
+	color *= ao;
+#endif
+
+#ifdef USE_EMISSIVE_UNI
+#ifdef USE_EMISSIVE_MAP
+	color += u_v4emissive.rgb * gamma(texture2D(u_t2Emissive, v_v2Texcoord).rgba);
+#else
+	color += u_v4Emissive.rgb;
+#endif
+#elif defined( USE_EMISSIVE_MAP)
+	color += gamma(texture2D(u_t2Emissive, v_v2Texcoord).rgb);
+#endif
+
+#ifdef USE_SKIN
+#ifdef DEBUG_SKIN
+	color *= 0.000001;
+	color += v_v4Weight.rgb;
+#endif
+#endif
+
+#ifdef USE_OIT
+	vec2 uv = gl_FragCoord.xy / (u_v4TargetSize.xy);
+	float depth = texture2D(u_t2Depth, uv).r;
+	float fragDepth = gl_FragCoord.z;
+	float d = fragDepth <  depth ? 1.0 : 0.0;
+	float dd = clamp(pow(max(0.0, depth - fragDepth) * 30.0, 1.0), 0, 1);
+
+	float a = min(1.0, v4Base.a) * 8.0 + 0.01;
+	float b = -gl_FragCoord.z * 0.95 + 1.0;
+
+	// If your scene has a lot of content very close to the far plane, then include this line (one rsqrt instruction):
+	// b /= sqrt(1e4 * abs(csZ));
+	float w  = clamp(a * a * a * 1e8 * b * b * b, 1e-2, 3e2) * dd;
+
+	/*float weight =
+    	max(min(1.0, max(max(color.r, color.g), color.b) * v4Base.a)), v4Base.a) *
+        clamp(0.03 / (1e-5 + pow(z / 200, 4.0)), 1e-2, 3e3);*/
+
+	vec4 tmp = vec4(
+		w * color.r * v4Base.a,
+		w * color.g * v4Base.a,
+		w * color.b * v4Base.a,
+		w * v4Base.a);
+	o_v4Color = vec4(tmp.rgb, tmp.a);
+	o_v4Color1 = vec4(tmp.a, 0.0, 0.0, 0.0);
+ #else
+	o_v4Color = vec4(invgamma(color), v4Base.a);
+#endif
+}
+

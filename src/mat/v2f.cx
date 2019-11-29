@@ -1,0 +1,276 @@
+package v2
+
+import "mat"
+import "v1"
+
+// Constants ...
+var ZERO mat.v2 = makef(0.0)
+var ONE mat.v2 = makef(1.0)
+var RED mat.v2 = make(1.0, 0.0)
+var GREEN mat.v2 = make(0.0, 1.0)
+var MIN mat.v2 = makef(v1.MIN)
+var MAX mat.v2 = makef(v1.MAX)
+var PI mat.v2 = makef(v1.PI)
+
+// isnan ...
+func isnan(a mat.v2) (out bool) {
+	out = f32.isnan(a.x) ||
+		  f32.isnan(a.y)
+}
+
+// to_str ...
+func to_str(a mat.v2) (out str) {
+	out = sprintf("{ %f, %f }", a.x, a.y)
+}
+
+// min ...
+func min(a mat.v2, b mat.v2) (out mat.v2) {
+	//panicIf(isnan(a), "NAN min #0")
+	//panicIf(isnan(b), "NAN min #1")
+	out = a
+	if b.x < a.x {
+		out.x = b.x
+	}
+	if b.y < a.y {
+		out.y = b.y
+	}
+	//panicIf(isnan(out), "NAN min")
+}
+
+// minf ...
+func minf(a mat.v2, b f32) (out mat.v2) {
+	//panicIf(isnan(a), "NAN min #0")
+	//panicIf(f32.isnan(b), "NAN min #1")
+	out = a
+	if b < a.x {
+		out.x = b
+	}
+	if b < a.y {
+		out.y = b
+	}
+	//panicIf(isnan(out), "NAN min")
+}
+
+// max ...
+func max(a mat.v2, b mat.v2) (out mat.v2) {
+	//panicIf(isnan(a), "NAN max #0")
+	//panicIf(isnan(b), "NAN max #1")
+	out = a
+	if b.x > a.x {
+		out.x = b.x
+	}
+	if b.y > a.y {
+		out.y = b.y
+	}
+	//panicIf(isnan(out), "NAN max")
+}
+
+// maxf ...
+func maxf(a mat.v2, b f32) (out mat.v2) {
+	//panicIf(isnan(a), "NAN max #0")
+	//panicIf(f32.isnan(b), "NAN max #1")
+	out = a
+	if b > a.x {
+		out.x = b
+	}
+	if b > a.y {
+		out.y = b
+	}
+	//panicIf(isnan(out), "NAN max")
+}
+
+// clamp ...
+func clamp(a mat.v2, vmin mat.v2, vmax mat.v2) (out mat.v2) {
+	//panicIf(isnan(a), "NAN clamp #0")
+	//panicIf(isnan(vmin), "NAN clamp #1")
+	//panicIf(isnan(vmax), "NAN clamp #2")
+	out.x = f32.max(vmin.x, f32.min(a.x, vmax.x))
+	out.y = f32.max(vmin.y, f32.min(a.y, vmax.y))
+	//panicIf(isnan(out), "NAN clamp")
+}
+
+// clampf ...
+func clampf(a mat.v2, fmin f32, fmax f32) (out mat.v2) {
+	//panicIf(isnan(a), "NAN clamp #0")
+	//panicIf(f32.isnan(fmin), "NAN clamp #1")
+	//panicIf(f32.isnan(fmax), "NAN clamp #2")
+	out.x = f32.max(fmin, f32.min(a.x, fmax))
+	out.y = f32.max(fmin, f32.min(a.y, fmax))
+	//panicIf(isnan(out), "NAN clamp")
+}
+
+// sat ...
+func sat(a mat.v2) (out mat.v2) {
+	//panicIf(isnan(a), "NAN sat #0")
+	out.x = f32.max(0.0, f32.min(1.0, a.x))
+	out.y = f32.max(0.0, f32.min(1.0, a.y))
+	//panicIf(isnan(out), "NAN sat")
+}
+
+// make ...
+func make(x f32, y f32) (out mat.v2) {
+	out.x = x
+	out.y = y
+	//panicIf(isnan(out), "NAN make")
+}
+
+// makef ...
+func makef(a f32) (out mat.v2) {
+	out.x = a
+	out.y = a
+	//panicIf(isnan(out), "NAN makef")
+}
+
+// equ ...
+func equ(a mat.v2, b mat.v2) (out bool) {
+	//panicIf(isnan(a), "NAN equ #0")
+	//panicIf(isnan(b), "NAN equ #1")
+	out = a.x == b.x &&
+		  a.y == b.y
+}
+
+// nequ ...
+func nequ(a mat.v2, b mat.v2) (out bool) {
+	//panicIf(isnan(a), "NAN nequ")
+	//panicIf(isnan(b), "NAN nequ")
+	out = a.x != b.x ||
+		  a.y != b.y
+}
+
+// add ...
+func add(a mat.v2, b mat.v2) (out mat.v2) {
+	out.x = a.x + b.x
+	out.y = a.y + b.y
+	//panicIf(isnan(out), "NAN add")
+}
+
+// sub ...
+func sub(a mat.v2, b mat.v2) (out mat.v2) {
+	out.x = a.x - b.x
+	out.y = a.y - b.y
+	//panicIf(isnan(out), "NAN sub")
+}
+
+// neg ...
+func neg(a mat.v2) (out mat.v2) {
+	out.x = 0.0 - a.x
+	out.y = 0.0 - a.y
+	//panicIf(isnan(out), "NAN neg")
+}
+
+// mul ...
+func mul(a mat.v2, b mat.v2) (out mat.v2) {
+	out.x = a.x * b.x
+	out.y = a.y * b.y
+	//panicIf(isnan(out), "NAN mul")
+}
+
+// mulf ...
+func mulf(a mat.v2, f f32) (out mat.v2) {
+	out.x = a.x * f
+	out.y = a.y * f
+	//panicIf(isnan(out), "NAN mulf")
+}
+
+// madd ...
+func madd(a mat.v2, b mat.v2, c mat.v2) (out mat.v2) {
+	out.x = a.x * b.x + c.x
+	out.y = a.y * b.y + c.y
+	//panicIf(isnan(out), "NAN madd")
+}
+
+// maddf ...
+func maddf(a mat.v2, f f32, c mat.v2) (out mat.v2) {
+	out.x = a.x * f + c.x
+	out.y = a.y * f + c.y
+	//panicIf(isnan(out), "NAN maddf")
+}
+
+// div ...
+func div(a mat.v2, b mat.v2) (out mat.v2) {
+	out.x = a.x / b.x
+	out.y = a.y / b.y
+	//panicIf(isnan(out), "NAN div")
+}
+
+// divf ...
+func divf(a mat.v2, f f32) (out mat.v2) {
+	out.x = a.x / f
+	out.y = a.y / f
+	//panicIf(isnan(out), "NAN divf")
+}
+
+// lerp ...
+func lerp(a mat.v2, b mat.v2, t mat.v2) (out mat.v2) {
+	out.x = a.x * (1.0 - t.x) + b.x * t.x
+	out.y = a.y * (1.0 - t.y) + b.y * t.y
+	//panicIf(isnan(out), "NAN lerpf")
+}
+
+// lerpsat ...
+func lerpsat(a mat.v2, b mat.v2, t mat.v2) (out mat.v2) {
+	out.x = a.x * f32.max(0.0, f32.min(1.0, 1.0 - t.x)) +
+			b.x * f32.max(0.0, f32.min(1.0, t.x))
+	out.y = a.y * f32.max(0.0, f32.min(1.0, 1.0 - t.y)) +
+			b.y * f32.max(0.0, f32.min(1.0, t.y))
+	//panicIf(isnan(out), "NAN lerpsat")
+}
+
+// lerpf ...
+func lerpf(a mat.v2, b mat.v2, t f32) (out mat.v2) {
+	var nt f32 = 1.0 - t
+	out.x = a.x * nt + b.x * t
+	out.y = a.y * nt + b.y * t
+	//panicIf(isnan(out), "NAN lerp")
+}
+
+// lerpsatf ...
+func lerpsatf(a mat.v2, b mat.v2, t f32) (out mat.v2) {
+	t = f32.max(0.0, f32.min(1.0, t))
+	var nt f32 = f32.max(0.0, f32.min(1.0, 1.0 - t))
+	out.x = a.x * nt + b.x * t
+	out.y = a.y * nt + b.y * t
+	//panicIf(isnan(out), "NAN lerpsat")
+}
+
+// rand ...
+func rand() (out mat.v2) {
+	out.x = f32.rand()
+	out.y = f32.rand()
+	//panicIf(isnan(out), "NAN rand")
+}
+
+// srand ...
+func srand() (out mat.v2) {
+	out.x = f32.rand() * 2.0 - 1.0
+	out.y = f32.rand() * 2.0 - 1.0
+	//panicIf(isnan(out), "NAN srand")
+}
+
+
+// dot ...
+func dot(a mat.v2, b mat.v2) (out f32) {
+	out = a.x*b.x + a.y*b.y
+	//panicIf(f32.isnan(out), "NAN dot")
+}
+
+// sqlength ...
+func sqlength(a mat.v2) (out f32) {
+	out = a.x*a.x + a.y*a.y
+	//panicIf(f32.isnan(out), "NAN sqlength")
+}
+
+// length ...
+func length(a mat.v2) (out f32) {
+	out = f32.sqrt(a.x*a.x + a.y*a.y)
+	//panicIf(f32.isnan(out), "NAN length")
+}
+
+// normalize ...
+func normalize(a mat.v2) (out mat.v2) {
+	var l f32 = f32.sqrt(a.x*a.x + a.y*a.y)
+	out.x = a.x / l
+	out.y = a.y / l
+	//panicIf(isnan(out), "NAN normalize")
+}
+

@@ -1,0 +1,373 @@
+package gui
+
+// Globals ...
+var g_focused []FocusList
+
+// FocusList ...
+type FocusList struct {
+	key ScreenId
+	value ControlId
+	focusList []ControlId
+	currentFocus i32
+}
+
+// Focus ...
+type Focus struct {
+	focusIndex i32
+	control ControlId
+}
+
+// BuildFocusList ...
+func BuildFocusList(focusedScreenIndex i32, parent ControlId) {
+	panicIfNot(IsValidControl(parent), "invalid parent")
+	//ControlPrint("BuildFocusList : ", parent, false)
+	var index i32 = parent.control
+
+	var unsortedList []Focus
+
+	var i i32 = 0
+	var childCount i32 = len(g_controls[index].children)
+	for i = 0; i < childCount; i = i + 1 {
+		var child ControlId = g_controls[index].children[i]
+		panicIfNot(IsValidControl(child), "invalid child")
+		var childIndex i32 = child.control
+		var focusIndex i32 = g_controls[childIndex].focusIndex
+		if (focusIndex >= 0) {
+				//ControlPrint("FOCUSABLE : ", child, false)
+				var focus Focus
+				focus.focusIndex = focusIndex
+				focus.control = child
+				unsortedList = append(unsortedList, focus)
+			//}
+		}
+	}
+
+	//printf("UNORDERED COUNT %d\n", unsortedCount)
+	//sort
+	var unsortedCount i32 = len(unsortedList)
+	var unsorted i32 = 0
+	for unsorted = 0; unsorted < unsortedCount; unsorted = unsorted + 1 {
+		var focusCount i32 = len(g_focused[focusedScreenIndex].focusList)
+		var focusIndex i32 = unsortedList[unsorted].focusIndex
+		var focusControl ControlId = unsortedList[unsorted].control
+	}
+
+	//printf("SORTING\n")
+	//sort
+	i = 0
+	var backUp i32 = 0
+	for (i + 1 < unsortedCount) {
+		var nextUnsorted i32 = i + 1
+		var currentFocusIndex i32 = unsortedList[i].focusIndex
+		var nextFocusIndex i32 = unsortedList[nextUnsorted].focusIndex
+		var currentControl ControlId = unsortedList[i].control
+		var nextControl ControlId = unsortedList[nextUnsorted].control
+		if (currentFocusIndex > nextFocusIndex) {
+			unsortedList[nextUnsorted].control = currentControl
+			unsortedList[nextUnsorted].focusIndex = currentFocusIndex
+			unsortedList[i].control = nextControl
+			unsortedList[i].focusIndex = nextFocusIndex
+			i = 0 // ##0 better sort...
+		} else {
+			backUp = i
+			i = i + 1
+		}
+	}
+
+
+	var sorted i32 = 0;
+	for sorted = 0; sorted < unsortedCount; sorted = sorted + 1 {
+		var focusCount i32 = len(g_focused[focusedScreenIndex].focusList)
+		//printf("BUILD_SORTED INDEX %d, %d, FOCUS_COUNT %d\n", sorted, unsortedList[sorted].control.control, focusCount)
+		var control ControlId = unsortedList[sorted].control
+		var focusable i32 = g_controls[control.control].focusable
+		BuildFocusList(focusedScreenIndex, control)
+		if (focusable > 0) {
+			g_focused[focusedScreenIndex].focusList = append(g_focused[focusedScreenIndex].focusList, control)
+		}
+	}
+}
+
+// RebuildFocus ...
+func RebuildFocus(id ScreenId) {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	//ControlPrint("RebuildFocus : ", id.base, false)
+	var i i32 = 0
+
+	var focusedCount i32 = len(g_focused)
+	var lookup ScreenId = InvalidScreen()
+	var lookupIndex i32 = -1
+	for i = 0; i < focusedCount; i = i + 1 {
+		var key ScreenId = g_focused[i].key
+		if (key.screen == id.screen) {
+			//printf("LOOKUP FOUND %d\n", i)
+			lookup = key
+			lookupIndex = i
+			i = focusedCount // ##pending issue break
+		}
+	}
+
+	var oldFocusIndex i32 = -1
+	var oldFocusCount i32 = 0
+	var oldFocus ControlId = InvalidControl()
+	var remove i32 = 0
+	if (IsValidScreen(lookup)) {
+		//printf("VALID LOOKUP SCREEN\n")
+			oldFocusIndex = g_focused[lookupIndex].currentFocus
+			oldFocusCount = len(g_focused[lookupIndex].focusList)
+			oldFocus = InvalidControl()
+		 //   printf("oldFocusIndex %d, oldFocusCount %d\n", oldFocusIndex, oldFocusCount)
+			if (oldFocusIndex >= 0 && oldFocusIndex < oldFocusCount) {
+				oldFocus = g_focused[lookupIndex].focusList[oldFocusIndex]
+				//printf("REMOVE TRUE\n")
+				remove = 1
+			}
+	} else {
+		lookup = id
+		lookupIndex = focusedCount
+		var pair FocusList
+		pair.key = lookup
+		g_focused = append(g_focused, pair)
+	}
+
+//	printf("lookup %d, %d, id %d, %d\n", lookup.screen, lookup.base.control, id.screen, id.base.control)
+	panicIfNot(lookup.base.control == id.base.control, "internal error")
+
+  //  printf("HERE %d\n", lookupIndex)
+	g_focused[lookupIndex].currentFocus = -1
+	//printf("HERE %d\n", lookupIndex)
+	
+	g_focused[lookupIndex].focusList = resize(g_focused[lookupIndex].focusList, 0)
+	//printf("---------------------------> BEFORE BUILD_FOCUS_LIST %d, %d\n", lookupIndex, g_focused[lookupIndex].focusCount)
+	BuildFocusList(lookupIndex, lookup.base)
+	//printf("---------------------------> AFTER BUILD_FOCUS_LIST %d, %d\n", lookupIndex, g_focused[lookupIndex].focusCount)
+
+	var newFocusIndex i32 = -1
+	var newFocus ControlId = InvalidControl()
+	var newFocusCount i32 = len(g_focused[lookupIndex].focusList)
+	if (IsValidControl(oldFocus)) {
+		newFocusIndex = oldFocusIndex
+		newFocus = oldFocus
+	  //  printf("RESTORING OLD FOCUS %d\n", oldFocusIndex)
+		//ControlPrint("RESTORING OLD FOCUS : ", newFocus, false)
+	} else if (newFocusCount > 0) {
+		newFocusIndex = 0
+		newFocus = g_focused[lookupIndex].focusList[0]
+		//printf("NEW FOCUS %d\n", newFocusIndex)
+		//ControlPrint("NEW FOCUS : ", newFocus, false)
+	}
+
+	SetCurrentFocus(lookup, lookupIndex, newFocus, newFocusIndex, remove)
+	var focus i32 = 0
+	var focusCount i32 = len(g_focused[lookupIndex].focusList)
+	//ControlPrint("---- RebuildFocus : ", id.base, false)
+	for focus = 0; focus < focusCount; focus = focus + 1 {
+		var focused ControlId = g_focused[lookupIndex].focusList[focus]
+		//ControlPrint("-------- RebuildFocus : ", focused, false)
+	}
+}
+
+// SetCurrentFocus ...
+func SetCurrentFocus(key ScreenId, screenIndex i32, value ControlId, controlIndex i32, remove i32) {
+	panicIfNot(IsValidScreen(key), "invalid key")
+
+	var currentFocus i32 = g_focused[screenIndex].currentFocus
+	var focusCount i32 = len(g_focused[screenIndex].focusList)
+	//printf("REMOVE REMOVE %d\n", remove)
+	if (currentFocus >= 0 && currentFocus < focusCount) {
+		if (remove > 0) {
+		var focusId ControlId = g_focused[screenIndex].focusList[currentFocus]
+		panicIfNot(IsValidControl(focusId), "invalid current id")
+		g_controls[focusId.control].focused = 0
+		ControlPrint("remove_focus : ", focusId, false)
+		ControlSetParentFocus(focusId, focusId, 0)
+		}
+	}
+
+	if (IsValidControl(value)) {
+		var visible i32 = g_controls[value.control].visible
+		panicIfNot(visible > 0, "focused not implemented")
+		g_focused[screenIndex].key = key
+		g_focused[screenIndex].value = value
+		g_focused[screenIndex].currentFocus = controlIndex
+		g_controls[value.control].focused = 1
+		ControlSetParentFocus(value, value, 1)
+		ControlPrint("SetCurrentFocus : ", value, false)
+	}
+}
+
+// ForceFocus ...
+func ForceFocus(id ControlId) {
+	if (IsValidScreen(g_hotScreen) && IsValidControl(id)) {
+		//printf("FORCE_FOCUS_0\n")
+		var screenPair i32 = GetFocusList(g_hotScreen)
+		if screenPair >= 0 && screenPair < len(g_focused) {
+			//printf("screenPair %d\n", screenPair)
+			var currentFocus i32 = g_focused[screenPair].currentFocus
+			//printf("currentFocus %d\n", currentFocus)
+			var focusCount i32 = len(g_focused[screenPair].focusList)
+			//printf("focusCount %d\n", focusCount)
+			if (focusCount > 0 && currentFocus >= 0 && currentFocus < focusCount) {
+				var i i32 = 0
+				//printf("FORCE_FOCUS_1\n")
+				//ControlPrint("ForceFocuse TEST : ", id, false)
+				for i = 0; i < focusCount; i = i + 1 {
+					var focusedId ControlId = g_focused[screenPair].focusList[i]
+					//printf("test_focus %d, %d\n", focusedId.control, id.control)
+					if (focusedId.control == id.control) {
+						//printf("FORCE_FOCUS_2\n")
+						ControlPrint("ForceFocuse DONE : ", focusedId, false)
+						SetCurrentFocus(g_hotScreen, screenPair, id, i, 1)
+						i = focusCount
+					}
+				}
+			}
+		}
+	}
+}
+
+// GetFocusList ...
+func GetFocusList(id ScreenId) (out i32) {
+	out = -1
+	panicIfNot(IsValidScreen(id), "invalid id")
+	//ControlPrint("GetFocusList : ", id.base, false)
+	var focusedCount i32 = len(g_focused)
+	var i i32 = 0
+	for i = 0; i < focusedCount; i = i + 1 {
+		var key ScreenId = g_focused[i].key
+		if (key.screen == id.screen) {
+			out = i
+			i = focusedCount // ##pending issue break
+		}
+	}
+}
+
+// SetNextFocus ...
+func SetNextFocus(id ScreenId) {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	ControlPrint("SetNextFocus : ", id.base, false)
+	var pair i32 = GetFocusList(id)
+	var focusedCount i32 = len(g_focused)
+	if (pair >= 0 && pair < focusedCount) {
+		var current i32 = g_focused[pair].currentFocus
+		var count i32 = len(g_focused[pair].focusList)
+		var next i32 = current
+		var nextId ControlId = InvalidControl()
+		var i i32 = 0
+		for i = 0; i < count; i = i + 1 {
+			next = (next + 1) % count
+			var controlId ControlId = g_focused[pair].focusList[next]
+			var visible bool = ControlParentVisible(controlId)
+			if visible {
+				i = count
+				nextId = controlId
+			}
+			//printf("NEXT_FOCUS %d/%d\n", next, count)
+		}
+		SetCurrentFocus(id,  pair, nextId, next, 1)
+	}
+}
+
+// SetPreviousFocus ...
+func SetPreviousFocus(id ScreenId) {
+	panicIfNot(IsValidScreen(id), "invalid id")
+	ControlPrint("SetPreviousFocus : ", id.base, false)
+	var pair i32 = GetFocusList(id)
+	var focusedCount i32 = len(g_focused)
+	if (pair >= 0 && pair < focusedCount) {
+		var current i32 = g_focused[pair].currentFocus
+		var count i32 = len(g_focused[pair].focusList)
+		var previous i32 = current
+		var previousId ControlId = InvalidControl()
+		var i i32 = 0
+		for i = 0; i < count; i = i + 1 {
+			previous = previous - 1
+			if (previous < 0) {
+				previous = count - 1
+				//printf("PREVIOUS_FOCUS %d/%d\n", previous, count)
+			}
+			var controlId ControlId  = g_focused[pair].focusList[previous]
+			var visible bool = ControlParentVisible(controlId)
+			if visible {
+				i = count
+				previousId = controlId
+			}
+		}
+
+		SetCurrentFocus(id, pair, previousId, previous, 1)
+	}
+}
+
+/*
+func controlActivate(id ControlId) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	ControlPrint("controlActivate : ", id, false)
+
+	var index i32 = id.control
+	var guiType i32 = g_controls[index].gui_type
+	if (guiType == GUI_WINDOW) {
+		var guiIndex i32 = g_controls[index].gui_index
+		ControlPrint("window found : ", id, false)
+		var windowId WindowId = WindowId_(NewControlId(index), guiIndex)
+		panicIfNot(is_valid_window(windowId), "invalid window id")
+		RebuildFocus(windowId)
+	} else {
+		var focusIndex i32 = g_controls[index].focusIndex
+		if (focusIndex >= 0) {
+			var i i32 = 0
+			var count i32 = g_controls[index].childCount
+			for i = 0; i < count; i = i + 1 {
+				controlActivate(g_controls[index].children[i])
+			}
+		}
+	}
+}
+
+func getCurrentFocus(id ControlId) (out ControlId) {
+	out = InvalidControl()
+	var i i32 = 0
+	var focusedCount i32 = len(g_focused)
+	for i = 0; i < focusedCount; i = i + 1 {
+		if (g_focused[i].key.control == id.control) {
+			var currrentFocus i32 = g_focused[i].currentFocus
+			out = g_focused[i].focusedList[currentFocus]
+		}
+	}
+
+	panicIfNot(IsValidControl(id), "invalid id")
+	ControlPrint("control_focus : ", id, false)
+
+	var index i32 = id.control
+	var focusIndex i32 = g_controls[index].focusIndex
+
+	if (focusIndex >= 0) {
+		//ControlPrint("IS_FOCUSABLE ? ", id, false)
+		var focusable i32 = g_controls[index].focusable
+		if (focusable > 0) {
+			//ControlPrint("YES_FOCUSABLE ? ", id, false)
+			out = id
+			//ControlPrint("control_0 : ", out, false)
+		} else {
+			//out = InvalidControl()
+			//ControlPrint("NO_FOCUSABLE ! ", out, false)
+			//printf("out %d\n", out.control)
+			var i i32 = 0
+			var count i32 = g_controls[index].childCount
+			for i = 0; i < count; i = i + 1 {
+				//printf("i %d/%d\n", i + 1, count)
+				var child ControlId = g_controls[index].children[i]
+				//ControlPrint("child : ", child, false)
+				var focused ControlId = control_focus(child)
+				if (IsValidControl(focused)) {
+					i = count
+					out = focused
+					//ControlPrint("control_8 : ", out, false)
+				}
+			}
+		}
+	}
+	//out = InvalidControl()
+	//ControlPrint("control_9 : ", out, false)
+}
+*/
+

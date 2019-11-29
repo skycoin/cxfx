@@ -1,0 +1,17 @@
+package main
+
+import "app"
+
+func main()() {
+	var o app.Options
+	o.Parse()
+
+	printf("width : %d\n", o.width)
+	printf("height : %d\n", o.height)
+	printf("fps : %d\n", o.fps)
+	printf("hints : %d\n", o.hints)
+	printf("data : %s\n", o.dataDir)
+
+	// ...
+}
+

@@ -1,0 +1,181 @@
+package fps
+
+import "time"
+import "v1d"
+
+// TODO : rename *Profile in Profile*
+
+// Globals ...
+var g_profiles []Profile
+var g_profileStack i32 = 0
+var g_profileTree []ProfileId
+
+// ProfileId ...
+type ProfileId struct {
+	index i32
+}
+
+// Profile ...
+type Profile struct {
+	name str
+	id ProfileId
+	slot i32
+	begin f64
+	delta f64
+	sum f64
+	count f64
+	min f64
+	max f64
+	stack i32
+	offset i32
+}
+
+// IsValidProfile ...
+func IsValidProfile(this ProfileId) (out bool) {
+	out = this.index >= 0 && this.index < len(g_profiles)
+}
+
+// InvalidProfile ...
+func InvalidProfile() (out ProfileId) {
+	out.index = -1
+}
+
+// CreateProfile ...
+func CreateProfile(name str) (out ProfileId) {
+
+	var profileCount i32 = len(g_profiles)
+	out.index = profileCount
+
+	var i i32 = 0
+	for i = 0; i < profileCount; i = i + 1 {
+		var profileName str = g_profiles[i].name
+		if (name == profileName) {
+			out.index = -1
+			i = profileCount
+			panicIf(true, "duplicate entry")
+		}
+	}
+
+	if (out.index >= 0) {
+		var profile Profile
+		profile.id = out
+		profile.name = name
+		g_profiles = append(g_profiles, profile)
+	}
+}
+
+// PrintProfiles ...
+func PrintProfiles() {
+	for i := 0; i < len(g_profileTree); i = i + 1 {
+		PrintProfile(g_profileTree[i])
+	}
+}
+
+// ClearProfiles ...
+func ClearProfiles(full bool) {
+	g_profileTree = resize(g_profileTree, 0)
+
+	var profileCount i32 = len(g_profiles)
+	for i := 0; i < profileCount; i = i + 1 {
+		var id ProfileId = g_profiles[i].id
+		ClearProfile(id, full) // ISSUE : panic when calling fps.ClearProfile(&g_profiles[i], full)
+	}
+}
+
+// ClearProfile ...
+func ClearProfile(this ProfileId, full bool) { // ##1 perf pointer deref vs index
+	panicIfNot(IsValidProfile(this), "invalid id")
+
+	g_profiles[this.index].begin = 0.0D
+	g_profiles[this.index].delta = 0.0D
+	g_profiles[this.index].slot = -1
+	if (full == true) {
+		g_profiles[this.index].sum = 0.0D
+		g_profiles[this.index].count = 0.0D
+		g_profiles[this.index].max = v1d.MIN
+		g_profiles[this.index].min = v1d.MAX
+	}
+	var stack i32 = g_profiles[this.index].stack
+	panicIf(stack !=  0, "invalid stack")
+	g_profiles[this.index].stack = 0
+}
+
+// PrintProfile ...
+func PrintProfile(this ProfileId) {
+	panicIfNot(IsValidProfile(this), "invalid id")
+	var cur f64 = g_profiles[this.index].delta
+	var count f64 = g_profiles[this.index].count
+	var sum f64 = g_profiles[this.index].sum
+	var avg f64 = sum / count
+	var min f64 = g_profiles[this.index].min
+	var max f64 = g_profiles[this.index].max
+	var name str = g_profiles[this.index].name
+	var offset i32 = g_profiles[this.index].offset
+	if (count > 0.0D) {
+		if (offset > 0) {
+			var i i32 = 0
+			for i = 0; i < offset; i = i + 1 {
+				printf("----")
+			}
+			printf(" ")
+		}
+
+		printf("%s - #%d, cur %f, avg %f, min %f, max %f\n",
+			name,
+			f64.i32(count),
+			f64.f32(cur * 1000.0D),
+			f64.f32(avg * 1000.0D),
+			f64.f32(min * 1000.0D),
+			f64.f32(max * 1000.0D))
+	}
+}
+
+// CreateStartProfile ...
+func CreateStartProfile(this ProfileId, name str) (out ProfileId) {
+	out = this
+	if IsValidProfile(out) == false {
+		out = CreateProfile(name)
+	}
+	StartProfile(out)
+}
+
+// StartProfile ...
+func StartProfile(this ProfileId) () {
+	panicIfNot(IsValidProfile(this), "invalid id")
+	g_profiles[this.index].begin = i64.f64(time.UnixNano()) / 1000000000.0D // ##1 refactor
+	var stack i32 = g_profiles[this.index].stack
+	g_profiles[this.index].stack = stack + 1
+	g_profiles[this.index].offset = g_profileStack
+	//printf("START_PROFILE %d, %s, STACK %d\n", this.index,  g_profiles[this.index].name, g_profileStack)
+	g_profileStack = g_profileStack + 1
+	var treeIndex i32 = g_profiles[this.index].slot
+	if (treeIndex <= -1) {
+		g_profiles[this.index].slot = len(g_profileTree)
+		g_profileTree = append(g_profileTree, this)
+	}
+}
+
+// StopProfile ...
+func StopProfile(this ProfileId) {
+	panicIfNot(IsValidProfile(this), "invalid id")
+	var end f64 = i64.f64(time.UnixNano()) / 1000000000.0D // ##1 refactor
+	var begin f64 = g_profiles[this.index].begin
+	var delta f64 = end - begin
+	var sum f64 = g_profiles[this.index].sum
+	var count f64 = g_profiles[this.index].count
+	var max f64 = g_profiles[this.index].max
+	var min f64 = g_profiles[this.index].min
+	var stack i32 = g_profiles[this.index].stack
+	var previous f64 = g_profiles[this.index].delta
+	g_profiles[this.index].delta = previous + delta
+	g_profiles[this.index].sum = sum + delta
+	g_profiles[this.index].count = count + 1.0D
+	g_profiles[this.index].max = v1d.max(max, delta)
+	g_profiles[this.index].min = v1d.min(min, delta)
+	panicIf(stack <= 0, "invalid stack")
+	g_profiles[this.index].stack = stack - 1
+	panicIf(g_profileStack <= 0, "invalid stack")
+	g_profileStack = g_profileStack - 1
+	//printf("STOP_PROFILE %d, %s, STACK %d\n", this.index, g_profiles[this.index].name, g_profileStack)
+}
+

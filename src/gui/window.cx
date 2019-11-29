@@ -1,0 +1,147 @@
+package gui
+
+// Globals ...
+var g_windows[] Window
+
+// WindowId ...
+type WindowId struct {
+	base ControlId
+	window i32
+}
+
+// Window ...
+type Window struct {
+	id WindowId
+	header ControlId
+	caption LabelId
+	container ControlId
+	strip ControlId
+}
+
+// NewWindowId ...
+func NewWindowId(base ControlId, window i32) (out WindowId) {
+	out.base = base
+	out.window = window
+	panicIfNot(IsValidWindow(out), "invalid id")
+}
+
+// IsValidWindow ...
+func IsValidWindow(id WindowId) (out bool) {
+	out = id.window >= 0 && id.window < len(g_windows) && IsValidControl(id.base)
+}
+
+// WindowSetCaption ...
+func WindowSetCaption(id WindowId, text str) () {
+	panicIfNot(IsValidWindow(id), "invalid id")
+	LabelSetText(g_windows[id.window].caption, text)
+}
+
+// WindowSetContainee ...
+func WindowSetContainee(id WindowId, containee ControlId) {
+	panicIfNot(IsValidWindow(id), "invalid id")
+	panicIfNot(IsValidControl(containee), "invalid containee")
+
+	var container ControlId = g_windows[id.window].container
+	panicIfNot(IsValidControl(container), "invalid container")
+
+	ControlAddChild(container, containee)
+}
+
+// WindowAddButton ...
+func WindowAddButton(id WindowId, name str, caption str, packageName str, functionName str) {
+	panicIfNot(IsValidWindow(id), "invalid id")
+
+   var button LabelId = LabelCreate(name)
+   ControlSetSkin(button.base, g_buttonSkin)
+   ControlSetBounds(button.base, v4.make(0.0, 0.0, 50.0, 0.0))
+   ControlSetDock(button.base, DOCK_RIGHT)
+   ControlSetAutosize(button.base, AUTOSIZE_Y)
+   ControlSetPadding(button.base, v4.ZERO)
+   ControlSetFocusable(button.base, 1)
+   LabelSetAlign(button, ALIGN_CENTER)
+   LabelSetColor(button, g_white)
+   LabelSetFont(button, g_boldFont)
+   LabelSetText(button, caption)
+   LabelSetSize(button, g_fontSizeSmall)
+   LabelSetOnState(button, packageName, functionName)
+
+   var strip ControlId = g_windows[id.window].strip
+   ControlAddChild(strip, button.base)
+}
+
+// WindowCreate ...
+func WindowCreate(name str) (out WindowId) {
+	out.base = controlCreate(name, GUI_WINDOW, out.window)
+	out.window = len(g_windows)
+
+	var window Window
+	window.id = out
+
+	var padding mat.v4 = v4.makef(5.0)
+	var padding1 mat.v4 = v4.makef(3.0)
+	{
+		var header ControlId = ControlCreate("header") // ##pending := 
+		ControlAddChild(out.base, header)
+		ControlSetSkin(header, g_headerSkin)
+		ControlSetSize(header, v2.make(0.0, 0.1))
+		ControlSetDock(header, DOCK_TOP)
+		ControlSetAutosize(header, AUTOSIZE_Y)
+		window.header = header
+
+		{
+			var caption LabelId = LabelCreate("label")
+			ControlAddChild(header, caption.base)
+			ControlSetDock(caption.base, DOCK_FILL)
+			ControlSetAutosize(caption.base, AUTOSIZE_Y)
+			LabelSetAlign(caption, ALIGN_CENTER)
+			LabelSetFont(caption, g_boldFont) // ##1 skin
+			LabelSetColor(caption, g_white)
+			LabelSetSize(caption, g_fontSizeText)
+			window.caption = caption
+		}
+	}
+
+	{
+		var container ControlId = ControlCreate("container")
+		ControlAddChild(out.base, container)
+		//ControlSetSkin(container, g_redSkin)
+		ControlSetDock(container, DOCK_TOP)
+		ControlSetAutosize(container, AUTOSIZE)
+		ControlSetPadding(container, padding1)
+		window.container = container
+	}
+
+	{
+		var strip ControlId = ControlCreate("strip")
+		ControlAddChild(out.base, strip)
+		//ControlSetSkin(strip, g_blueSkin)
+		ControlSetBounds(strip, v4.make(0.0, 0.0, 0.0, 0.12))
+		ControlSetDock(strip, DOCK_TOP)
+		ControlSetAutosize(strip, AUTOSIZE_Y)
+		ControlSetPadding(strip, padding)
+		window.strip = strip
+	}
+
+	g_windows = append(g_windows, window)
+	panicIfNot(IsValidWindow(out), "invalid id")
+}
+
+// WindowProcessEvent ...
+func WindowProcessEvent(id WindowId, event *app.Event) (out i32) {
+	panicIfNot(IsValidWindow(id), "invalid id")
+	out = ControlProcessEvent(id.base, event)
+}
+
+// WindowResize ...
+func WindowResize(id WindowId) () {
+	panicIfNot(IsValidWindow(id), "invalid id")
+	ControlResize(id.base)
+}
+
+// WindowRender ...
+func WindowRender(id WindowId, clip mat.v4, stack i32) () {
+	panicIfNot(IsValidWindow(id), "invalid id")
+	ControlRender(id.base, clip, stack)
+}
+
+

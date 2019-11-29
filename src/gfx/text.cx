@@ -1,0 +1,201 @@
+package gfx
+
+import "gltext"
+
+// Constants ...
+var TEXT_LEFT_TO_RIGHT i32 = gltext.LeftToRight
+
+// MeasureGlyph ...
+func MeasureGlyph(name str, glyph i32) (w i32, h i32) {
+	w, h = gltext.GlyphMetrics(name, glyph)
+}
+
+// MeasureText ...
+func MeasureText(name str, text str) (w i32, h i32) {
+	w, h = gltext.Metrics(name, text)
+}
+
+// LoadTrueType ...
+func LoadTrueType(name str, path str, scale i32, min i32, max i32, dir i32) (texture i32) {
+	os.Open(path)
+//	if (range == true) {
+  //  var min i32 = ui32.i32(runes[0])
+	//var max i32 = ui32.i32(runes[1])
+		gltext.LoadTrueType(name, path, scale, min, max, dir) // ##0 release
+	//}// else {
+	 //   gltext.LoadTrueTypeEx(name, path, scale, runes, dir) // ##0 release
+   // }
+	os.Close(path)
+	texture = gltext.Texture(name)
+}
+
+// GlyphBounds ...
+func GlyphBounds(name str) (width i32, height i32) {
+	width, height = gltext.GlyphBounds(name)
+}
+
+// GlyphInfo ...
+func GlyphInfo(name str, glyph i32) (x i32, y i32, w i32, h i32, a i32) {
+	x, y, w, h, a = gltext.GlyphInfo(name, glyph)
+}
+
+// NextGlyph ...
+func NextGlyph(name str, text str, index i32) (r i32, s i32, x i32, y i32, w i32, h i32, a i32) {
+	r, s, x, y, w, h, a = gltext.NextGlyph(name, text, index)
+}
+
+// TextureCreateFont ...
+func TextureCreateFont(name str, path str, scale i32, min i32, max i32, dir i32, mipmap i32) (out TextureId) {
+
+	var glName i32 = LoadTrueType(name, path, scale, min, max, dir)
+	out = textureCreate(glName, TEXTURE_2D, FORMAT_R8_G8_B8_A8, 0, 0, mipmap, false)
+}
+
+// MeshAppendText ...
+func MeshAppendText(id MeshId, texture TextureId, name str, position mat.v2, scale mat.v2, color mat.v4, text str, debug bool, color0 mat.v4, color1 mat.v4, clip mat.v4, depth f32) {
+//	printf("NAME %s\n", name)
+//	if (name == "awesomeBold_25") {
+	panicIfNot(IsValidMesh(id), "invalid id")
+	var size i32 = 0
+
+	var maxGlyphW i32 = 0;
+	var maxGlyphH i32 = 0;
+	maxGlyphW, maxGlyphH = GlyphBounds(name)
+	var maxGlyphWidth f32 = scale.x * i32.f32(maxGlyphW)
+	var maxGlyphHeight f32 = scale.y * i32.f32(maxGlyphH)
+
+	var textW i32
+	var textH i32
+	textW, textH = MeasureText(name, text)
+
+	var textWidth f32 = scale.x * i32.f32(textW)
+	var textHeight f32 = scale.y * i32.f32(textH)
+
+	var quadX f32 = position.x
+	var quadY f32 = position.y - (maxGlyphHeight - textHeight) // - ratio * i32.f32(textH) / gfx_height
+	//if (center == true) {
+	//	quadX = -1.0 + (2.0 - textWidth / gfx_width) / 2.0 // / gfx_width
+	//	quadY =  0.0 - textHeight / (gfx_height * 2.0) // / gfx_height
+	//}
+
+	var tw f32 = TextureWidthF32(texture)
+	var th f32 = TextureHeightF32(texture)
+	var dummyIndex i32 = 0
+	var debugColor mat.v4
+
+//	printf("TEXT : %s\n", text)
+
+	var index i32 = 0
+	for (size >= 0) {
+
+		var rune i32
+		var glyphX i32
+		var glyphY i32
+		var glyphWidth i32
+		var glyphHeight i32
+		var glyphAdvance i32
+
+		rune, size, glyphX, glyphY, glyphWidth, glyphHeight, glyphAdvance = NextGlyph(name, text, index)
+		if (size >= 0) {
+
+//			printf("RUNE\n")
+			var quadAdvance f32 = scale.x * i32.f32(glyphAdvance)// / gfx_width
+			var quadWidth f32 = scale.x * i32.f32(glyphWidth)// / gfx_width
+			var quadHeight f32 = textHeight //scale.y * i32.f32(glyphHeight)// / gfx_height
+			var qu0 f32 = i32.f32(glyphX) / tw
+			var qv0 f32 = i32.f32(glyphY) / th
+
+  //		  printf("U %f, V %f, GH %f, MGH %f, TH %f\n", qu0, qv0, i32.f32(glyphHeight), maxGlyphHeight, textHeight)
+			var qu1 f32 = qu0 + i32.f32(glyphAdvance) / tw
+			var qv1 f32 = qv0 + i32.f32(glyphHeight) / th
+
+			panicIfNot(rune >= 0, "invalid rune")
+			if (debug == true) {
+				color = color0
+				debugColor = color1
+				if ((dummyIndex % 2) == 0) {
+					color = color1
+					debugColor = color0
+				}
+			}
+
+			//MeshAppendOrthoQuad(g_debugMesh, v4.make(quadX, quadY, quadAdvance, quadHeight), v4.make(qu0, qv0, qu1, qv1), red, clip, depth)
+			MeshAppendOrthoQuad(id, v4.make(quadX, quadY, quadAdvance, quadHeight), v4.make(qu0, qv0, qu1, qv1),  color, clip, depth)
+			index = index + size
+			quadX = quadX + quadAdvance
+			dummyIndex = dummyIndex + 1
+		}// else {
+		  //  printf("no rune")
+		//}
+	}
+  //  }
+}
+
+// MeshAppendGlyph ...
+func MeshAppendGlyph(id MeshId, texture TextureId, name str, position mat.v2, scale mat.v2, color mat.v4, glyph i32, debug bool, color0 mat.v4, color1 mat.v4, clip mat.v4, depth f32) {
+//	printf("NAME %s\n", name)
+	panicIfNot(IsValidMesh(id), "invalid id")
+	var size i32 = 0
+
+	var maxGlyphW i32 = 0;
+	var maxGlyphH i32 = 0;
+	maxGlyphW, maxGlyphH = GlyphBounds(name)
+	var maxGlyphWidth f32 = i32.f32(maxGlyphW)
+	var maxGlyphHeight f32 = i32.f32(maxGlyphH)
+	maxGlyphWidth = scale.x * maxGlyphWidth
+	maxGlyphHeight = scale.y * maxGlyphHeight
+
+	var textW i32
+	var textH i32
+	textW, textH = MeasureGlyph(name, glyph)
+
+	var textWidth f32 = scale.x * i32.f32(textW)
+	var textHeight f32 = scale.y * i32.f32(textH)
+
+	var quadX f32 = position.x
+	var quadY f32 = position.y - (maxGlyphHeight - textHeight) // - ratio * i32.f32(textH) / gfx_height
+	//if (center == true) {
+	//	quadX = -1.0 + (2.0 - textWidth / gfx_width) / 2.0 // / gfx_width
+	//	quadY =  0.0 - textHeight / (gfx_height * 2.0) // / gfx_height
+	//}
+
+	var tw f32 = TextureWidthF32(texture)
+	var th f32 = TextureHeightF32(texture)
+	var dummyIndex i32 = 0
+	var debugColor mat.v4
+
+	var rune i32
+	var glyphX i32
+	var glyphY i32
+	var glyphWidth i32
+	var glyphHeight i32
+	var glyphAdvance i32
+
+	glyphX, glyphY, glyphWidth, glyphHeight, glyphAdvance = GlyphInfo(name, glyph)
+//	printf("RUNE\n")
+	var quadAdvance f32 = scale.x * i32.f32(glyphAdvance)// / gfx_width
+	var quadWidth f32 = scale.x * i32.f32(glyphWidth)// / gfx_width
+	var quadHeight f32 = textHeight //scale.y * i32.f32(glyphHeight)// / gfx_height
+	var qu0 f32 = i32.f32(glyphX) / tw
+	var qv0 f32 = i32.f32(glyphY) / th
+
+ //   printf("U %f, V %f, GH %f, MGH %f, TH %f\n", qu0, qv0, i32.f32(glyphHeight), maxGlyphHeight, textHeight)
+	var qu1 f32 = qu0 + i32.f32(glyphAdvance) / tw
+	var qv1 f32 = qv0 + i32.f32(glyphHeight) / th
+
+	if (debug == true) {
+		color = color0
+		debugColor = color1
+		if ((dummyIndex % 2) == 0) {
+			color = color1
+			debugColor = color0
+		}
+	}
+
+	//MeshAppendOrthoQuad(g_debugMesh, v4.make(quadX, quadY, quadAdvance, quadHeight), v4.make(qu0, qv0, qu1, qv1), red, clip, depth)
+	MeshAppendOrthoQuad(id, v4.make(quadX, quadY, quadAdvance, quadHeight), v4.make(qu0, qv0, qu1, qv1),  color, clip, depth)
+	quadX = quadX + quadAdvance
+	dummyIndex = dummyIndex + 1
+}
+
+

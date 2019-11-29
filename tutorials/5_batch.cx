@@ -1,0 +1,197 @@
+package main
+
+import "app"
+import "fps"
+import "gam"
+import "gfx"
+import "gui"
+import "m44"
+import "mat"
+import "v3"
+import "v4"
+
+// Globals ...
+var gameScreen gui.ScreenId
+
+var groundMesh gfx.MeshId
+var cubeMesh gfx.MeshId
+var texture gfx.TextureId
+
+var ry f32 = 0.0
+var world m44
+
+var camera gam.CameraId
+
+var g_synths [64]Synth
+var g_synthCount i32 = 64
+
+var worldSizeX f32 = 2000.0
+var worldSizeZ f32 = 2000.0
+
+var worldCellX i32 = 64
+var worldCellZ i32 = 64
+
+var groundWidth i32 = 16
+var groundHeight i32 = 16
+
+// Synth ...
+type Synth struct {
+	rx f32
+	ry f32
+	tx f32
+	ty f32
+	tz f32
+	time f32
+	frame i32
+	animation gui.AnimationId
+	batch gfx.BatchId
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func gameOnEvent(controlIndex i32, controlAction i32) {
+	var key i32 = gui.CurrentEvent.keyboard.key
+	var action i32 = gui.CurrentEvent.keyboard.action
+	var mods i32 = gui.CurrentEvent.keyboard.mods
+	if mods == app.MOD_NONE {
+		if key == app.KEYCODE_ESCAPE && action == app.KEY_PRESS {
+			app.Exit()
+		}
+	}
+
+	gam.FreeCameraProcess(camera, &gui.CurrentEvent)
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func gameOnUpdate(controlIndex i32, controlAction i32) {
+	gam.FreeCameraUpdate(camera, fps.DeltaSecond())
+
+	var dt f32 = f64.f32(fps.DeltaSecond())
+
+	ry = ry + dt
+	world = m44.make_rotate_y(ry)
+
+	gfx.MeshBegin(cubeMesh)
+	gfx.MeshAppendBox(cubeMesh, false, false,
+		v3.ZERO,
+		v3.make(10.0, 0.0, 0.0),
+		v3.make(0.0, 10.0, 0.0),
+		v3.make(0.0, 0.0, 10.0),
+		v4.ONE)
+	gfx.MeshEnd(cubeMesh)
+
+	gfx.MeshBegin(groundMesh)
+	gfx.MeshAppendPlane(groundMesh, false, true,
+		v3.make(0.0, -10.0, 0.0),
+		v3.make(worldSizeX, 0.0, 0.0),
+		v3.GREEN,
+		v3.make(0.0, 0.0, worldSizeZ),
+		groundWidth, groundHeight,
+		v4.make(0.0, 0.0, 10.0, 10.0),
+		v4.ONE)
+	gfx.MeshEnd(groundMesh)
+
+	for i := 0; i < g_synthCount; i++ {
+		var ty f32 = g_synths[i].ty
+		var frame i32 = g_synths[i].frame
+		var frameCount i32 = 0
+		var animation AnimationId
+		if ty <= 0.0 {
+			ty = 500.0 + f32.rand() * 100.0
+			animation = gui.g_synthAnim
+			frameCount = gui.AnimationFrameCount(animation)
+			frame = 0//i32.rand(0, frameCount)
+			g_synths[i].animation = animation
+			g_synths[i].tx = i32.f32(i32.rand(0, worldCellX)) * worldSizeX / i32.f32(worldCellX) - worldSizeX / 2.0
+			g_synths[i].tz = i32.f32(i32.rand(0, worldCellZ)) * worldSizeZ / i32.f32(worldCellZ) - worldSizeZ / 2.0
+		} else {
+			animation = g_synths[i].animation
+			frameCount = gui.AnimationFrameCount(animation)
+			//frame++
+			if frame >= frameCount {
+				frame = 0
+			}
+			ty = ty - 20.0 * dt + f32.rand() * 10.0 * dt
+		}
+
+		var textureId gfx.TextureId = gui.AnimationGetFrame(animation, frame) // ISSUE : can't be named texture : silently clash with global variable
+		var batch gfx.BatchId = gfx.GetBatch(gfx.g_fxTexture3D, textureId, 0, gfx.g_linearClamp, false, g_synthCount * 12)
+		g_synths[i].batch = batch
+		g_synths[i].frame = frame
+		g_synths[i].ty = ty
+	}
+
+	gfx.BeginBatches()
+	for i := 0; i < g_synthCount; i++ {
+		var batch gfx.BatchId = g_synths[i].batch
+		var mesh gfx.MeshId = gfx.BatchGetMesh(batch)
+		var tx f32 = g_synths[i].tx
+		var ty f32 = g_synths[i].ty
+		var tz f32 = g_synths[i].tz
+		gfx.MeshAppendBox(mesh, false, false,
+			v3.make(tx, ty, tz),
+			v3.make(20.0, 0.0, 0.0),
+			v3.make(0.0, 20.0, 0.0),
+			v3.make(0.0, 0.0, 20.0),
+			v4.ONE)
+	}
+	gfx.EndBatches()
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func gameOnRender(controlIndex i32, controlAction i32) {
+	gfx.DisableBlending()
+	gfx.DepthState(true, gfx.LESS, true)
+	gfx.Clear(gfx.COLOR_BUFFER_BIT | gfx.DEPTH_BUFFER_BIT, v4.make(0.3, 0.5, 0.6, 1.0), 1.0D, 0)
+	gfx.EffectUse(gfx.g_fxTexture3D)
+	gfx.EffectAssignM44(gfx.g_fxTexture3D, gfx.UNIFORM_VIEW, gam.CameraGetView(camera), false)
+	gfx.EffectAssignM44(gfx.g_fxTexture3D, gfx.UNIFORM_PROJECTION, gam.CameraGetProjection(camera), false)
+	gfx.EffectAssignTexture(gfx.g_fxTexture3D, gfx.SAMPLER_COLOR_0, texture, gfx.g_linearWrap)
+
+	// cubeMesh
+	gfx.EffectAssignM44(gfx.g_fxTexture3D, gfx.UNIFORM_WORLD, world, false)
+	gfx.MeshRender(cubeMesh)
+
+	// groundMesh
+	gfx.EffectAssignM44(gfx.g_fxTexture3D, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
+	gfx.MeshRender(groundMesh)
+
+	gfx.RenderBatches(false)
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+	// init
+	gam.Init("Batch Tutorial", 800, 600, 60, "")
+
+	cubeMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 36)
+	groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
+	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()),
+		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
+
+	camera = gam.CameraCreate()
+	gam.CameraSetProjection(camera, 1.0, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y, true)
+	gam.CameraSetPosition(camera, v3.ZERO, true)
+	gam.CameraSetYawPitch(camera, 0.0, 0.0, true)
+
+	// gameScreen
+	gameScreen = gui.ScreenCreate("gameScreen")
+	gui.ControlSetDock(gameScreen.base, gui.DOCK_FILL)
+	gui.ScreenSetDuration(gameScreen, -1.0D)
+	gui.ScreenSetOnEvent(gameScreen, "main", "gameOnEvent")
+	gui.ScreenSetOnUpdate(gameScreen, "main", "gameOnUpdate")
+	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
+
+	// run
+	gui.ScreenShow(gameScreen)
+	gam.Run(2U)
+
+	// destroy
+	gfx.MeshUnlock(cubeMesh)
+	gfx.MeshUnlock(groundMesh)
+	gam.Destroy()()
+}
+

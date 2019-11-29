@@ -1,0 +1,1458 @@
+package gfx
+
+import "gltf"
+import "m44"
+import "q4"
+
+// Constants ...
+var MODEL_GEOMETRY i32 = gltf.ASSET_GEOMETRY
+var MODEL_ANIMATION i32 = gltf.ASSET_ANIMATION
+
+// Globals ...
+var g_models []Model
+var g_animations []Animation // ISSUE : can't be named g_animations as it clashes at runtime with src/gui/animation.cx::g_animations
+
+// AnimationId ...
+type AnimationId struct {
+	animation i32
+}
+
+// AnimationSource ...
+type AnimationSource struct {
+	channels []i32
+	frames []TRS
+	transforms []m44
+	anim bool
+	t mat.v3
+	r mat.v4
+	s mat.v3
+	transform m44
+}
+
+// Animation ...
+type Animation struct {
+	asset gltf.AssetId
+	sources []AnimationSource
+	time f32
+	direction f32
+	min f32
+	max f32
+	trs []TRS
+	transforms []mat.m44
+	keys []f32
+	lastIndex i32
+	runtime bool
+}
+
+// AnimationIsValid ...
+func AnimationIsValid(id AnimationId) (out bool) {
+	out = id.animation >= 0 && id.animation < len(g_animations)
+}
+
+// AnimationInvalid ...
+func AnimationInvalid()(out AnimationId) {
+	out.animation = -1
+}
+
+// AnimationCreate ...
+func AnimationCreate()(out AnimationId) {
+	out.animation = len(g_animations)
+
+	var animation Animation
+	animation.direction = 1.0
+	g_animations = append(g_animations, animation)
+}
+
+type Skeleton struct {
+	root i32
+}
+
+type Primitive struct {
+	mesh MeshId
+	node i32
+	nodeIndex i32
+
+	effect EffectId
+
+	useSkin i32
+	baseTexture TextureId
+	metalRoughTexture TextureId
+	emissiveTexture TextureId
+	normalTexture TextureId
+	occlusionTexture TextureId
+
+	gltfPrimitive gltf.Primitive
+	gltfMaterial gltf.Material
+}
+
+// ModelId ...
+type ModelId struct {
+	model i32
+}
+
+// Model ...
+type Model struct {
+	asset gltf.AssetId
+
+	dataDir str
+	filename str
+
+   	animated bool
+	skinned bool
+
+	min mat.v3
+	max mat.v3
+
+	nodes[]i32
+	nodesMap[]i32
+	determinants []f32
+	transforms []mat.m44
+	matrixStack []mat.m44
+
+	meshes []i32
+	meshCacheKey []i32
+	meshCacheVal []MeshId
+	primitives []Primitive
+	opaqueMeshes []i32
+	transparentMeshes []i32
+
+	skeleton Skeleton
+	animations []AnimationId
+
+	world mat.m44 // TODO : optim inverse
+	view mat.m44 // TODO : remove
+	projection mat.m44 // TODO : remove
+
+	cameraPosition mat.v4 // TODO : remove
+	environmentSpecular TextureId // TODO : remove
+	environmentDiffuse TextureId // TODO : remove
+	brdf TextureId // TODO : remove
+
+	inverseBinds []mat.m44 // TODO : skeleton struct
+	jointMatrices []mat.m44 // TODO : runtime struct
+
+	joints []i32 // TODO : skeleton struct
+	stack []i32 // TODO : remove
+}
+
+// ModelIsValid ...
+func ModelIsValid(id ModelId) (out bool) {
+	out = id.model >= 0 && id.model < len(g_models)
+}
+
+// ModelInvalid ...
+func ModelInvalid() (out ModelId) {
+	out.model = -1
+}
+
+// ModelCreate ...
+func ModelCreate() (out ModelId) {
+	out.model = len(g_models)
+
+	var model Model
+	model.skeleton.root = -1
+	model.asset = gltf.AssetInvalid()
+	g_models = append(g_models, model)
+}
+
+// ModelCreateFromFile ...
+func ModelCreateFromFile(dataDir str, filename str, options i32) (out ModelId){ // TODO : only load animations
+	out = ModelCreate()
+
+	var modelIndex i32 = out.model
+	g_models[modelIndex].dataDir = dataDir
+	g_models[modelIndex].filename = filename
+
+	var asset gltf.AssetId = gltf.AssetCreate(dataDir, filename, options)
+	if gltf.AssetIsValid(asset) == false {
+		printf("gltf.AssetCreate failed\n")
+		out = ModelInvalid()
+		return
+	}
+
+	g_models[modelIndex].asset = asset
+	//gltf.AssetPrint(asset)
+
+	if modelInstance(out, options) == false {
+		printf("modelInstance failed\n")
+		out = ModelInvalid()
+		return
+	}
+
+	modelTransform(out, AnimationInvalid(), 0.0, false)
+}
+
+// ModelGetMin ...
+func ModelGetMin(id ModelId) (out mat.v3) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	out = g_models[id.model].min
+}
+
+// ModelGetMax ...
+func ModelGetMax(id ModelId) (out mat.v3) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	out = g_models[id.model].max
+}
+
+// ModelGetAnimation ...
+func ModelGetAnimation(id ModelId, animationIndex i32) (out AnimationId) {
+	out = AnimationInvalid()
+	panicIfNot(ModelIsValid(id), "invalid model")
+
+	var modelIndex i32 = id.model
+	var animationCount i32 = len(g_models[modelIndex].animations)
+	if animationIndex >= 0 && animationIndex < animationCount {
+		out = g_models[modelIndex].animations[animationIndex]
+	}
+}
+
+// ModelGetNodeByName ...
+func ModelGetNodeByName(id ModelId, name str) (out i32) {
+	out = -1
+	panicIfNot(ModelIsValid(id), "invalid model")
+
+	var modelIndex i32 = id.model
+	var asset gltf.AssetId = g_models[modelIndex].asset
+	var nodeCount i32 = gltf.AssetGetNodeCount(asset)
+	for i := 0; i < nodeCount; i++ {
+		var nodeName str = gltf.NodeGetName(asset, i)
+		if nodeName == name {
+			out = i
+			return
+		}
+	}
+}
+
+type channelInfo struct {
+	count i32
+	dataType i32
+	dataLen i32
+	dataF32 []f32
+	dataUI8 []ui8
+	dataUI16 []ui16
+	dataUI32 []ui32
+}
+
+func effectInstance(primitive *Primitive) (out EffectId) {
+	var mesh MeshId = primitive.mesh
+
+	var useColorVtx bool = MeshUseColor(mesh)
+	var useColorMap bool = IsValidTexture(primitive.baseTexture)
+	var useColorUni bool = true
+
+	var usePbrMap bool = IsValidTexture(primitive.metalRoughTexture)
+	var usePbrUni bool = usePbrMap == false
+
+	var useEmissiveMap bool = IsValidTexture(primitive.emissiveTexture)
+	var useEmissiveUni bool = useEmissiveMap == false
+
+	var useNormalMap bool = IsValidTexture(primitive.normalTexture)
+	var useNormalVtx bool = MeshUseNormal(mesh)
+	var useTangentVtx bool = MeshUseTangent(mesh)
+
+	var useOcclusionTexture bool = IsValidTexture(primitive.occlusionTexture)
+
+	var useWeights bool = MeshUseWeight(mesh)
+	var useJoints bool = MeshUseJoint(mesh)
+	var useSkin bool = useWeights && useJoints
+
+	/*printf("EFFECT_INSTANCE\n")
+	if useColorVtx {
+		printf("USE_COLOR_VTX\n")
+	}
+	if useColorMap {
+		printf("USE_COLOR_MAP\n")
+	}
+	if useColorUni {
+		printf("USE_COLOR_UNI\n")
+	}
+	if usePbrMap {
+		printf("USE_PBR_MAP\n")
+	}
+	if usePbrUni {
+		printf("USE_PBR_UNI\n")
+	}
+	if useEmissiveMap {
+		printf("USE_EMIS_MAP\n")
+	}
+	if useEmissiveUni {
+		printf("USE_EMIS_UNI\n")
+	}
+	if useNormalMap {
+		printf("USE_NORMAL_MAP\n")
+	}
+	if useNormalVtx {
+		printf("USE_NORMAL_VTX\n")
+	}
+	if useTangentVtx {
+		printf("USE_TANGENT_VTX\n")
+	}
+	if useOcclusionTexture {
+		printf("USE_OCCLUSION_TEXTURE\n")
+	}
+	if useWeights {
+		printf("USE_WEIGHTS\n")
+	}
+	if useJoints {
+		printf("USE_JOINTS\n")
+	}
+	if useSkin {
+		printf("USE_SKIN\n")
+	}*/
+	TemplateSetKey(g_tfxPbr, USE_COLOR_UNI, useColorUni)
+	TemplateSetKey(g_tfxPbr, USE_COLOR_VTX, useColorVtx)
+	TemplateSetKey(g_tfxPbr, USE_COLOR_MAP, useColorMap)
+
+	TemplateSetKey(g_tfxPbr, USE_PBR_UNI, usePbrUni)
+	TemplateSetKey(g_tfxPbr, USE_PBR_MAP, usePbrMap)
+
+	TemplateSetKey(g_tfxPbr, USE_EMISSIVE_UNI, useEmissiveUni)
+	TemplateSetKey(g_tfxPbr, USE_EMISSIVE_MAP, useEmissiveMap)
+
+	TemplateSetKey(g_tfxPbr, USE_NORMAL_VTX, useNormalVtx)
+	TemplateSetKey(g_tfxPbr, USE_NORMAL_MAP, useNormalMap)
+	TemplateSetKey(g_tfxPbr, USE_TANGENT_VTX, useTangentVtx)
+
+	TemplateSetKey(g_tfxPbr, USE_OCCLUSION_MAP, useOcclusionTexture)
+
+	TemplateSetKey(g_tfxPbr, USE_SKIN, useSkin)
+
+	TemplateSetKey(g_tfxPbr, USE_DEBUG_A, true)
+
+	out = TemplateInstance(g_tfxPbr)
+}
+
+func meshInstance(id gltf.AssetId, primitive gltf.Primitive) (out MeshId) {
+	var mode i32
+	//printf("instancing : mode %d, indices %d, material %d\n", primitive.mode, primitive.indices, primitive.material)
+	if primitive.mode == gltf.PRIMITIVE_LINES {
+		mode = gl.LINES
+	} else if primitive.mode == gltf.PRIMITIVE_TRIANGLES {
+		mode = gl.TRIANGLES
+	} else {
+		printf("primitive type not implemented\n")
+		out = InvalidMesh()
+		return
+	}
+
+	var min mat.v3
+	var max mat.v3
+
+	var usePosition bool
+	var useNormal bool
+	var useColor bool
+	var useTexcoord bool
+	var useTangent bool
+	var useWeight bool
+	var useJoint bool
+
+	// attributes
+	var channels []channelInfo
+	var attributes []VertexAttribute
+	var vertexCount i32 = 0
+	var attributeCount i32 = len(primitive.attributes)
+	var byteStride i32 = 0
+	var componentStride i32 = 0
+	for a := 0; a < attributeCount; a++ {
+		var accessor gltf.Accessor = gltf.AssetGetAccessor(id, primitive.attributes[a].accessor)
+		panicIfNot(accessor.loaded, "attributes accessor is not loaded")
+		if a > 0 && accessor.count != vertexCount {
+			printf("wrong number of vectices\n")
+			out = InvalidMesh()
+			return
+		}
+
+		vertexCount = accessor.count
+
+   		var channel channelInfo
+		var attribute VertexAttribute
+
+		if accessor.componentType == gl.FLOAT { // TODO : how to pass []struct to BufferData ?
+			channel.dataF32 = accessor.dataF32
+			channel.dataLen = len(channel.dataF32)
+   			channel.dataType = gl.FLOAT
+			attribute.componentType = gl.FLOAT
+			attribute.componentByteSize = g_sizeofF32
+		} else if accessor.componentType == gl.UNSIGNED_SHORT {
+			channel.dataUI16 = accessor.dataUI16
+			channel.dataLen = len(channel.dataUI16)
+   			channel.dataType = gl.UNSIGNED_SHORT
+			attribute.componentType = gl.UNSIGNED_SHORT
+			attribute.componentByteSize = g_sizeofUI16
+		} else if accessor.componentType == gl.UNSIGNED_INT {
+			channel.dataUI32 = accessor.dataUI32
+			channel.dataLen = len(channel.dataUI32)
+			channel.dataType = gl.UNSIGNED_INT
+			attribute.componentType = gl.UNSIGNED_INT
+			attribute.componentByteSize = g_sizeofUI32
+		} else {
+			printf("buffer type not implemented %d\n", accessor.componentType)
+			out = InvalidMesh()
+			return
+		}
+
+		attribute.componentCount = accessor.componentCount
+		attribute.componentOffset = componentStride
+		attribute.byteOffset = byteStride
+
+		var attributeType i32 = primitive.attributes[a].attributeType
+		var binding i32 = -1
+		if attributeType == gltf.ATTRIBUTE_POSITION {
+			binding = ATTRIBUTE_POSITION
+			min.x = accessor.min[0]
+			min.y = accessor.min[1]
+			min.z = accessor.min[2]
+			max.x = accessor.max[0]
+			max.y = accessor.max[1]
+			max.z = accessor.max[2]
+		} else if attributeType == gltf.ATTRIBUTE_NORMAL {
+			binding = ATTRIBUTE_NORMAL
+			useNormal = true
+		} else if attributeType == gltf.ATTRIBUTE_COLOR {
+			binding = ATTRIBUTE_COLOR
+			useColor = true
+		} else if attributeType == gltf.ATTRIBUTE_TEXCOORD {
+			binding = ATTRIBUTE_TEXCOORD
+			useTexcoord = true
+		} else if attributeType == gltf.ATTRIBUTE_TANGENT {
+			binding = ATTRIBUTE_TANGENT
+			useTangent = true
+		} else if attributeType == gltf.ATTRIBUTE_WEIGHT {
+			binding = ATTRIBUTE_WEIGHT
+			useWeight = true
+		} else if attributeType == gltf.ATTRIBUTE_JOINT {
+			binding = ATTRIBUTE_JOINT
+			useJoint = true
+		}
+
+		attribute.binding = binding
+		channel.count = attribute.componentCount
+
+		attributes = append(attributes, attribute)
+		channels = append(channels, channel)
+
+		byteStride = byteStride + attribute.componentCount * attribute.componentByteSize
+		componentStride = componentStride + attribute.componentCount
+	}
+
+	var vertexLen i32 = componentStride * vertexCount
+	if vertexLen <= 0 {
+		printf("invalid vertex buffer\n")
+		out = InvalidMesh()
+		return
+	}
+
+	// vertices // TODO : generate buffers from go data ?
+	var vertices []ui8 // TODO : test perf with loop reordering + resize(vertices, vertexLen)
+	for v := 0; v < vertexCount; v++ {
+		for c := 0; c < attributeCount; c++ {
+			var dataType i32 = channels[c].dataType
+			var dataLen i32 = channels[c].dataLen
+			var count i32 = channels[c].count
+			var offset i32 = v * count
+			if dataType == gl.FLOAT {
+				var data []f32 = channels[c].dataF32
+				for i := 0; i < count; i++ {
+					vertices = gl.AppendF32(vertices, data[offset + i])
+				}
+			} else if dataType == gl.UNSIGNED_SHORT {
+				var data []ui16 = channels[c].dataUI16
+				for i := 0; i < count; i++ {
+					vertices = gl.AppendUI16(vertices, data[offset + i])
+				}
+			} else if dataType == gl.UNSIGNED_INT {
+				var data []ui32 = channels[c].dataUI32
+				for i := 0; i < count; i++ {
+					vertices = gl.AppendUI32(vertices, data[offset + i])
+				}
+			} else {
+				panicIf(true, "unhandled dataType")
+			}
+		}
+	}
+
+	// indices
+	var indices []ui8
+	var indicesAccessor gltf.Accessor = gltf.AssetGetAccessor(id, primitive.indices)
+	panicIfNot(indicesAccessor.loaded, "indices accessor is not loaded")
+	var indicesType i32 = indicesAccessor.componentType
+	if indicesAccessor.componentCount != 1 ||
+	   (indicesAccessor.componentType != gl.UNSIGNED_SHORT && indicesAccessor.componentType != gl.UNSIGNED_INT) ||
+	   indicesAccessor.attributeTypeEnum != gltf.TYPE_SCALAR {
+		printf("invalid index buffer format : componentCount %d, componentType %d, attributeType %d\n",
+			indicesAccessor.componentCount, indicesAccessor.componentType, indicesAccessor.attributeTypeEnum)
+		out = InvalidMesh()
+		return
+	}
+
+	var indexByteCount i32 = 0
+	if indicesType == gl.UNSIGNED_SHORT {
+		var data []ui16 = indicesAccessor.dataUI16
+		var count i32 = len(data)
+		indexByteCount = 2
+		for i := 0; i < count; i++ {
+			indices = gl.AppendUI16(indices, data[i])
+		}
+	} else if indicesType == gl.UNSIGNED_INT {
+		var data []ui32 = indicesAccessor.dataUI32
+		var count i32 = len(data)
+		indexByteCount = 4
+		for i := 0; i < count; i++ {
+			indices = gl.AppendUI32(indices, data[i])
+		}
+	} else {
+		printf("invalid index buffer type\n")
+		out = InvalidMesh()
+		return
+	}
+
+	if len(attributes) > 0 && len(indices) > 0 && len(vertices) > 0 {
+		out = MeshCreate(mode, indicesType, len(indices) / indexByteCount, attributes, len(vertices) / byteStride) // TODO : use real index/vertex count instead of bytecount
+		MeshBegin(out) // TODO : remove MeshBegin/MeshEnd, data should be uploaded with BufferData in MeshInstance.
+		g_meshes[out.mesh].vertices = vertices
+		g_meshes[out.mesh].indices = indices
+		g_meshes[out.mesh].usePosition = usePosition
+		g_meshes[out.mesh].useNormal = useNormal
+		g_meshes[out.mesh].useColor = useColor
+		g_meshes[out.mesh].useTexcoord = useTexcoord
+		g_meshes[out.mesh].useTangent = useTangent
+		g_meshes[out.mesh].useWeight = useWeight
+		g_meshes[out.mesh].useJoint = useJoint
+		g_meshes[out.mesh].min = min
+		g_meshes[out.mesh].max = max
+		MeshEnd(out)
+	}
+}
+
+// ModelSetCameraPosition ...
+func ModelSetCameraPosition(id ModelId, position mat.v3) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	var cameraPosition mat.v4
+	cameraPosition.x = position.x
+	cameraPosition.y = position.y
+	cameraPosition.z = position.z
+	cameraPosition.w = 1.0
+	g_models[id.model].cameraPosition = cameraPosition
+}
+
+
+// ModelSetEnvironmentSpecular ...
+func ModelSetEnvironmentSpecular(id ModelId, environment TextureId) { 
+	panicIfNot(ModelIsValid(id), "invalid model")
+	g_models[id.model].environmentSpecular = environment
+}
+
+// ModelSetEnvironmentDiffuse...
+func ModelSetEnvironmentDiffuse(id ModelId, environment TextureId) { 
+	panicIfNot(ModelIsValid(id), "invalid model")
+	g_models[id.model].environmentDiffuse = environment
+}
+
+// ModelSetBRDF ...
+func ModelSetBRDF(id ModelId, brdf TextureId) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	g_models[id.model].brdf = brdf
+}
+
+// ModelSetWorld ...
+func ModelSetWorld(id ModelId, world mat.m44) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	g_models[id.model].world = world
+}
+
+// ModelSetView ...
+func ModelSetView(id ModelId, view mat.m44) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	g_models[id.model].view = view
+}
+
+// ModelSetProjection ...
+func ModelSetProjection(id ModelId, projection mat.m44) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	g_models[id.model].projection = projection
+}
+
+func loadTexture(asset AssetId, dataDir str, index i32) (out TextureId) {
+	out = InvalidTexture()
+	//if gltf.AssetIsValidTexture(asset, index) {
+		var texture gltf.Texture = gltf.AssetGetTexture(asset, index)
+		var image gltf.Image = gltf.AssetGetImage(asset, texture.source)
+		if image.uri != "" {
+			out = TextureCreate(sprintf("%s%s", dataDir, image.uri), FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
+		}
+	//}
+}
+
+// ModelUpdate ...
+func ModelUpdate(id ModelId, animId AnimationId, deltaTime f32, loop bool) { // TODO : bound check
+	panicIfNot(ModelIsValid(id), "invalid model")
+	if g_models[id.model].animated || g_models[id.model].skinned {
+		modelTransform(id, animId, deltaTime, loop)
+	}
+}
+
+// ModelRender ...
+func ModelRender(id ModelId) {
+	DisableBlending()
+	DepthState(true, LESS, true)
+	modelRender(id, g_models[id.model].opaqueMeshes, 1.0)
+
+	EnableBlending(SRC_ALPHA, ONE_MINUS_SRC_ALPHA)
+	DepthState(true, LESS, false)
+	modelRender(id, g_models[id.model].transparentMeshes, 1.0)
+}
+
+func modelInstance(id ModelId, options i32) (success bool) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	var modelIndex i32 = id.model
+
+	var stack []i32 = g_models[modelIndex].stack
+
+	var asset gltf.AssetId = g_models[modelIndex].asset
+	var roots []i32 = gltf.AssetGetRootNodes(asset)
+	var rootCount i32 = len(roots)
+
+	var animations []AnimationId = g_models[modelIndex].animations
+
+	var nodes []i32 = g_models[modelIndex].nodes
+	var nodesMap []i32 = g_models[modelIndex].nodesMap
+
+	var determinants []f32 = g_models[modelIndex].determinants
+	var meshCacheKey []i32 = g_models[modelIndex].meshCacheKey
+	var meshCacheVal []MeshId = g_models[modelIndex].meshCacheVal
+
+	var meshes []i32 = g_models[modelIndex].meshes
+
+	var dataDir str = g_models[modelIndex].dataDir
+	var primitives []Primitive = g_models[modelIndex].primitives
+
+	var transparentMeshes []i32 = g_models[modelIndex].transparentMeshes
+	var opaqueMeshes []i32 = g_models[modelIndex].opaqueMeshes
+
+	var matrixStack []mat.m44 = g_models[modelIndex].matrixStack
+	matrixStack = resize(matrixStack, 0)
+	matrixStack = m44.push(matrixStack, m44.IDENTITY)
+
+	var transforms []m44 = g_models[modelIndex].transforms
+	transforms = resize(transforms, 0)
+
+	var min mat.v3 = v3.MAX
+	var max mat.v3 = v3.MIN
+
+	stack = resize(stack, rootCount)
+	for i := 0; i < rootCount; i++ {
+		stack[i] = roots[i]
+	}
+
+	var nodeCount i32 = gltf.AssetGetNodeCount(asset)
+
+	if (options & MODEL_ANIMATION) != 0 {
+		var gltfAnimations []gltf.Animation = gltf.AssetGetAnimations(asset)
+		var animationCount i32 = len(gltfAnimations)
+		g_models[modelIndex].animated = animationCount > 0 // TODO : multiple models per scene
+		for animIndex := 0; animIndex < animationCount; animIndex++ {
+			var channels []gltf.AnimationChannel = gltfAnimations[animIndex].channels
+			var samplers []gltf.AnimationSampler = gltfAnimations[animIndex].samplers
+
+			var animation Animation
+			animation.min, animation.max = gltf.AnimationGetLength(asset, animIndex)
+
+			var sources []AnimationSource
+			for nodeIndex := 0; nodeIndex < nodeCount; nodeIndex++ {
+				var source AnimationSource
+				source.t = gltf.NodeGetTranslation(asset, nodeIndex)
+				source.r = gltf.NodeGetRotation(asset, nodeIndex)
+				source.s = gltf.NodeGetScale(asset, nodeIndex)
+				sources = append(sources, source)
+			}
+
+			var channelCount i32 = len(channels)
+			for channelIndex := 0; channelIndex < channelCount; channelIndex++ {
+				var channel gltf.AnimationChannel = channels[channelIndex]
+				var nodeIndex i32 = channel.node
+				sources[nodeIndex].channels = append(sources[nodeIndex].channels, channelIndex)
+			}
+
+			var keys []f32 = animation.keys
+			for nodeIndex := 0; nodeIndex < nodeCount; nodeIndex++ {
+				var nodeChannels []i32 = sources[nodeIndex].channels
+				var nodeChannelCount i32 = len(nodeChannels)
+				for nodeChannelIndex := 0; nodeChannelIndex < nodeChannelCount; nodeChannelIndex++ {
+					var channelIndex i32 = nodeChannels[nodeChannelIndex]
+					var channel gltf.AnimationChannel = channels[channelIndex]
+					var inputAccessor gltf.Accessor = gltf.AssetGetAccessor(asset, samplers[channel.sampler].inputA)
+					panicIfNot(inputAccessor.loaded, "inputs accessor is not loaded")
+					var inputs []f32 = inputAccessor.dataF32
+					var inputCount i32 = len(inputs)
+					for inputIndex := 0; inputIndex < inputCount; inputIndex++ {
+						var input f32 = inputs[inputIndex]
+						var keyCount i32 = len(keys)
+						var keyAdded bool
+						for keyIndex := 0; keyIndex < keyCount; keyIndex++ {
+							var key f32 = keys[keyIndex]
+							if input < key {
+								keys = insert(keys, keyIndex, input)
+								keyIndex = len(keys) // ISSUE break
+								keyAdded = true
+							} else if input == key {
+								keyIndex = len(keys) // ISSUE break
+								keyAdded = true
+							}
+						}
+						if keyAdded == false {
+							keys = append(keys, input)
+						}
+					}
+				}
+			}
+
+			var keyCount i32 = len(keys)
+			for nodeIndex := 0; nodeIndex < nodeCount; nodeIndex++ {
+				var frames []TRS = sources[nodeIndex].frames
+				var nodeChannels []i32 = sources[nodeIndex].channels
+				var nodeChannelCount i32 = len(nodeChannels)
+				for keyIndex := 0; keyIndex < keyCount; keyIndex++ {
+					var key f32 = keys[keyIndex]
+
+					var animTranslation v3 = sources[nodeIndex].t
+					var animRotation v4 = sources[nodeIndex].r
+					var animScale v3 = sources[nodeIndex].s
+
+					for nodeChannelIndex := 0; nodeChannelIndex < nodeChannelCount; nodeChannelIndex++ {
+						var channelIndex i32 = nodeChannels[nodeChannelIndex]
+						var channel gltf.AnimationChannel = channels[channelIndex]
+						var inputAccessor gltf.Accessor = gltf.AssetGetAccessor(asset, samplers[channel.sampler].inputA)
+						panicIfNot(inputAccessor.loaded, "inputs accessor is not loaded")
+						var inputs []f32 = inputAccessor.dataF32
+						var inputCount i32 = len(inputs)
+						var index i32 = 0
+						for inputIndex := 0; inputIndex < inputCount; inputIndex++ {
+							if key <= inputs[inputIndex] {
+								index = inputIndex
+								inputIndex = inputCount // ISSUE : break
+							}
+						}
+
+						var prev i32 = index - 1
+						if prev < 0 {
+							prev = 0
+						}
+
+						var delta f32 = keys - inputs[prev]
+						var step f32 = inputs[index] - inputs[prev]
+						var st f32 = 1.0;
+						if step > 0.0 {
+							st = delta / step
+						}
+						var t f32 = st
+						if t < 0.0 {
+							t = 0.0
+						} else if t > 1.0 {
+							t = 1.0
+						}
+
+   						var outputAccessor gltf.Accessor = gltf.AssetGetAccessor(asset, samplers[channel.sampler].outputA)
+						panicIfNot(outputAccessor.loaded, "outputs accessor is not loaded")
+						var outputs []f32 = outputAccessor.dataF32
+						var path i32 = channel.path
+						if path == gltf.ANIMATION_PATH_TRANSLATION {
+							panicIf(outputAccessor.attributeTypeEnum != gltf.TYPE_VEC3, "invalid attribute type")
+							panicIf(outputAccessor.componentType != gl.FLOAT, "unhandled component type")
+							var offset i32 = prev * 3
+							var x0 f32 = outputs[offset]
+							var y0 f32 = outputs[offset + 1]
+							var z0 f32 = outputs[offset + 2]
+
+							offset = index * 3
+							var x1 f32 = outputs[offset]
+							var y1 f32 = outputs[offset + 1]
+							var z1 f32 = outputs[offset + 2]
+
+							animTranslation.x = x0 + (x1 - x0) * t
+							animTranslation.y = y0 + (y1 - y0) * t
+							animTranslation.z = z0 + (z1 - z0) * t
+						} else if path == gltf.ANIMATION_PATH_ROTATION {
+							panicIf(outputAccessor.attributeTypeEnum != gltf.TYPE_VEC4, "invalid attribute type")
+							panicIf(outputAccessor.componentType != gl.FLOAT, "unhandled component type")
+							var offset i32 = prev * 4
+							var x0 f32 = outputs[offset]
+							var y0 f32 = outputs[offset + 1]
+							var z0 f32 = outputs[offset + 2]
+							var w0 f32 = outputs[offset + 3]
+
+							offset = index * 4
+							var x1 f32 = outputs[offset]
+							var y1 f32 = outputs[offset + 1]
+							var z1 f32 = outputs[offset + 2]
+							var w1 f32 = outputs[offset + 3]
+
+							animRotation.x = x0 + (x1 - x0) * t
+							animRotation.y = y0 + (y1 - y0) * t
+							animRotation.z = z0 + (z1 - z0) * t
+							animRotation.w = w0 + (w1 - w0) * t
+							animRotation = v4.normalize(animRotation)
+						} else if path == gltf.ANIMATION_PATH_SCALE {
+							panicIf(outputAccessor.attributeTypeEnum != gltf.TYPE_VEC3, "invalid attribute type")
+							panicIf(outputAccessor.componentType != gl.FLOAT, "unhandled component type")
+							var offset i32 = prev * 3
+							var x0 f32 = outputs[offset]
+							var y0 f32 = outputs[offset + 1]
+							var z0 f32 = outputs[offset + 2]
+
+							offset = index * 3
+							var x1 f32 = outputs[offset]
+							var y1 f32 = outputs[offset + 1]
+							var z1 f32 = outputs[offset + 2]
+
+							animScale.x = x0 + (x1 - x0) * t
+							animScale.y = y0 + (y1 - y0) * t
+							animScale.z = z0 + (z1 - z0) * t
+						} else if path == gltf.ANIMATION_PATH_WEIGHTS {
+						} else {
+							panicIf(true, "invalid animation path")
+						}
+					}
+
+					var frame TRS
+					frame.t = animTranslation
+					frame.r = animRotation
+					frame.s = animScale
+					if nodeChannelCount > 0 {
+						sources[nodeIndex].anim = true
+					}
+					sources[nodeIndex].frames = append(sources[nodeIndex].frames, frame)
+					sources[nodeIndex].transforms = append(sources[nodeIndex].transforms, m44.make_SQT(frame))
+				}
+				sources[nodeIndex].transform = gltf.NodeGetMatrix(asset, nodeIndex)
+			}
+			animation.keys = keys
+			animation.sources = sources
+			animation.direction = 1.0
+			animation.asset = asset
+
+			var animId AnimationId = AnimationCreate()
+			animations = append(animations, animId)
+			g_animations[animId.animation] = animation
+		}
+	}
+
+	nodesMap = resize(nodesMap, nodeCount)
+	for i := 0; i < nodeCount; i++ {
+		nodesMap[i] = -1
+	}
+
+	for len(stack) > 0 {
+		var stackLen i32 = len(stack)
+
+		stackLen--
+		var node i32 = stack[stackLen]
+		stack = resize(stack, stackLen)
+
+		if node < 0 {
+			matrixStack = m44.pop(matrixStack, 1)
+		} else {
+			var nodeIndex i32 = len(nodes)
+			nodes = append(nodes, node)
+			nodesMap[node] = nodeIndex
+			//if (options & MODEL_ANIMATION) != 0 {
+				var skeletonRoot i32 = g_models[modelIndex].skeleton.root
+				if skeletonRoot == -1 {
+					var skin gltf.Skin = gltf.NodeGetSkin(asset, node)
+					if skin.inverseBindMatrices != -1 {
+						var accessor gltf.Accessor = gltf.AssetGetAccessor(asset, skin.inverseBindMatrices)
+						panicIfNot(accessor.loaded, "inverse bind mantrines accessor is not loaded")
+						var inverseBinds []m44 = g_models[modelIndex].inverseBinds
+						panicIf(len(accessor.dataF32) % 16 != 0, "invalid matrix")
+
+						var acc []f32 = accessor.dataF32
+						var acci i32 = 0
+						var inverseBindCount i32 = len(accessor.dataF32) / 16
+						for i := 0; i < inverseBindCount; i++ {
+							var ib m44
+							ib.v00 = acc[acci]
+							acci++
+							ib.v01 = acc[acci]
+							acci++
+							ib.v02 = acc[acci]
+							acci++
+							ib.v03 = acc[acci]
+							acci++
+							ib.v10 = acc[acci]
+							acci++
+							ib.v11 = acc[acci]
+							acci++
+							ib.v12 = acc[acci]
+							acci++
+							ib.v13 = acc[acci]
+							acci++
+							ib.v20 = acc[acci]
+							acci++
+							ib.v21 = acc[acci]
+							acci++
+							ib.v22 = acc[acci]
+							acci++
+							ib.v23 = acc[acci]
+							acci++
+							ib.v30 = acc[acci]
+							acci++
+							ib.v31 = acc[acci]
+							acci++
+							ib.v32 = acc[acci]
+							acci++
+							ib.v33 = acc[acci]
+							acci++
+							inverseBinds = append(inverseBinds, ib)
+
+						}
+						g_models[modelIndex].inverseBinds = inverseBinds
+						g_models[modelIndex].jointMatrices = resize(g_models[modelIndex].jointMatrices, inverseBindCount)
+					}
+					g_models[modelIndex].skeleton.root = skin.skeleton
+					g_models[modelIndex].skinned = skin.skeleton >= 0 // TODO : multiple skeleton per scene
+					g_models[modelIndex].joints = skin.joints
+				}
+			//}
+
+			var nodeMatrix mat.m44 = gltf.NodeGetMatrix(asset, node)
+			var determinant f32 = m44.determinant(nodeMatrix)
+			determinants = append(determinants, determinant)
+			/*var cullFace i32 = gl.BACK
+			if determinant < 0.0 {
+				cullFace = gl.FRONT
+			}*/
+			matrixStack = m44.push(matrixStack, nodeMatrix)
+
+			var last m44 = matrixStack[len(matrixStack) - 1]
+			transforms = append(transforms, last)
+
+			if (options & MODEL_GEOMETRY) != 0 {
+				var mesh i32 = gltf.NodeGetMesh(asset, node)
+				var gltfPrimitives []gltf.Primitive = gltf.MeshGetPrimitives(asset, mesh)
+				var gltfPrimitiveCount i32 = len(gltfPrimitives)
+
+				for p := 0; p < gltfPrimitiveCount; p++ {
+
+					var render MeshId = InvalidMesh()
+
+					var gltfPrimitive gltf.Primitive = gltfPrimitives[p]
+					var gltfMaterial gltf.Material = gltf.AssetGetMaterial(asset, gltfPrimitive.material)
+					var metallicRoughness gltf.MetallicRoughness = gltfMaterial.pbrMetallicRoughness
+
+					var indicesIndex i32 = gltfPrimitive.indices
+					var meshCacheCount i32 = len(meshCacheKey)
+					var pp i32
+					for pp = 0; pp < meshCacheCount; pp++ {
+						if meshCacheKey[pp] == indicesIndex {
+							render = meshCacheVal[pp]
+							pp = meshCacheCount
+						}
+					}
+
+					var cullFace i32 = gl.BACK
+					if gltfMaterial.doubleSided == 1 {
+						cullFace = NONE
+					} else if determinant < 0.0 {
+						cullFace = gl.FRONT
+					}
+
+					if IsValidMesh(render) == false {
+						render = meshInstance(asset, gltfPrimitive)
+						MeshSetCulling(render, gl.CCW, cullFace)
+						meshCacheKey = append(meshCacheKey, indicesIndex)
+						meshCacheVal = append(meshCacheVal, render)
+					}
+
+					if IsValidMesh(render) == false {
+						success = false
+						return
+					}
+
+					var meshMin mat.v3 = g_meshes[render.mesh].min
+					meshMin = v3.transform_point(meshMin, last)
+
+					var meshMax mat.v3 = g_meshes[render.mesh].max
+					meshMax = v3.transform_point(meshMax, last)
+
+					max = v3.max(meshMax, max)
+					min = v3.min(meshMin, min)
+
+					var primitive Primitive
+
+					primitive.mesh = render
+					primitive.node = node
+					primitive.nodeIndex = nodeIndex
+					primitive.baseTexture = loadTexture(asset, dataDir, metallicRoughness.baseColorTexture.index)
+					primitive.metalRoughTexture = loadTexture(asset, dataDir, metallicRoughness.metallicRoughnessTexture.index)
+					primitive.emissiveTexture = loadTexture(asset, dataDir, gltfMaterial.emissiveTexture.index)
+					primitive.normalTexture = loadTexture(asset, dataDir, gltfMaterial.normalTexture.index)
+					primitive.occlusionTexture = loadTexture(asset, dataDir, gltfMaterial.occlusionTexture.index)
+					primitive.gltfMaterial = gltfMaterial
+					primitive.gltfPrimitive = gltfPrimitive
+					if MeshUseWeight(render) &&  MeshUseJoint(render) {
+						primitive.useSkin = 1
+					}
+
+					var effect EffectId = effectInstance(&primitive)
+					if EffectIsValid(effect) == false {
+						printf("effectInstance failed\n")
+						success = false
+						return
+					}
+					primitive.effect = effect
+
+					var primitiveIndex i32 = len(primitives)
+					primitives = append(primitives, primitive)
+
+					meshes = append(meshes, primitiveIndex)
+					var alphaMode i32 = gltfMaterial.alphaMode
+					if alphaMode == gltf.ALPHA_BLEND {
+						transparentMeshes = append(transparentMeshes, primitiveIndex)
+					} else if alphaMode == gltf.ALPHA_OPAQUE {
+						opaqueMeshes = append(opaqueMeshes, primitiveIndex)
+					}
+				}
+			}
+
+			var children []i32 = gltf.NodeGetChildren(asset, node)
+			var childCount i32 = len(children)
+			stack = append(stack, -1)
+			if childCount > 0 {
+				for i := 0; i < childCount; i++ {
+					stack = append(stack, children[i])
+				}
+			}
+		}
+	}
+
+	stack = resize(stack, 0)
+	g_models[modelIndex].stack = stack
+	g_models[modelIndex].nodes = nodes
+	g_models[modelIndex].nodesMap = nodesMap
+	g_models[modelIndex].determinants = determinants
+	g_models[modelIndex].meshes = meshes
+	g_models[modelIndex].primitives = primitives
+	g_models[modelIndex].opaqueMeshes = opaqueMeshes
+	g_models[modelIndex].transparentMeshes = transparentMeshes
+	g_models[modelIndex].meshCacheKey = meshCacheKey
+	g_models[modelIndex].meshCacheVal = meshCacheVal
+	g_models[modelIndex].animations = animations
+	g_models[modelIndex].matrixStack = resize(matrixStack, 0)
+	g_models[modelIndex].transforms = transforms
+	g_models[modelIndex].max = max
+	g_models[modelIndex].min = min
+
+	success = true
+}
+
+
+
+func AnimationMorph(left AnimationId, right AnimationId, out AnimationId, time f32) {
+	panicIfNot(AnimationIsValid(left), "invalid animation")
+	panicIfNot(AnimationIsValid(right), "invalid animation")
+	panicIfNot(AnimationIsValid(out), "invalid animation")
+
+	var leftIndex i32 = left.animation
+	var trsLeft []mat.TRS = g_animations[leftIndex].trs
+	var leftSources []AnimationSource = g_animations[leftIndex].sources
+
+	var rightIndex i32 = right.animation
+	var trsRight []mat.TRS = g_animations[rightIndex].trs
+	var rightSources []AnimationSource = g_animations[rightIndex].sources
+
+	var outIndex i32 = out.animation
+	var trsOut []mat.TRS = g_animations[outIndex].trs
+
+	var count i32 = len(trsLeft)
+	panicIf(count != len(trsRight), "incompatible animations")
+
+	trsOut = resize(trsOut, 0)
+	var tt mat.TRS
+	for i := 0; i < count; i++ {
+		tt.t = v3.lerpf(trsLeft[i].t, trsRight[i].t, time)
+		tt.r = q4.slerp(trsLeft[i].r, trsRight[i].r, time)
+		tt.s = v3.lerpf(trsLeft[i].s, trsRight[i].s, time)
+		trsOut = append(trsOut, tt)
+	}
+
+	g_animations[outIndex].min = f32.min(g_animations[leftIndex].min, g_animations[rightIndex].min)
+	g_animations[outIndex].max = f32.max(g_animations[leftIndex].max, g_animations[rightIndex].max)
+	g_animations[outIndex].trs = trsOut
+	if len(rightSources) > 0 {
+		g_animations[outIndex].sources = rightSources
+	} else if len(leftSources) > 0 {
+		g_animations[outIndex].sources = leftSources
+	}
+}
+
+// AnimationGetMax ...
+func AnimationGetMax(id AnimationId) (out f32) {
+	panicIfNot(AnimationIsValid(id), "invalid model")
+	out = g_animations[id.animation].max
+}
+
+// AnimationSetTime ...
+func AnimationSetTime(id AnimationId, time f32) {
+	panicIfNot(AnimationIsValid(id), "invalid animation")
+	g_animations[id.animation].time = time
+	g_animations[id.animation].lastIndex = 0
+}
+
+// AnimationGetRuntime ...
+func AnimationGetRuntime(id AnimationId) (out bool) {
+	panicIfNot(AnimationIsValid(id), "invalid animation")
+	out = g_animations[id.animation].runtime
+}
+
+// AnimationSetRuntime ...
+func AnimationSetRuntime(id AnimationId, runtime bool) {
+	panicIfNot(AnimationIsValid(id), "invalid animation")
+	g_animations[id.animation].runtime = runtime
+}
+
+// AnimationGetJointTRS ...
+func AnimationGetJointTRS(id AnimationId, joint i32) (out TRS) {
+	panicIfNot(AnimationIsValid(id), "invalid animation")
+	var trs []mat.TRS = g_animations[id.animation].trs
+	out = trs[joint]
+}
+
+// AnimationSetJointTRS ...
+func AnimationSetJointTRS(id AnimationId, joint i32, t mat.v3, r mat.v4, s mat.v3) {
+	panicIfNot(AnimationIsValid(id), "invalid animation")
+	var trs[]mat.TRS = g_animations[id.animation].trs
+	trs[joint].t = t
+	trs[joint].r = r
+	trs[joint].s = s
+}
+
+// AnimationGetJointRotation ...
+func AnimationGetJointRotation(id AnimationId, joint i32) (out mat.v4) {
+	panicIfNot(AnimationIsValid(id), "invalid animation")
+	var trs []mat.TRS = g_animations[id.animation].trs
+	out = trs[joint].r
+}
+
+// AnimationSetJointRotation ...
+func AnimationSetJointRotation(id AnimationId, joint i32, q mat.v4) {
+	panicIfNot(AnimationIsValid(id), "invalid animation")
+	var trs[]mat.TRS = g_animations[id.animation].trs
+	trs[joint].r = q
+}
+
+// AnimationUpdate ...
+func AnimationUpdate(id AnimationId, deltaTime f32, loop bool, max f32) {
+	panicIfNot(AnimationIsValid(id), "invalid model")
+	var animIndex i32 = id.animation
+	var animationCount i32 = len(g_animations)
+
+	var animation Animation = g_animations[animIndex]
+	var lastIndex i32 = animation.lastIndex
+	var animMin f32 = animation.min
+	var animMax f32 = animation.max
+	if (max > 0.0) {
+		animMax = max
+	}
+
+	var keys []f32 = animation.keys
+	var keyCount i32 = len(keys)
+
+	var animDir f32 = animation.direction
+	var animTime f32 = animation.time + animDir * deltaTime
+	if animTime < animMin {
+		if loop == true {
+			animTime = animMax
+			lastIndex = keyCount - 1
+		} else {
+			animTime = animMin
+			animDir = 1.0
+		}
+	}
+	if animTime > animMax {
+		if loop == true {
+			animTime = 0.0//animMin
+			lastIndex = 0
+		} else {
+			animTime = animMax
+			animDir = -1.0
+		}
+	}
+
+	var index i32 = -1
+	for keyIndex := lastIndex; keyIndex < keyCount; keyIndex++ { // TODO : track time
+		if animTime <= keys[keyIndex] {
+			index = keyIndex
+			keyIndex = keyCount// ISSUE : break
+		}
+	}
+
+	if index >= keyCount {
+		index = keyCount - 1
+	}
+	if index < 0 {
+		index = 0
+	}
+
+	var prev i32 = index - 1
+	if prev < 0 {
+		prev = 0
+	}
+
+	var delta f32 = animTime - keys[prev]
+	var step f32 = keys[index] - keys[prev]
+	var st f32 = 1.0;
+	if step > 0.0 {
+		st = delta / step
+	}
+	var t f32 = st
+	if t < 0.0 {
+		t = 0.0
+	} else if t > 1.0 {
+		t = 1.0
+	}
+
+	animation.lastIndex = prev
+	var sources []AnimationSource = animation.sources
+	var sourceCount i32 = len(sources)
+	if sourceCount > 0 {
+		animation.time = animTime
+		animation.direction = animDir
+
+		var animTrs []mat.TRS = animation.trs
+		animTrs = resize(animTrs, 0)
+
+		var frame mat.TRS
+		for sourceIndex := 0; sourceIndex < sourceCount; sourceIndex++ {
+			var source AnimationSource = sources[sourceIndex]
+			if source.anim {
+				var prevFrame mat.TRS = source.frames[prev]
+				var curFrame mat.TRS = source.frames[index]
+				frame.t = v3.lerpsatf(prevFrame.t, curFrame.t, t)
+				frame.r = q4.slerp(prevFrame.r, curFrame.r, t)
+				frame.s = v3.lerpsatf(prevFrame.s, curFrame.s, t)
+		 } else {
+				frame.t = v3.ZERO
+				frame.r = v4.ALPHA
+				frame.s = v3.ONE
+			}
+				animTrs = append(animTrs, frame)
+   		}
+
+		animation.trs = animTrs
+	}
+	g_animations[animIndex] = animation
+}
+
+
+func trs_to_str(t TRS) (out str) {
+	out = sprintf("%s, %s, %s", v3.to_str(t.t), v4.to_str(t.r), v3.to_str(t.s))
+}
+
+func debugNode(stackCount i32, asset gltf.AssetId, node i32) {
+	for kk := 0; kk < stackCount; kk++ {
+		printf("--")
+	}
+
+	printf("%s :\n", gltf.NodeGetName(asset, node))
+}
+
+func modelTransform(id ModelId, animId AnimationId, deltaTime f32, loop bool) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+
+	var modelIndex i32 = id.model
+	var animIndex i32 = animId.animation
+
+	var animationCount i32 = len(g_animations)
+	if animIndex >= 0 && animIndex < animationCount {
+		var animated bool = g_models[modelIndex].animated
+		var skinned bool = g_models[modelIndex].skinned
+		if animated || skinned {
+
+			var animation Animation = g_animations[animIndex]
+			var animTrs []mat.TRS = animation.trs
+			var animTransforms []m44 = animation.transforms
+			animTransforms = resize(animTransforms, 0)
+			var trsCount i32 = len(animTrs)
+			var sources []AnimationSource = animation.sources
+
+			if trsCount > 0 {
+				var modelAsset gltf.AssetId = g_models[modelIndex].asset
+				for trsIndex := 0; trsIndex < trsCount; trsIndex++ {
+					if sources[trsIndex].anim {
+						animTransforms = append(animTransforms, m44.make_SQT(animTrs[trsIndex]))
+					} else {
+						animTransforms = append(animTransforms, sources[trsIndex].transform)
+					}
+				}
+				var animTransformCount i32 = len(animTransforms)
+
+				g_animations[animIndex].transforms = animTransforms
+
+				var transforms []m44 = g_models[modelIndex].transforms
+				transforms = resize(transforms, 0)
+
+				var matrixStack []mat.m44 = g_models[modelIndex].matrixStack
+				matrixStack = resize(matrixStack, 0)
+				matrixStack = m44.push(matrixStack, m44.IDENTITY)
+
+				var stack []i32 = g_models[modelIndex].stack
+
+				var roots []i32 = gltf.AssetGetRootNodes(modelAsset)
+				var rootCount i32 = len(roots)
+				stack = resize(stack, rootCount)
+				for i := 0; i < rootCount; i++ {
+					stack[i] = roots[i]
+				}
+
+				for len(stack) > 0 {
+					var stackLen i32 = len(stack)
+
+					stackLen--
+					var node i32 = stack[stackLen]
+
+					stack = resize(stack, stackLen)
+					if node < 0 {
+						matrixStack = m44.pop(matrixStack, 1)
+					} else {
+						if node < animTransformCount {
+							matrixStack = m44.push(matrixStack, animTransforms[node])
+						} else {
+							matrixStack = m44.push(matrixStack, sources[node].transform)
+						}
+
+						transforms = append(transforms, matrixStack[len(matrixStack) - 1])
+
+						var children []i32 = gltf.NodeGetChildren(modelAsset, node)
+						var childCount i32 = len(children)
+						stack = append(stack, -1)
+						if childCount > 0 {
+							for i := 0; i < childCount; i++ {
+								stack = append(stack, children[i])
+							}
+						}
+					}
+				}
+
+				g_models[modelIndex].stack = resize(stack, 0)
+				g_models[modelIndex].matrixStack = resize(matrixStack, 0)
+				g_models[modelIndex].transforms = transforms
+			}
+		}
+	}
+
+
+	var joints []i32 = g_models[modelIndex].joints
+	var jointCount i32 = len(joints)
+	if jointCount > 0 {
+		var jointMatrices []m44 = g_models[modelIndex].jointMatrices
+		var inverseBinds []m44 = g_models[modelIndex].inverseBinds
+		var nodesMap []i32 = g_models[modelIndex].nodesMap
+		var transforms []m44 = g_models[modelIndex].transforms
+		for j := 0; j < jointCount; j++ {
+			var node i32 = joints[j]
+			var nodeIndex i32 = nodesMap[node]
+			jointMatrices[j] = m44.mulISSUE(inverseBinds[j], transforms[nodeIndex])
+		}
+	}
+}
+
+// ModelGetMeshes ...
+func ModelGetMeshes(id ModelId) (out []i32) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	out = g_models[id.model].meshes
+}
+
+// ModelGetNodePosition ...
+func ModelGetNodePosition(id ModelId, node i32) (out mat.v3) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	var modelIndex i32 = id.model
+	var nodesMap []i32 = g_models[modelIndex].nodesMap
+	var nodeIndex i32 = nodesMap[node]
+	var transforms []m44 = g_models[modelIndex].transforms
+	out.x = transforms[nodeIndex].v30
+	out.y = transforms[nodeIndex].v31
+	out.z = transforms[nodeIndex].v32
+}
+
+// ModelGetNodeTransform ...
+func ModelGetNodeTransform(id ModelId, node i32) (out m44) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	var modelIndex i32 = id.model
+	var nodesMap []i32 = g_models[modelIndex].nodesMap
+	var nodeIndex i32 = nodesMap[node]
+	var transforms []m44 = g_models[modelIndex].transforms
+	out = transforms[nodeIndex]
+}
+
+
+func modelRender(id ModelId, renderables []i32, alpha f32) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+
+	var modelIndex i32 = id.model
+	var transforms []m44 = g_models[modelIndex].transforms
+	var primitives []Primitive = g_models[modelIndex].primitives
+
+	var environmentSpecular TextureId = g_models[modelIndex].environmentSpecular // TODO : renderState
+	var environmentDiffuse TextureId = g_models[modelIndex].environmentDiffuse // TODO : renderState
+	var brdf TextureId = g_models[modelIndex].brdf // TODO : renderState
+	var view m44 = g_models[modelIndex].view // TODO : renderState
+	var projection m44 = g_models[modelIndex].projection // TODO : renderState
+	var cameraPosition mat.v4 = g_models[modelIndex].cameraPosition // TODO : renderState
+	var jointMatrices []m44 = g_models[modelIndex].jointMatrices
+
+	var renderableCount i32 = len(renderables)
+
+
+	for p := 0; p < renderableCount; p++ {
+
+		var renderable i32 = renderables[p]
+		var primitive Primitive = primitives[renderable]//renderables[p]]
+		var world m44 = g_models[modelIndex].world
+		var effect EffectId = effectInstance(&primitive)
+
+		EffectTryAssignTexture(effect, SAMPLER_COLOR_0, primitive.baseTexture, g_linearWrap) // TODO : use gltf sampler
+		EffectTryAssignTexture(effect, SAMPLER_NORMAL, primitive.normalTexture, g_linearWrap) // TODO : use gltf sampler
+		EffectTryAssignTexture(effect, SAMPLER_METAL_ROUGH, primitive.metalRoughTexture, g_linearWrap) // TODO : use gltf sampler
+		EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearWrap) // TODO : use gltf sampler
+		EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linearWrap) // TODO : use gltf sampler
+		EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Wrap) // TODO : use gltf sampler
+		EffectTryAssignTexture(effect, SAMPLER_EMISSIVE, primitive.emissiveTexture, g_linearWrap) // TODO : use gltf sampler
+		EffectTryAssignTexture(effect, SAMPLER_OCCLUSION, primitive.occlusionTexture, g_linearWrap) // TODO : use gltf sampler
+
+		var skinned bool = g_models[modelIndex].skinned
+		if skinned == false {
+			world = m44.mulISSUE(transforms[primitive.nodeIndex], world)
+		}
+
+		EffectAssignM44(effect, UNIFORM_WORLD, world, false)
+		EffectAssignM44(effect, UNIFORM_VIEW, view, false)
+		EffectAssignM44(effect, UNIFORM_PROJECTION, projection, false)
+		//EffectAssignM44(effect, UNIFORM_WORLD_INVERSE, m44.inverse(world), false) // TODO : optim inverse sooner in callstack
+
+		if primitive.useSkin == 1 {
+	  		EffectAssignM44V(effect, UNIFORM_SKELETON, jointMatrices, false)
+		}
+
+		var metallicRoughness gltf.MetallicRoughness = primitive.gltfMaterial.pbrMetallicRoughness
+		if EffectIsValidUniformLocation(effect, UNIFORM_COLOR) {
+			var baseColorFactor mat.v4 = metallicRoughness.baseColorFactor
+			baseColorFactor.w = baseColorFactor.w * alpha
+	  		EffectAssignV4(effect, UNIFORM_COLOR, baseColorFactor)
+		}
+
+		if EffectIsValidUniformLocation(effect, UNIFORM_METAL_ROUGH) {
+			var metallicRoughnessFactor mat.v4
+			metallicRoughnessFactor.y = metallicRoughness.roughnessFactor
+			metallicRoughnessFactor.z = metallicRoughness.metallicFactor
+	  		EffectAssignV4(effect, UNIFORM_METAL_ROUGH, metallicRoughnessFactor)
+		}
+
+		if EffectIsValidUniformLocation(effect, UNIFORM_EMISSIVE) {
+	  		EffectAssignV4(effect, UNIFORM_EMISSIVE, primitive.gltfMaterial.emissiveFactor)
+		}
+
+		EffectAssignV4(effect, UNIFORM_CAMERA_POSITION, cameraPosition)
+		EffectAssignV4(effect, UNIFORM_DEBUG_0, DEBUG_0)
+
+		MeshRender(primitive.mesh)
+	}
+}

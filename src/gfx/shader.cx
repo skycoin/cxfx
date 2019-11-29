@@ -1,0 +1,252 @@
+package gfx
+
+// TODO : use glShaderSource char**string param instead of str concatenation
+
+// Constants ...
+var SHADER_VERTEX i64 = 0L
+var SHADER_PIXEL  i64 = 1L
+
+var SHADER_VARIANT    i64 = 8L
+
+var USE_TRANSFORM     i64 = 1L << 0L
+var USE_COLOR_UNI     i64 = 1L << 1L
+var USE_COLOR_VTX     i64 = 1L << 2L
+var USE_COLOR_MAP     i64 = 1L << 3L
+var USE_PBR_UNI       i64 = 1L << 4L
+var USE_PBR_MAP       i64 = 1L << 5L
+var USE_TANGENT       i64 = 1L << 6L
+var USE_NORMAL_VTX    i64 = 1L << 7L
+var USE_NORMAL_MAP    i64 = 1L << 8L
+var USE_TANGENT_VTX   i64 = 1L << 9L
+var USE_OCCLUSION_MAP i64 = 1L << 10L
+var USE_EMISSIVE_UNI  i64 = 1L << 11L
+var USE_EMISSIVE_MAP  i64 = 1L << 12L
+var USE_OCCLUSION_MAP i64 = 1L << 13L
+var USE_DEBUG_A       i64 = 1L << 14L
+var USE_PASS_0        i64 = 1L << 15L
+var USE_PASS_1        i64 = 1L << 16L
+var USE_SKIN          i64 = 1L << 17L
+var USE_PARTICLE      i64 = 1L << 18L
+var USE_MERGE         i64 = 1L << 19L
+var USE_EDGE          i64 = 1L << 20L
+var USE_STENCIL       i64 = 1L << 21L
+
+// Globals ...
+var g_shaderPath str
+var g_shaders []Shader
+var g_sources []ShaderSource
+var g_variants []str
+var g_defines []ShaderDefine
+
+// ShaderDefine ...
+type ShaderDefine struct {
+	flag i64
+	token str
+}
+
+// ShaderKey ...
+type ShaderKey struct {
+	value i64
+}
+
+// ShaderId ...
+type ShaderId struct {
+	shader i32
+}
+
+// ShaderSource ...
+type ShaderSource struct {
+	path str
+	filename str
+	code str
+}
+
+// Shader ...
+type Shader struct {
+	shaderType i64
+	variant i64
+	flags i64
+	key i64
+	defines str
+	source i32
+	glsl str
+}
+
+// ShaderDefineAdd ...
+func ShaderDefineAdd(flag i64, token str) {
+	var define ShaderDefine
+	define.flag = flag
+	define.token = token
+	g_defines = append(g_defines, define)
+}
+
+// ShaderDefineGetStr ...
+func ShaderDefineGetStr(flag i64) (out str) {
+	var count i32 = len(g_defines)
+	for i := 0; i < count; i++ { // TODO : use map
+		if g_defines[i].flag == flag {
+			out = g_defines[i].token
+			return
+		}
+	}
+
+	panicIf(true, "invalid flag")
+}
+
+// ShaderDefineGetHeader ...
+func ShaderDefineGetHeader(flags i64) (out str) {
+	out = "#version 130\n"
+	for i := 0; i < 32; i++ {
+		var flag i64 = 1L << i32.i64(i)
+		if (flags & flag) == flag {
+			out = str.concat(out, ShaderDefineGetStr(flag))
+		}
+	}
+}
+
+func shaderInit(dataDir str) {
+	g_shaderPath = sprintf("%s/shaders/", dataDir)
+	ShaderDefineAdd(USE_TRANSFORM, "#define USE_TRANSFORM\n")
+	ShaderDefineAdd(USE_COLOR_UNI, "#define USE_COLOR_UNI\n")
+	ShaderDefineAdd(USE_COLOR_VTX, "#define USE_COLOR_VTX\n")
+	ShaderDefineAdd(USE_COLOR_MAP, "#define USE_COLOR_MAP\n")
+	ShaderDefineAdd(USE_PBR_UNI, "#define USE_PBR_UNI\n")
+	ShaderDefineAdd(USE_PBR_MAP, "#define USE_PBR_MAP\n")
+	ShaderDefineAdd(USE_TANGENT, "#define USE_TANGENT\n")
+	ShaderDefineAdd(USE_NORMAL_VTX, "#define USE_NORMAL_VTX\n")
+	ShaderDefineAdd(USE_NORMAL_MAP, "#define USE_NORMAL_MAP\n")
+	ShaderDefineAdd(USE_TANGENT_VTX, "#define USE_TANGENT_VTX\n")
+	ShaderDefineAdd(USE_OCCLUSION_MAP, "#define USE_OCCLUSION_MAP\n")
+	ShaderDefineAdd(USE_EMISSIVE_UNI, "#define USE_EMISSIVE_UNI\n")
+	ShaderDefineAdd(USE_EMISSIVE_MAP, "#define USE_EMISSIVE_MAP\n")
+	ShaderDefineAdd(USE_OCCLUSION_MAP, "#define USE_OCCLUSION_MAP\n")
+	ShaderDefineAdd(USE_DEBUG_A, "#define USE_DEBUG_A\n")
+	ShaderDefineAdd(USE_PASS_0, "#define USE_PASS_0\n")
+	ShaderDefineAdd(USE_PASS_1, "#define USE_PASS_1\n")
+	ShaderDefineAdd(USE_SKIN, "#define USE_SKIN\n")
+	ShaderDefineAdd(USE_PARTICLE, "#define USE_PARTICLE\n")
+	ShaderDefineAdd(USE_MERGE, "#define USE_MERGE\n")
+	ShaderDefineAdd(USE_STENCIL, "#define USE_STENCIL\n")
+	ShaderDefineAdd(USE_EDGE, "#define USE_EDGE\n")
+}
+
+// ShaderKeyClear ...
+func ShaderKeyClear() (out ShaderKey) {
+	out.value = 0L
+}
+
+// ShaderKeySet ...
+func ShaderKeySet(key ShaderKey, flag i64, value bool) (out ShaderKey) {
+	if value {
+		out = ShaderKeyAdd(key, flag)
+	} else {
+		out = ShaderKeyRem(key, flag)
+	}
+}
+
+// ShaderKeyAdd ...
+func ShaderKeyAdd(key ShaderKey, flag i64) (out ShaderKey) {
+	key.value = key.value | flag
+	out = key
+}
+
+// ShaderKeyRem ...
+func ShaderKeyRem(key ShaderKey, flag i64) (out ShaderKey) {
+	key.value = key.value & (-1L ^ flag)
+	out = key
+}
+
+// ShaderAddVariant ...
+func ShaderAddVariant(filename str) (out i64) {
+	var count i32 = len(g_variants)
+	for i := 0; i < count; i++ {
+		if g_variants[i] == filename {
+			out = i32.i64(i)
+			return
+		}
+	}
+
+	out = i32.i64(count)
+	g_variants = append(g_variants, filename)
+}
+
+// ShaderGetVariant ...
+func ShaderGetVariant(variant i64) (out str) {
+	panicIfNot(variant >= 0L && variant < i32.i64(len(g_variants)), "invalid variant")
+	out = g_variants[variant]
+}
+
+// ShaderSourceIsValid ...
+func ShaderSourceIsValid(id i32) (out bool) {
+	out = id >= 0 && id < len(g_sources)
+}
+
+// ShaderSourceCreate ...
+func ShaderSourceCreate(path str, filename str) (out i32) {
+	out = len(g_sources)
+
+	var source ShaderSource
+	source.path = path
+	source.filename = filename
+
+	source.code = os.ReadAllText(sprintf("%s/%s", path, filename))
+	g_sources = append(g_sources, source)
+
+	panicIfNot(ShaderSourceIsValid(out), "invalid id")
+}
+
+// ShaderIsValid ...
+func ShaderIsValid(id ShaderId) (out bool) {
+	out = id.shader >= 0 && id.shader < len(g_shaders)
+}
+
+// ShaderCreate ...
+func ShaderCreate(shaderType i64, shaderVariant i64, shaderFlags i64, shaderKey i64) (out ShaderId) {
+	var source i32 = -1
+
+	var count i32 = len(g_shaders)
+	for i := 0; i < count; i++ { // TODO : use map
+		if g_shaders[i].key == shaderKey {
+			out.shader = i
+			return
+		} else if g_shaders[i].variant == shaderVariant {
+			source = g_shaders[i].source
+		}
+	}
+
+	out.shader = len(g_shaders)
+	var shader Shader
+	shader.shaderType = shaderType
+	shader.variant = shaderVariant
+	shader.flags = shaderFlags
+	shader.key = shaderKey
+
+
+	shader.defines = ShaderDefineGetHeader(shaderFlags)
+
+	if ShaderSourceIsValid(source) {
+		shader.source = source
+	} else {
+		shader.source = ShaderSourceCreate(g_shaderPath, ShaderGetVariant(shaderVariant))
+	}
+
+	shader.glsl = str.concat(shader.defines, g_sources[shader.source].code) // ISSUE : can't use + operator
+	/*printf("//--------------------------------------------------------------------------------\n")
+	printf("// filename : %s\n", ShaderGetVariant(shaderVariant))
+	printf("// type : %d\n", shaderType)
+	printf("// variant : %d\n", shaderVariant)
+	printf("// flags : %d\n", shaderFlags)
+	printf("// key : %d\n", shaderKey)
+	printf("// glsl :\n%s\n", shader.glsl)*/
+
+	g_shaders = append(g_shaders, shader)
+
+	panicIfNot(ShaderIsValid(out), "invalid id")
+}
+
+// ShaderGetGlsl ...
+func ShaderGetGlsl(id ShaderId) (out str) {
+	panicIfNot(ShaderIsValid(id), "invalid id")
+	out = g_shaders[id.shader].glsl
+}
+

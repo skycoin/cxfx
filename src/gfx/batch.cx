@@ -1,0 +1,162 @@
+package gfx
+
+// Globals ...
+var g_batches[] Batch
+var g_renderBatches[] BatchId
+
+// BatchId ...
+type BatchId struct {
+	batch i32
+}
+
+// Batch ...
+type Batch struct {
+	effect EffectId
+	mesh MeshId
+	slot i32
+	texture TextureId
+	sampler SamplerState
+	alpha bool
+}
+
+// InvalidBatch ...
+func InvalidBatch() (out BatchId) {
+	out.batch = -1
+}
+
+// IsValidBatch ...
+func IsValidBatch(id BatchId) (out bool) {
+	out = id.batch >= 0 && id.batch < len(g_batches)
+}
+
+// BatchGetMesh ...
+func BatchGetMesh(id BatchId) (out MeshId) {
+	panicIfNot(IsValidBatch(id), "invalid id")
+	out = g_batches[id.batch].mesh
+}
+
+// GetBatch ...
+func GetBatch(effect EffectId, texture TextureId, slot i32, sampler SamplerState, alpha bool, primitiveCount i32) (out BatchId) { // TODO : use real index/vertex count
+
+	out.batch = -1
+	var i i32 = 0
+	var batchCount i32 = len(g_batches)
+	for i >= 0 {
+		if (i < batchCount) {
+			var textureName i32 = TextureName(g_batches[i].texture)
+			var textureAlpha bool = g_batches[i].alpha
+			var textureSampler SamplerState = g_batches[i].sampler
+			if (textureName == TextureName(texture) &&
+				textureAlpha == alpha &&
+				textureSampler.min == sampler.min &&
+				textureSampler.mag == sampler.mag &&
+				textureSampler.s == sampler.s &&
+				textureSampler.t == sampler.t &&
+				textureSampler.r == sampler.r) {
+				out.batch = i
+			}
+			i = i + 1
+		} else {
+			i = -1
+		}
+	}
+	if (out.batch < 0) {
+
+		out.batch = batchCount
+
+		var batch Batch
+		batch.effect = effect
+		batch.mesh = MeshLock(gl.TRIANGLES, gl.UNSIGNED_SHORT, primitiveCount * 3, VertexLayout(), primitiveCount * 3)
+		batch.texture = texture
+		batch.slot = slot
+		batch.sampler = sampler
+		batch.alpha = alpha
+		g_batches = append(g_batches, batch)
+	}
+
+	var renderBatchCount i32 = len(g_renderBatches)
+	i = 0
+	var found bool = false
+	for i >= 0 {
+		if (i < renderBatchCount) {
+			if (g_renderBatches[i].batch == out.batch) {
+				found = true
+				i = -1
+			} else {
+				i = i + 1
+			}
+		} else {
+			i = -1
+		}
+	}
+
+	if (found == false) {
+		//printf("BATCH_NOT FOUND %d\n", out.batch)
+		g_renderBatches = append(g_renderBatches, out)
+	}
+
+	panicIfNot(IsValidBatch(out), "invalid id")
+}
+
+// ClearBatches ...
+func ClearBatches() {
+	g_renderBatches = resize(g_renderBatches, 0)
+}
+
+// BeginBatches ...
+func BeginBatches() {
+	var renderBatchCount i32 = len(g_renderBatches)
+	var i i32 = 0;
+	//printf("BEGIN_BATCHES %d\n", renderBatchCount)
+	for i = 0; i < renderBatchCount; i = i + 1 {
+		var batchId BatchId = g_renderBatches[i]
+		//printf("BEGIN_BATCH %d/%d BATCH %d\n", i, renderBatchCount, batchId.batch)
+		panicIfNot(IsValidBatch(batchId), "invalid batch")
+		var meshId MeshId = g_batches[batchId.batch].mesh
+		panicIfNot(IsValidMesh(meshId), "invalid mesh")
+		MeshBegin(meshId)
+	}
+}
+
+// EndBatches ...
+func EndBatches() {
+	var renderBatchCount i32 = len(g_renderBatches)
+	var i i32 = 0;
+	for i = 0; i < renderBatchCount; i = i + 1 {
+		var batchId BatchId = g_renderBatches[i]
+		panicIfNot(IsValidBatch(batchId), "invalid batch")
+		var meshId MeshId = g_batches[batchId.batch].mesh
+		panicIfNot(IsValidMesh(meshId), "invalid mesh")
+		MeshEnd(meshId)
+	}
+}
+
+// RenderBatches ...
+func RenderBatches(alpha bool) {
+	var renderBatchCount i32 = len(g_renderBatches)
+	var i i32 = 0
+	for i = 0; i < renderBatchCount; i++ {
+		var batchId BatchId = g_renderBatches[i]
+		panicIfNot(IsValidBatch(batchId), "invalid batch")
+		var batch i32 = batchId.batch
+		var meshId MeshId = g_batches[batch].mesh
+		panicIfNot(IsValidMesh(meshId), "invalid mesh")
+		if (MeshIsEmpty(meshId) == false) {
+			var batchAlpha bool = g_batches[batch].alpha
+			if (batchAlpha == alpha) {
+				//printf("RENDER_BATCH %d/%d\n", i + 1, renderBatchCount)
+				if (alpha == true) {
+					EnableBlending(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+				} else {
+					DisableBlending()
+				}
+				var effect EffectId = g_batches[batch].effect
+				var texture TextureId = g_batches[batch].texture
+				EffectUse(effect)
+				EffectAssignTexture(effect, g_batches[batch].slot, texture, g_batches[batch].sampler)
+				MeshRender(meshId)
+			}
+		}
+	}
+}
+
