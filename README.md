@@ -1,4 +1,4 @@
-<img width="100%" height="100%" src="resources/logos/logo_2.png">
+<img width="75%" height="75%" src="resources/logos/logo_2.png">
 
 ## Disclaimer : It’s all wip, api will change until it matures.
 
@@ -13,26 +13,32 @@ cd ~/go/src/github.com/skycoin/
 git clone https://github.com/asahi3g/cx/
 cd cx
 git checkout develop_cxfx
+make install
 make build
 ```
 ##### Install cxfx :
 ```
-mkdir -p ~/go/src/github.com/skycoin/
-cd ~/go/src/github.com/skycoin/
-git clone https://github.com/skycoin/cxfx
+mkdir -p ~/go/src/github.com/skycoinproject/
+cd ~/go/src/github.com/skycoinproject/
+git clone https://github.com/skycoinproject
+cx cxfx/games/skylight
+make
 cd cxfx/tutorials
 make 6_model
 ```
 
-##### Controls in tutorials :
+##### Controls in tutorials & skylight :
+```shift+(left/right)``` : Switch camera
 
 ```ctrl+(left/right)``` : Switch rendered model
- 
-```up/down/left/right (or wasd) + mouse``` : Control the camera 
 
-```alt+enter``` : Toggle fullscreen 
+```up/down/left/right (or wasd) + mouse``` : Control the camera
 
-```escape``` : Exit 
+```alt+enter``` : Toggle fullscreen
+
+```space``` : Throw
+
+```escape``` : Exit
 
 ##### WIP :
 
@@ -50,14 +56,6 @@ make 6_model
 <img style="max-width:100%" src="screenshots/cxfx_33.png">
 <img style="max-width:100%" src="screenshots/cxfx_32.png">
 <img style="max-width:100%" src="screenshots/cxfx_31.png">
-<img style="max-width:100%" src="screenshots/cxfx_27.png">
-<img style="max-width:100%" src="screenshots/cxfx_15.png">
-<img style="max-width:100%" src="screenshots/cxfx_9.png">
-<img style="max-width:100%" src="screenshots/cxfx_5.png">
-<img style="max-width:100%" src="screenshots/cxfx_4.png">
-<img style="max-width:100%" src="screenshots/cxfx_2.png">
-<img style="max-width:100%" src="screenshots/cxfx_1.png">
-<img style="max-width:100%" src="screenshots/cxfx_0.png">
 
 - [ ] math:
   - [x] matrix
@@ -70,7 +68,7 @@ make 6_model
     - [ ] texture 2d
       - [x] generate mipmaps
       - [ ] load mipmaps
-    - [ ] texture cube 
+    - [ ] texture cube
       - [x] generate mipmaps
       - [ ] load mipmaps
     - [ ] texture array
@@ -111,7 +109,7 @@ make 6_model
 - [ ] phycics:
   - [ ] collision/intersection/response
     - [ ] ellipsoid/triangle
-    - [ ] ellipsoid/ellipsoid 
+    - [ ] ellipsoid/ellipsoid
     - [ ] ray/ellipsoid
     - [ ] ray/OBB
     - [ ] ray/AABB
@@ -171,52 +169,64 @@ make 0_colored_quad
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_0.png">
 
+
 ```
 make 1_textured_quad
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_1.png">
+
 
 ```
 make 2_text
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_2.png">
 
+
 ```
 make 3_perspective
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_5.png">
+
 
 ```
 make 4_camera
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_7.png">
 
+
 ```
 make 5_batch
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_9.png">
 
+
 ```
 make 6_model
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_35.png">
+
+
 ```
 make 7_menu
 ```
-TODO : add screenshot
+<img width="100%" height="100%" src="screenshots/cxfx_52.png">
+
 
 ```
 make 8_sound
 ```
-TODO : add screenshot
+<img width="100%" height="100%" src="screenshots/cxfx_53.png">
+
 
 ```
 make 9_button
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_3.png">
 
+
 ```
 make 10_dialog
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_4.png">
+
 
