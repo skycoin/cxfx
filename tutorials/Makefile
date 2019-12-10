@@ -2,7 +2,7 @@
 
 SKYCOIN = $(GOPATH)/src/github.com/SkycoinProject
 CX = $(SKYCOIN)/cx
-CXFX = ../
+CXFX = ..
 
 DATA = $(CXFX)/resources/
 SRC = $(CX)/lib/args.cx\
