@@ -183,16 +183,17 @@ func ShaderSourceIsValid(id i32) (out bool) {
 
 // ShaderSourceCreate ...
 func ShaderSourceCreate(path str, filename str) (out i32) {
-	out = len(g_sources)
-
+	out = -1
 	var source ShaderSource
 	source.path = path
 	source.filename = filename
 
-	source.code = os.ReadAllText(sprintf("%s/%s", path, filename))
-	g_sources = append(g_sources, source)
-
-	panicIfNot(ShaderSourceIsValid(out), "invalid id")
+	var success bool
+	source.code, success = os.ReadAllText(sprintf("%s/%s", path, filename))
+	if success {
+		out = len(g_sources)
+		g_sources = append(g_sources, source)
+	}
 }
 
 // ShaderIsValid ...
