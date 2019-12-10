@@ -10,19 +10,20 @@
 
 ##### Install patched cx (cxfx temporarly relies on unpublished cx modifications, this will be fixed in the future):
 ```
-mkdir -p ~/go/src/github.com/skycoin/
-cd ~/go/src/github.com/skycoin/
-git clone https://github.com/asahi3g/cx/
+mkdir -p ~/go/src/github.com/SkycoinProject/
+cd ~/go/src/github.com/SkycoinProject/
+git clone https://github.com/SkycoinProject/cx
 cd cx
-git checkout develop_cxfx
+git checkout develop
+make install-gfx-deps
 make install
 make build
 ```
 ##### Install cxfx :
 ```
-mkdir -p ~/go/src/github.com/skycoinproject/
-cd ~/go/src/github.com/skycoinproject/
-git clone https://github.com/skycoinproject
+mkdir -p ~/go/src/github.com/SkycoinProject/
+cd ~/go/src/github.com/SkycoinProject/
+git clone https://github.com/SkycoinProject/cxfx
 cx cxfx/games/skylight
 make
 cd cxfx/tutorials
