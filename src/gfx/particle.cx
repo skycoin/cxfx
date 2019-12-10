@@ -90,7 +90,7 @@ func EmitterCreate(allocMax i32)(out EmitterId) {
 	out.emitter = len(g_emitters)
 	var emitter Emitter
 	emitter.allocMax = allocMax
-	emitter.mesh = MeshLock(TRIANGLES, UNSIGNED_SHORT, 6 * allocMax, g_particleLayout, 4 * allocMax)
+	emitter.mesh = MeshCreate(TRIANGLES, UNSIGNED_SHORT, 6 * allocMax, g_particleLayout, 4 * allocMax)
 	MeshSetCulling(emitter.mesh, CW, NONE)
 	g_emitters = append(g_emitters, emitter)
 }
