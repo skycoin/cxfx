@@ -1350,7 +1350,7 @@ func main()() {
 	gfx.TargetAttachStencil(mergeTarget, mergeStencilTexture)
 
 
-	skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
+	skyMesh = gfx.MeshCreate(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
 	gfx.MeshBegin(skyMesh)
 	gfx.MeshAppendBox(skyMesh, false, true,
 		v3.ZERO,
@@ -1367,7 +1367,7 @@ func main()() {
 	currentPlayer = 0
 
 	dollarMesh = gfx.MeshCreate(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 8192 * 3, gfx.g_vertexLayout, 8192 * 3)
-	groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
+	groundMesh = gfx.MeshCreate(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
 	gfx.MeshBegin(groundMesh)
 	gfx.MeshAppendPlane(groundMesh, false, true,
 		v3.ZERO,
