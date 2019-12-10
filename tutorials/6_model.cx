@@ -213,6 +213,7 @@ func loadModel(path str, filename str, s f32, r f32, v f32) {
 //-----------------------------------------------------------------------------
 func main()() {
 	// init
+	//StartCPUProfile("init", 100)
 	gam.Init("Model Tutorial", 1024, 768, 60, "")
 
 	skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
@@ -282,11 +283,14 @@ func main()() {
 
 	// run
 	gui.ScreenShow(gameScreen)
+	//StopCPUProfile("init")
+	//StartCPUProfile("run", 100)
 	gam.Run(2U)
 
 	// destroy
 	gfx.MeshUnlock(skyMesh)
 	gfx.MeshUnlock(groundMesh)
-	//gam.Destroy()//ISSUE : can't call gam.Destroy()()
+	//StopCPUProfile("run")
+	gam.Destroy()//ISSUE : can't call gam.Destroy()
 }
 

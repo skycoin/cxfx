@@ -1,6 +1,6 @@
 package main
 
-import "app"
+
 import "fps"
 import "gam"
 import "gfx"
@@ -757,13 +757,6 @@ var firstUpdate bool = false
 func gameOnUpdate(controlIndex i32, controlAction i32) {
 	prfGameOnUpdate = fps.CreateStartProfile(prfGameOnUpdate, "gameOnUpdate")
 
-	// >> HACK : start cx profiling
-	if firstUpdate == false {
-		firstUpdate = true
-		debugI32(0)
-	}
-	// << HACK : start cx profiling
-
 	var scaleBox f32 = 50.0
 	for i:= aimCount; i < aimMax; i++ {
 		newAimBox(v3.add(v3.make((2.0 * f32.rand() - 1.0) * scaleBox, scaleBox + f32.rand() * 5.0, (2.0 * f32.rand() - 1.0) * scaleBox),
@@ -1305,6 +1298,7 @@ func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
 func main()() {
 
 	// init
+	//StartCPUProfile("init", 100)
 	gam.Init("skylight", 1024, 768, 60, "")
 	phx.Init(30U, -9.8 * 0.1)
 
@@ -1539,11 +1533,14 @@ func main()() {
 
 	// run
 	gui.ScreenShow(bootScreen)
+	//StopCPUProfile("init")
+	//StartCPUProfile("run", 100)
 	gam.Run(2U)
 
 	// destroy
 	gfx.MeshUnlock(skyMesh)
 	gfx.MeshUnlock(groundMesh)
-	gam.Destroy()
+	//StopCPUProfile("run")
+	gam.Destroy()//ISSUE : can't call gam.Destroy()
 }
 
