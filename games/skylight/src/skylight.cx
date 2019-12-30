@@ -1298,7 +1298,7 @@ func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
 func main()() {
 
 	// init
-	//StartCPUProfile("init", 100)
+	StartCPUProfile("skylight_init", 100)
 	gam.Init("skylight", 1024, 768, 60, "")
 	phx.Init(30U, -9.8 * 0.1)
 
@@ -1533,14 +1533,14 @@ func main()() {
 
 	// run
 	gui.ScreenShow(bootScreen)
-	//StopCPUProfile("init")
-	//StartCPUProfile("run", 100)
+	StopCPUProfile("skylight_init")
+	StartCPUProfile("skylight_run", 100)
 	gam.Run(2U)
 
 	// destroy
 	gfx.MeshUnlock(skyMesh)
 	gfx.MeshUnlock(groundMesh)
-	//StopCPUProfile("run")
+	StopCPUProfile("skylight_run")
 	gam.Destroy()//ISSUE : can't call gam.Destroy()
 }
 

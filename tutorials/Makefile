@@ -3,6 +3,9 @@
 SKYCOIN = $(GOPATH)/src/github.com/SkycoinProject
 CX = $(SKYCOIN)/cx
 CXFX = ..
+PPROF = --debug-profile=100
+OPTS = $(PPROF)
+OPTS_MEM = $(OPTS) --stack-size=128M --heap-initial=800M -heap-max=800M
 
 DATA = $(CXFX)/resources/
 SRC = $(CX)/lib/args.cx\
@@ -61,35 +64,35 @@ SRC = $(CX)/lib/args.cx\
 	  $(CXFX)/src/gam/game.cx
 
 0_colored_quad:
-	cx --debug-profile=100 $(SRC) 0_colored_quad.cx ++data=$(DATA) ##++hints=resizable
+	cx $(OPTS) $(SRC) 0_colored_quad.cx ++data=$(DATA) ##++hints=resizable
 
 1_textured_quad:
-	cx --debug-profile=100 $(SRC) 1_textured_quad.cx ++data=$(DATA)
+	cx $(OPTS) $(SRC) 1_textured_quad.cx ++data=$(DATA)
 
 2_text:
-	cx --debug-profile=100 $(SRC) 2_text.cx ++data=$(DATA)
+	cx $(OPTS) $(SRC) 2_text.cx ++data=$(DATA)
 
 3_perspective:
-	cx --debug-profile=100 $(SRC) 3_perspective.cx ++data=$(DATA)
+	cx $(OPTS) $(SRC) 3_perspective.cx ++data=$(DATA)
 
 4_camera:
-	cx --debug-profile=100 $(SRC) 4_camera.cx ++data=$(DATA)
+	cx $(OPTS) $(SRC) 4_camera.cx ++data=$(DATA)
 
 5_batch:
-	cx --debug-profile=100 $(SRC) 5_batch.cx ++data=$(DATA)
+	cx $(OPTS) $(SRC) 5_batch.cx ++data=$(DATA)
 
 6_model:
-	cx --debug-profile=100 $(SRC) 6_model.cx ++data=$(DATA)
+	cx $(OPTS_MEM) $(SRC) 6_model.cx ++data=$(DATA)
 
 7_menu:
-	cx --debug-profile=100 $(SRC) 7_menu.cx ++data=$(DATA)
+	cx $(OPTS_MEM) $(SRC) 7_menu.cx ++data=$(DATA)
 
 8_sound:
-	cx --debug-profile=100 $(SRC) 8_sound.cx ++data=$(DATA)
+	cx $(OPTS_MEM) $(SRC) 8_sound.cx ++data=$(DATA)
 
 9_button:
-	cx --debug-profile=100 $(SRC) 9_button.cx ++data=$(DATA)
+	cx $(OPTS_MEM) $(SRC) 9_button.cx ++data=$(DATA)
 
 10_dialog:
-	cx --debug-profile=100 $(SRC) 10_dialog.cx ++data=$(DATA)
+	cx $(OPTS_MEM) $(SRC) 10_dialog.cx ++data=$(DATA)
 

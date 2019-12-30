@@ -65,5 +65,5 @@ SRC = $(CX)/lib/args.cx\
 	  $(CXFX)/src/phx/physics.cx
 
 skylight:
-	cx --debug-profile=100 $(SRC) $(SKYLIGHT)/src/skylight.cx ++data=$(DATA) ++hints=resizable ##++fps=30
+	cx --stack-size=128M --heap-initial=800M --heap-max=800M --debug-profile=100 $(SRC) $(SKYLIGHT)/src/skylight.cx ++data=$(DATA) ++hints=resizable ##++fps=30
 
