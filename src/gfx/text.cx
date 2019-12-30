@@ -17,16 +17,19 @@ func MeasureText(name str, text str) (w i32, h i32) {
 
 // LoadTrueType ...
 func LoadTrueType(name str, path str, scale i32, min i32, max i32, dir i32) (texture i32) {
-	os.Open(path)
-//	if (range == true) {
-  //  var min i32 = ui32.i32(runes[0])
-	//var max i32 = ui32.i32(runes[1])
-		gltext.LoadTrueType(name, path, scale, min, max, dir) // ##0 release
-	//}// else {
-	 //   gltext.LoadTrueTypeEx(name, path, scale, runes, dir) // ##0 release
-   // }
-	os.Close(path)
-	texture = gltext.Texture(name)
+	var handle i32 = os.Open(path)
+	if handle >= 0 {
+		//	if (range == true) {
+		//  var min i32 = ui32.i32(runes[0])
+		//  var max i32 = ui32.i32(runes[1])
+		gltext.LoadTrueType(handle, name, scale, min, max, dir) // ##0 release
+		//  }// else {
+		//  gltext.LoadTrueTypeEx(name, path, scale, runes, dir) // ##0 release
+		// }
+		if os.Close(handle) {
+		}
+		texture = gltext.Texture(name)
+	}
 }
 
 // GlyphBounds ...

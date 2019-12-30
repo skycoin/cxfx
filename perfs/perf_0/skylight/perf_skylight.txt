@@ -1,0 +1,832 @@
+cx --debug-profile=100 /home/reash/go/src/github.com/SkycoinProject/cx/lib/args.cx /home/reash/go/src/github.com/SkycoinProject/cx/lib/json.cx ../../src/mat/math.cx ../../src/mat/v1d.cx ../../src/mat/v1f.cx ../../src/mat/v2f.cx ../../src/mat/v3f.cx ../../src/mat/v4f.cx ../../src/mat/q4f.cx ../../src/mat/m44f.cx ../../src/app/application.cx ../../src/app/event.cx ../../src/fps/profiler.cx ../../src/fps/framerate.cx ../../src/gfx/batch.cx ../../src/gfx/graphics.cx ../../src/gfx/state.cx ../../src/gfx/effect.cx ../../src/gfx/shader.cx ../../src/gfx/program.cx ../../src/gfx/mesh.cx ../../src/gfx/gltf.cx ../../src/gfx/model.cx ../../src/gfx/texture.cx ../../src/gfx/particle.cx ../../src/gfx/text.cx ../../src/gfx/target.cx ../../src/gfx/scissor.cx ../../src/snd/sounds.cx ../../src/snd/audio.cx ../../src/snd/voice.cx ../../src/gui/callback.cx ../../src/gui/layer.cx ../../src/gui/skin.cx ../../src/gui/scope.cx ../../src/gui/font.cx ../../src/gui/animation.cx ../../src/gui/control.cx ../../src/gui/label.cx ../../src/gui/picture.cx ../../src/gui/screen.cx ../../src/gui/interface.cx ../../src/gui/focus.cx ../../src/gui/splitter.cx ../../src/gui/window.cx ../../src/gui/keyboard.cx ../../src/gui/list.cx ../../src/gui/graph.cx ../../src/gui/lifter.cx ../../src/gui/scroller.cx ../../src/gui/binder.cx ../../src/gui/combo.cx ../../src/gam/camera.cx ../../src/gam/game.cx ../../src/phx/physics.cx ./src/skylight.cx ++data=../../resources/ ++hints=resizable ##++fps=30
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/args.cx : 0ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/json.cx : 0ms
+../../src/mat/math.cx : 0ms
+../../src/mat/v1d.cx : 0ms
+../../src/mat/v1f.cx : 0ms
+../../src/mat/v2f.cx : 0ms
+../../src/mat/v3f.cx : 0ms
+../../src/mat/v4f.cx : 0ms
+../../src/mat/q4f.cx : 0ms
+../../src/mat/m44f.cx : 0ms
+../../src/app/application.cx : 0ms
+../../src/app/event.cx : 0ms
+../../src/fps/profiler.cx : 0ms
+../../src/fps/framerate.cx : 0ms
+../../src/gfx/batch.cx : 0ms
+../../src/gfx/graphics.cx : 0ms
+../../src/gfx/state.cx : 0ms
+../../src/gfx/effect.cx : 0ms
+../../src/gfx/shader.cx : 0ms
+../../src/gfx/program.cx : 0ms
+../../src/gfx/mesh.cx : 0ms
+../../src/gfx/gltf.cx : 1ms
+../../src/gfx/model.cx : 0ms
+../../src/gfx/texture.cx : 0ms
+../../src/gfx/particle.cx : 0ms
+../../src/gfx/text.cx : 0ms
+../../src/gfx/target.cx : 0ms
+../../src/gfx/scissor.cx : 0ms
+../../src/snd/sounds.cx : 0ms
+../../src/snd/audio.cx : 0ms
+../../src/snd/voice.cx : 0ms
+../../src/gui/callback.cx : 0ms
+../../src/gui/layer.cx : 0ms
+../../src/gui/skin.cx : 0ms
+../../src/gui/scope.cx : 0ms
+../../src/gui/font.cx : 0ms
+../../src/gui/animation.cx : 0ms
+../../src/gui/control.cx : 0ms
+../../src/gui/label.cx : 0ms
+../../src/gui/picture.cx : 0ms
+../../src/gui/screen.cx : 0ms
+../../src/gui/interface.cx : 0ms
+../../src/gui/focus.cx : 0ms
+../../src/gui/splitter.cx : 0ms
+../../src/gui/window.cx : 0ms
+../../src/gui/keyboard.cx : 0ms
+../../src/gui/list.cx : 0ms
+../../src/gui/graph.cx : 0ms
+../../src/gui/lifter.cx : 0ms
+../../src/gui/scroller.cx : 0ms
+../../src/gui/binder.cx : 0ms
+../../src/gui/combo.cx : 0ms
+../../src/gam/camera.cx : 0ms
+../../src/gam/game.cx : 0ms
+../../src/phx/physics.cx : 0ms
+./src/skylight.cx : 0ms
+1. packages/structs : 8ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/args.cx : 0ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/json.cx : 0ms
+../../src/mat/math.cx : 0ms
+../../src/mat/v1d.cx : 0ms
+../../src/mat/v1f.cx : 0ms
+../../src/mat/v2f.cx : 0ms
+../../src/mat/v3f.cx : 0ms
+../../src/mat/v4f.cx : 0ms
+../../src/mat/q4f.cx : 0ms
+../../src/mat/m44f.cx : 0ms
+../../src/app/application.cx : 0ms
+../../src/app/event.cx : 0ms
+../../src/fps/profiler.cx : 0ms
+../../src/fps/framerate.cx : 0ms
+../../src/gfx/batch.cx : 0ms
+../../src/gfx/graphics.cx : 0ms
+../../src/gfx/state.cx : 0ms
+../../src/gfx/effect.cx : 0ms
+../../src/gfx/shader.cx : 0ms
+../../src/gfx/program.cx : 0ms
+../../src/gfx/mesh.cx : 1ms
+../../src/gfx/gltf.cx : 2ms
+../../src/gfx/model.cx : 1ms
+../../src/gfx/texture.cx : 0ms
+../../src/gfx/particle.cx : 0ms
+../../src/gfx/text.cx : 0ms
+../../src/gfx/target.cx : 0ms
+../../src/gfx/scissor.cx : 0ms
+../../src/snd/sounds.cx : 0ms
+../../src/snd/audio.cx : 0ms
+../../src/snd/voice.cx : 0ms
+../../src/gui/callback.cx : 0ms
+../../src/gui/layer.cx : 0ms
+../../src/gui/skin.cx : 0ms
+../../src/gui/scope.cx : 0ms
+../../src/gui/font.cx : 0ms
+../../src/gui/animation.cx : 0ms
+../../src/gui/control.cx : 0ms
+../../src/gui/label.cx : 0ms
+../../src/gui/picture.cx : 0ms
+../../src/gui/screen.cx : 0ms
+../../src/gui/interface.cx : 0ms
+../../src/gui/focus.cx : 0ms
+../../src/gui/splitter.cx : 0ms
+../../src/gui/window.cx : 0ms
+../../src/gui/keyboard.cx : 0ms
+../../src/gui/list.cx : 0ms
+../../src/gui/graph.cx : 0ms
+../../src/gui/lifter.cx : 0ms
+../../src/gui/scroller.cx : 0ms
+../../src/gui/binder.cx : 0ms
+../../src/gui/combo.cx : 0ms
+../../src/gam/camera.cx : 0ms
+../../src/gam/game.cx : 0ms
+../../src/phx/physics.cx : 0ms
+./src/skylight.cx : 1ms
+2. globals : 17ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/args.cx : 6ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/json.cx : 4ms
+../../src/mat/math.cx : 0ms
+../../src/mat/v1d.cx : 0ms
+../../src/mat/v1f.cx : 0ms
+../../src/mat/v2f.cx : 4ms
+../../src/mat/v3f.cx : 7ms
+../../src/mat/v4f.cx : 6ms
+../../src/mat/q4f.cx : 4ms
+../../src/mat/m44f.cx : 18ms
+../../src/app/application.cx : 3ms
+../../src/app/event.cx : 1ms
+../../src/fps/profiler.cx : 2ms
+../../src/fps/framerate.cx : 1ms
+../../src/gfx/batch.cx : 2ms
+../../src/gfx/graphics.cx : 13ms
+../../src/gfx/state.cx : 0ms
+../../src/gfx/effect.cx : 5ms
+../../src/gfx/shader.cx : 3ms
+../../src/gfx/program.cx : 1ms
+../../src/gfx/mesh.cx : 41ms
+../../src/gfx/gltf.cx : 45ms
+../../src/gfx/model.cx : 25ms
+../../src/gfx/texture.cx : 5ms
+../../src/gfx/particle.cx : 4ms
+../../src/gfx/text.cx : 4ms
+../../src/gfx/target.cx : 4ms
+../../src/gfx/scissor.cx : 1ms
+../../src/snd/sounds.cx : 1ms
+../../src/snd/audio.cx : 1ms
+../../src/snd/voice.cx : 2ms
+../../src/gui/callback.cx : 0ms
+../../src/gui/layer.cx : 2ms
+../../src/gui/skin.cx : 1ms
+../../src/gui/scope.cx : 0ms
+../../src/gui/font.cx : 1ms
+../../src/gui/animation.cx : 1ms
+../../src/gui/control.cx : 17ms
+../../src/gui/label.cx : 4ms
+../../src/gui/picture.cx : 2ms
+../../src/gui/screen.cx : 5ms
+../../src/gui/interface.cx : 16ms
+../../src/gui/focus.cx : 5ms
+../../src/gui/splitter.cx : 3ms
+../../src/gui/window.cx : 2ms
+../../src/gui/keyboard.cx : 3ms
+../../src/gui/list.cx : 7ms
+../../src/gui/graph.cx : 6ms
+../../src/gui/lifter.cx : 4ms
+../../src/gui/scroller.cx : 3ms
+../../src/gui/binder.cx : 2ms
+../../src/gui/combo.cx : 3ms
+../../src/gam/camera.cx : 11ms
+../../src/gam/game.cx : 1ms
+../../src/phx/physics.cx : 11ms
+./src/skylight.cx : 30ms
+3. cxgo0 : 379ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/args.cx : 7ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/json.cx : 4ms
+../../src/mat/math.cx : 0ms
+../../src/mat/v1d.cx : 0ms
+../../src/mat/v1f.cx : 0ms
+../../src/mat/v2f.cx : 4ms
+../../src/mat/v3f.cx : 9ms
+../../src/mat/v4f.cx : 8ms
+../../src/mat/q4f.cx : 6ms
+../../src/mat/m44f.cx : 23ms
+../../src/app/application.cx : 3ms
+../../src/app/event.cx : 1ms
+../../src/fps/profiler.cx : 3ms
+../../src/fps/framerate.cx : 1ms
+../../src/gfx/batch.cx : 2ms
+../../src/gfx/graphics.cx : 16ms
+../../src/gfx/state.cx : 0ms
+../../src/gfx/effect.cx : 6ms
+../../src/gfx/shader.cx : 4ms
+../../src/gfx/program.cx : 2ms
+../../src/gfx/mesh.cx : 51ms
+../../src/gfx/gltf.cx : 56ms
+../../src/gfx/model.cx : 31ms
+../../src/gfx/texture.cx : 6ms
+../../src/gfx/particle.cx : 5ms
+../../src/gfx/text.cx : 4ms
+../../src/gfx/target.cx : 4ms
+../../src/gfx/scissor.cx : 1ms
+../../src/snd/sounds.cx : 2ms
+../../src/snd/audio.cx : 1ms
+../../src/snd/voice.cx : 2ms
+../../src/gui/callback.cx : 0ms
+../../src/gui/layer.cx : 2ms
+../../src/gui/skin.cx : 1ms
+../../src/gui/scope.cx : 0ms
+../../src/gui/font.cx : 1ms
+../../src/gui/animation.cx : 2ms
+../../src/gui/control.cx : 22ms
+../../src/gui/label.cx : 6ms
+../../src/gui/picture.cx : 4ms
+../../src/gui/screen.cx : 6ms
+../../src/gui/interface.cx : 20ms
+../../src/gui/focus.cx : 6ms
+../../src/gui/splitter.cx : 3ms
+../../src/gui/window.cx : 2ms
+../../src/gui/keyboard.cx : 5ms
+../../src/gui/list.cx : 9ms
+../../src/gui/graph.cx : 8ms
+../../src/gui/lifter.cx : 6ms
+../../src/gui/scroller.cx : 4ms
+../../src/gui/binder.cx : 3ms
+../../src/gui/combo.cx : 4ms
+../../src/gam/camera.cx : 13ms
+../../src/gam/game.cx : 1ms
+../../src/phx/physics.cx : 13ms
+./src/skylight.cx : 38ms
+4. parse : 474ms
+parse : 916ms
+starting skylight...
+Al Renderer : OpenAL Soft
+Al Vendor : OpenAL Community
+AL Version : 1.1 ALSOFT 1.19.1
+AL Extensions AL_EXT_ALAW AL_EXT_BFORMAT AL_EXT_DOUBLE AL_EXT_EXPONENT_DISTANCE AL_EXT_FLOAT32 AL_EXT_IMA4 AL_EXT_LINEAR_DISTANCE AL_EXT_MCFORMATS AL_EXT_MULAW AL_EXT_MULAW_BFORMAT AL_EXT_MULAW_MCFORMATS AL_EXT_OFFSET AL_EXT_source_distance_model AL_EXT_SOURCE_RADIUS AL_EXT_STEREO_ANGLES AL_LOKI_quadriphonic AL_SOFT_block_alignment AL_SOFT_deferred_updates AL_SOFT_direct_channels AL_SOFTX_events AL_SOFTX_filter_gain_ex AL_SOFT_gain_clamp_ex AL_SOFT_loop_points AL_SOFTX_map_buffer AL_SOFT_MSADPCM AL_SOFT_source_latency AL_SOFT_source_length AL_SOFT_source_resampler AL_SOFT_source_spatialize
+found : AL_EXT_FLOAT32
+found : AL_EXT_DOUBLE
+loading 'synth_idle/scene.gltf'
+loading 'synth_jump/scene.gltf'
+loading 'synth_throw/scene.gltf'
+loading 'synth_forward/scene.gltf'
+loading 'synth_backward/scene.gltf'
+loading 'synth_left/scene.gltf'
+loading 'synth_right/scene.gltf'
+loading 'metalic_idle/scene.gltf'
+loading 'metalic_jump/scene.gltf'
+loading 'metalic_throw/scene.gltf'
+loading 'metalic_forward/scene.gltf'
+loading 'metalic_backward/scene.gltf'
+loading 'metalic_left/scene.gltf'
+loading 'metalic_right/scene.gltf'
+loading 'bw_idle/scene.gltf'
+loading 'bw_jump/scene.gltf'
+loading 'bw_throw/scene.gltf'
+loading 'bw_forward/scene.gltf'
+loading 'bw_backward/scene.gltf'
+loading 'bw_left/scene.gltf'
+loading 'bw_right/scene.gltf'
+loading 'Skyminer_7_1//skyminer_low_test.gltf'
+fps : 0, dt : 24098.7825830000001588ms
+fps : 22, dt : 16.5478850000000008ms
+swap - #44, cur 7.3912144, avg 35.7748985, min 2.8617382, max 619.7619629
+---- frame - #44, cur 5.6095123, avg 34.7341042, min 2.3317337, max 617.4831543
+-------- update - #44, cur 0.8151531, avg 0.9599491, min 0.4281998, max 4.3809414
+------------ sound - #44, cur 0.0343323, avg 0.0603253, min 0.0066757, max 0.4448891
+------------ ui update - #44, cur 0.1528263, avg 0.2062863, min 0.0896454, max 0.7665157
+------------ ui resize - #44, cur 0.5335808, avg 0.5958135, min 0.2338886, max 3.3128262
+-------- render - #44, cur 4.7178268, avg 33.7256889, min 1.5552044, max 616.8875732
+------------ RenderCurrentScreen - #44, cur 2.2823811, avg 3.8133264, min 0.0076294, max 50.8382339
+------------ RenderDefaultFramebuffer - #44, cur 2.1855831, avg 0.5660328, min 0.2915859, max 2.1891594
+fps : 60, dt : 16.5581379999999996ms
+swap - #120, cur 5.5432320, avg 5.4678240, min 2.1069050, max 19.5658207
+---- frame - #120, cur 4.8530102, avg 4.9204645, min 1.7318726, max 19.2246437
+-------- update - #120, cur 0.9083748, avg 0.9972334, min 0.4456043, max 4.9479008
+------------ sound - #120, cur 0.0364780, avg 0.0573973, min 0.0190735, max 0.7722378
+------------ ui update - #120, cur 0.1239777, avg 0.2048492, min 0.0693798, max 2.7997494
+------------ ui resize - #120, cur 0.5929470, avg 0.6259699, min 0.2818108, max 3.0503273
+-------- render - #120, cur 3.9086342, avg 3.8845539, min 1.2507439, max 18.6038017
+------------ RenderCurrentScreen - #120, cur 3.3922195, avg 2.1690626, min 0.9100437, max 11.1625195
+------------ RenderDefaultFramebuffer - #120, cur 0.4324913, avg 0.3872156, min 0.1771450, max 2.5758743
+fps : 60, dt : 16.7089999999999996ms
+swap - #120, cur 3.2291412, avg 5.8397689, min 2.9230118, max 15.3541565
+---- frame - #120, cur 2.8686523, avg 5.2992544, min 2.6059151, max 14.8260593
+-------- update - #120, cur 0.7262230, avg 1.1409720, min 0.4277229, max 4.5895576
+------------ sound - #120, cur 0.0236034, avg 0.0461419, min 0.0197887, max 0.5955696
+------------ ui update - #120, cur 0.2036095, avg 0.2257427, min 0.0669956, max 1.0447502
+------------ ui resize - #120, cur 0.4489422, avg 0.7798592, min 0.2756119, max 3.8657188
+-------- render - #120, cur 2.1176338, avg 4.1212163, min 1.8260479, max 10.5378628
+------------ RenderCurrentScreen - #120, cur 1.8486977, avg 2.4769287, min 1.2514591, max 6.4136982
+------------ RenderDefaultFramebuffer - #120, cur 0.2205372, avg 0.4047731, min 0.1914501, max 1.4226437
+fps : 31, dt : 36.4737610000000032ms
+swap - #63, cur 36.2851639, avg 23.8411160, min 3.2184124, max 452.1999512
+---- frame - #63, cur 35.6862564, avg 23.1942024, min 2.8619766, max 451.4062500
+-------- update - #63, cur 16.7803764, avg 9.9669523, min 0.5776882, max 159.9881592
+------------ sound - #63, cur 0.0209808, avg 0.0450990, min 0.0197887, max 0.3752708
+------------ ui update - #63, cur 16.6139603, avg 9.3062382, min 0.0658035, max 159.3708954
+---------------- gameOnUpdate - #21, cur 16.5412426, avg 27.3805904, min 0.0000000, max 159.2621765
+-------------------- updatePlayers - #21, cur 1.1210442, avg 1.0079203, min 0.0000000, max 1.5254021
+-------------------- updateWeapons - #21, cur 0.1783371, avg 0.0528267, min 0.0000000, max 0.1783371
+-------------------- updateAnimations - #21, cur 1.9388199, avg 3.3696947, min 0.0000000, max 11.7425919
+-------------------- updatePositions - #21, cur 0.0538826, avg 0.0586396, min 0.0000000, max 0.1456738
+-------------------- PhxUpdate - #21, cur 0.5779266, avg 0.8026305, min 0.0000000, max 3.5111904
+-------------------- CameraUpdate - #21, cur 0.6260872, avg 0.5628836, min 0.0000000, max 1.0428429
+-------------------- PhxRemove - #21, cur 0.0329018, avg 2.7233305, min 0.0000000, max 41.9156570
+-------------------- ModelUpdate - #21, cur 11.8401051, avg 18.6277676, min 0.0000000, max 151.5872498
+-------------------- ParticleUpdate - #21, cur 0.0269413, avg 0.0155880, min 0.0000000, max 0.0324249
+------------ ui resize - #63, cur 0.1132488, avg 0.5439615, min 0.1006126, max 1.9245148
+-------- render - #63, cur 18.8579559, avg 13.1929073, min 2.1121502, max 291.3973389
+------------ RenderCurrentScreen - #63, cur 18.6235905, avg 11.7127705, min 1.7759800, max 271.5337219
+---------------- gameOnRender - #21, cur 18.5875893, avg 19.6588840, min 0.0000000, max 32.7372551
+-------------------- RenderClear - #21, cur 0.0908375, avg 0.1146907, min 0.0000000, max 0.1921654
+-------------------- sky - #21, cur 0.1366138, avg 0.1833666, min 0.0000000, max 0.3321171
+-------------------- ground - #21, cur 0.1697540, avg 0.1993520, min 0.0000000, max 0.3044605
+-------------------- PhxRender - #21, cur 0.0050068, avg 0.0054042, min 0.0000000, max 0.0085831
+-------------------- RenderPlayers - #21, cur 12.7985477, avg 13.0099344, min 0.0000000, max 13.9160156
+-------------------- RenderWeapons - #21, cur 3.1666756, avg 3.3598855, min 0.0000000, max 3.8053989
+-------------------- RenderSkyminers - #21, cur 0.0300407, avg 0.4338877, min 0.0000000, max 2.4042130
+-------------------- RenderSkynotes - #21, cur 0.4036427, avg 1.0230428, min 0.0000000, max 12.5074387
+-------------------- AlphaFull - #21, cur 0.5266666, avg 0.3691401, min 0.0000000, max 0.5912781
+-------------------- AlphaHalf - #21, cur 0.5900860, avg 0.2241929, min 0.0000000, max 0.5900860
+------------ RenderDefaultFramebuffer - #63, cur 0.1971722, avg 0.2964073, min 0.1902580, max 0.4963875
+fps : 26, dt : 39.4438969999999998ms
+swap - #53, cur 39.2570496, avg 37.7691612, min 35.5970840, max 52.3924828
+---- frame - #53, cur 38.6226196, avg 37.0385323, min 34.9180679, max 51.5208244
+-------- update - #53, cur 18.9881325, avg 17.1511307, min 15.7661438, max 26.4422894
+------------ sound - #53, cur 0.0219345, avg 0.0294784, min 0.0190735, max 0.1471043
+------------ ui update - #53, cur 18.8117027, avg 16.9623032, min 15.5477524, max 26.2525082
+---------------- gameOnUpdate - #53, cur 18.7275410, avg 16.8760185, min 15.4745579, max 26.1678696
+-------------------- updatePlayers - #53, cur 1.0185242, avg 0.9564589, min 0.8049011, max 1.5287399
+-------------------- updateWeapons - #53, cur 0.0412464, avg 0.0398294, min 0.0340939, max 0.0817776
+-------------------- updateAnimations - #53, cur 4.4369698, avg 2.2033386, min 1.6334057, max 4.4369698
+-------------------- updatePositions - #53, cur 0.0629425, avg 0.0572924, min 0.0486374, max 0.1451969
+-------------------- PhxUpdate - #53, cur 0.8101463, avg 0.5737430, min 0.4601479, max 1.1415482
+-------------------- CameraUpdate - #53, cur 0.4811287, avg 0.5158119, min 0.4413128, max 0.9241104
+-------------------- PhxRemove - #53, cur 0.0383854, avg 0.0305581, min 0.0255108, max 0.0588894
+-------------------- ModelUpdate - #53, cur 11.6965771, avg 12.3458805, min 11.5282536, max 19.7882652
+-------------------- ParticleUpdate - #53, cur 0.0243187, avg 0.0280299, min 0.0233650, max 0.0514984
+------------ ui resize - #53, cur 0.1032352, avg 0.1173019, min 0.0965595, max 0.1983643
+-------- render - #53, cur 19.6151733, avg 19.8654041, min 18.7258720, max 25.0575542
+------------ RenderCurrentScreen - #53, cur 19.2515850, avg 19.4845066, min 18.2998180, max 24.6090889
+---------------- gameOnRender - #53, cur 19.2148685, avg 19.4444523, min 18.2623863, max 24.5637894
+-------------------- RenderClear - #53, cur 0.1084805, avg 0.1696641, min 0.0803471, max 2.1822453
+-------------------- sky - #53, cur 0.1738071, avg 0.1875994, min 0.1270771, max 0.3101826
+-------------------- ground - #53, cur 0.2193451, avg 0.1997723, min 0.1523495, max 0.3530979
+-------------------- PhxRender - #53, cur 0.0045300, avg 0.0054566, min 0.0045300, max 0.0159740
+-------------------- RenderPlayers - #53, cur 13.3581161, avg 13.3587284, min 12.3386383, max 16.3245201
+-------------------- RenderWeapons - #53, cur 3.2882690, avg 3.3574824, min 3.0546188, max 3.9353371
+-------------------- RenderSkyminers - #53, cur 0.0283718, avg 0.0285967, min 0.0259876, max 0.0336170
+-------------------- RenderSkynotes - #53, cur 0.4429817, avg 0.4337869, min 0.4041195, max 0.5383492
+-------------------- AlphaFull - #53, cur 0.5342960, avg 0.5600632, min 0.5249977, max 0.6575584
+-------------------- AlphaHalf - #53, cur 0.4088879, avg 0.4285372, min 0.3845692, max 0.9486675
+------------ RenderDefaultFramebuffer - #53, cur 0.3237724, avg 0.3370519, min 0.1909733, max 0.6942749
+fps : 25, dt : 37.9655529999999999ms
+swap - #51, cur 37.7514343, avg 38.9879951, min 36.4577789, max 65.4938202
+---- frame - #51, cur 37.0316505, avg 38.2216110, min 35.4976654, max 64.7623520
+-------- update - #51, cur 16.0670280, avg 17.7069321, min 15.4874325, max 45.1500397
+------------ sound - #51, cur 0.0205040, avg 0.0266141, min 0.0202656, max 0.0426769
+------------ ui update - #51, cur 15.8936977, avg 17.5159454, min 15.3367519, max 44.9790955
+---------------- gameOnUpdate - #51, cur 15.8197880, avg 17.4293289, min 15.2673721, max 44.8982697
+-------------------- updatePlayers - #51, cur 0.8652210, avg 0.9324411, min 0.7960796, max 1.4998913
+-------------------- updateWeapons - #51, cur 0.0386238, avg 0.0401011, min 0.0348091, max 0.1010895
+-------------------- updateAnimations - #51, cur 2.0008087, avg 2.3066483, min 1.6512871, max 3.9761066
+-------------------- updatePositions - #51, cur 0.0522137, avg 0.0551495, min 0.0488758, max 0.0817776
+-------------------- PhxUpdate - #51, cur 0.4670620, avg 0.6033159, min 0.4599094, max 1.3003349
+-------------------- CameraUpdate - #51, cur 0.5023479, avg 0.5348383, min 0.4370213, max 1.1518002
+-------------------- PhxRemove - #51, cur 0.0278950, avg 0.8633558, min 0.0257492, max 27.9662609
+-------------------- ModelUpdate - #51, cur 11.6815567, avg 11.9283524, min 11.4049911, max 13.0007267
+-------------------- ParticleUpdate - #51, cur 0.0457764, avg 0.0387734, min 0.0236034, max 0.1003742
+------------ ui resize - #51, cur 0.1146793, avg 0.1262029, min 0.1006126, max 0.6883144
+-------- render - #51, cur 20.9453106, avg 20.4915447, min 18.9926624, max 22.6464272
+------------ RenderCurrentScreen - #51, cur 20.5361843, avg 20.1028938, min 18.5871124, max 22.2258568
+---------------- gameOnRender - #51, cur 20.4977989, avg 20.0543823, min 18.5475349, max 22.1774578
+-------------------- RenderClear - #51, cur 0.1165867, avg 0.1271379, min 0.1027584, max 0.2365112
+-------------------- sky - #51, cur 0.1728535, avg 0.2139035, min 0.1509190, max 0.9653568
+-------------------- ground - #51, cur 0.1823902, avg 0.2301861, min 0.1568794, max 0.9841919
+-------------------- PhxRender - #51, cur 0.0102520, avg 0.0054743, min 0.0045300, max 0.0143051
+-------------------- RenderPlayers - #51, cur 14.0419006, avg 13.4968433, min 12.4273300, max 14.5850182
+-------------------- RenderWeapons - #51, cur 3.1130314, avg 3.3603976, min 3.0758381, max 4.5726299
+-------------------- RenderSkyminers - #51, cur 0.0276566, avg 0.1815347, min 0.0264645, max 2.3331642
+-------------------- RenderSkynotes - #51, cur 0.4513264, avg 0.4282886, min 0.3972054, max 0.6692410
+-------------------- AlphaFull - #51, cur 0.8952618, avg 0.7229225, min 0.5290508, max 0.9293556
+-------------------- AlphaHalf - #51, cur 0.7395744, avg 0.5816572, min 0.3767014, max 0.9050369
+------------ RenderDefaultFramebuffer - #51, cur 0.3602505, avg 0.3442858, min 0.2000332, max 0.4377365
+fps : 25, dt : 37.7972090000000023ms
+swap - #50, cur 37.5444870, avg 40.2894936, min 35.9351654, max 82.2241287
+---- frame - #50, cur 36.8313789, avg 39.5364914, min 35.2706909, max 81.6311798
+-------- update - #50, cur 16.6673660, avg 18.3855858, min 15.3670311, max 45.4523544
+------------ sound - #50, cur 0.0295639, avg 0.0280523, min 0.0197887, max 0.0588894
+------------ ui update - #50, cur 16.5004730, avg 18.1785107, min 15.2063370, max 45.2849884
+---------------- gameOnUpdate - #50, cur 16.4270401, avg 18.0923939, min 15.1314735, max 45.2022552
+-------------------- updatePlayers - #50, cur 0.7798672, avg 0.9179497, min 0.7798672, max 1.4257431
+-------------------- updateWeapons - #50, cur 0.0355244, avg 0.0500202, min 0.0345707, max 0.5304813
+-------------------- updateAnimations - #50, cur 1.7178059, avg 2.3245668, min 1.6222000, max 4.6138763
+-------------------- updatePositions - #50, cur 0.0498295, avg 0.0560760, min 0.0486374, max 0.1082420
+-------------------- PhxUpdate - #50, cur 0.7009506, avg 0.6007576, min 0.4498959, max 1.2400150
+-------------------- CameraUpdate - #50, cur 0.4267693, avg 0.4953909, min 0.4267693, max 0.8277893
+-------------------- PhxRemove - #50, cur 0.0338554, avg 0.9065390, min 0.0255108, max 28.3780098
+-------------------- ModelUpdate - #50, cur 12.5234127, avg 12.5538874, min 11.1610889, max 35.1619720
+-------------------- ParticleUpdate - #50, cur 0.0457764, avg 0.0431347, min 0.0331402, max 0.0896454
+------------ ui resize - #50, cur 0.1060963, avg 0.1322079, min 0.0946522, max 0.7243156
+-------- render - #50, cur 20.1435089, avg 21.1282196, min 19.2880630, max 41.8584366
+------------ RenderCurrentScreen - #50, cur 19.7584629, avg 20.7112732, min 18.7020302, max 41.6040421
+---------------- gameOnRender - #50, cur 19.7081566, avg 20.6712189, min 18.6636448, max 41.5558815
+-------------------- RenderClear - #50, cur 0.1182556, avg 0.1206589, min 0.0808239, max 0.1819134
+-------------------- sky - #50, cur 0.1990795, avg 0.1904488, min 0.1266003, max 0.8277893
+-------------------- ground - #50, cur 0.1766682, avg 0.1893568, min 0.1585484, max 0.2732277
+-------------------- PhxRender - #50, cur 0.0052452, avg 0.0049973, min 0.0042915, max 0.0095367
+-------------------- RenderPlayers - #50, cur 13.4091377, avg 13.3946991, min 12.3302937, max 22.3555565
+-------------------- RenderWeapons - #50, cur 3.0965805, avg 3.7533569, min 2.9902458, max 15.5627728
+-------------------- RenderSkyminers - #50, cur 0.0267029, avg 0.2194023, min 0.0257492, max 2.8557777
+-------------------- RenderSkynotes - #50, cur 0.4022121, avg 0.4355478, min 0.3986359, max 0.6182194
+-------------------- AlphaFull - #50, cur 0.9138584, avg 0.9229755, min 0.7019043, max 1.6853809
+-------------------- AlphaHalf - #50, cur 0.7350445, avg 0.7307243, min 0.5507469, max 1.1835098
+------------ RenderDefaultFramebuffer - #50, cur 0.3407001, avg 0.3709459, min 0.2048016, max 0.9140968
+fps : 26, dt : 38.3314269999999979ms
+swap - #52, cur 38.1352921, avg 38.4948120, min 35.9196663, max 65.0300980
+---- frame - #52, cur 37.5621338, avg 37.7345238, min 35.2578163, max 64.1641617
+-------- update - #52, cur 16.8220997, avg 16.9878235, min 15.0690079, max 44.6443558
+------------ sound - #52, cur 0.0216961, avg 0.0247909, min 0.0197887, max 0.0576973
+------------ ui update - #52, cur 16.6497231, avg 16.7986069, min 14.9145126, max 44.4912910
+---------------- gameOnUpdate - #52, cur 16.5762901, avg 16.7152786, min 14.8448944, max 44.4176178
+-------------------- updatePlayers - #52, cur 0.9646416, avg 0.9116026, min 0.7936954, max 1.5587807
+-------------------- updateWeapons - #52, cur 0.0360012, avg 0.0413198, min 0.0350475, max 0.1044273
+-------------------- updateAnimations - #52, cur 2.7532578, avg 2.2766681, min 1.5892982, max 4.7655106
+-------------------- updatePositions - #52, cur 0.0500679, avg 0.0529473, min 0.0481606, max 0.0889301
+-------------------- PhxUpdate - #52, cur 0.4642010, avg 0.5755975, min 0.4501343, max 1.4050007
+-------------------- CameraUpdate - #52, cur 0.4355907, avg 0.5084552, min 0.4286766, max 1.0621548
+-------------------- PhxRemove - #52, cur 0.0276566, avg 0.5734609, min 0.0252724, max 28.2456875
+-------------------- ModelUpdate - #52, cur 11.6798878, avg 11.5986700, min 10.9913349, max 12.6295090
+-------------------- ParticleUpdate - #52, cur 0.0495911, avg 0.0516039, min 0.0393391, max 0.1492500
+------------ ui resize - #52, cur 0.1177788, avg 0.1277144, min 0.1015663, max 0.6730556
+-------- render - #52, cur 20.7092762, avg 20.7236404, min 19.1552639, max 23.5803127
+------------ RenderCurrentScreen - #52, cur 20.4718113, avg 20.3327904, min 18.7726021, max 23.2100487
+---------------- gameOnRender - #52, cur 20.4303265, avg 20.2920570, min 18.7225342, max 23.1540203
+-------------------- RenderClear - #52, cur 0.1184940, avg 0.1210800, min 0.0834465, max 0.1809597
+-------------------- sky - #52, cur 0.2276897, avg 0.1789286, min 0.1294613, max 0.2503395
+-------------------- ground - #52, cur 0.2679825, avg 0.1883828, min 0.1518726, max 0.3077984
+-------------------- PhxRender - #52, cur 0.0052452, avg 0.0050801, min 0.0045300, max 0.0085831
+-------------------- RenderPlayers - #52, cur 12.9683018, avg 13.0931005, min 11.8422508, max 14.7824287
+-------------------- RenderWeapons - #52, cur 3.4375191, avg 3.4469917, min 3.0152798, max 4.2755604
+-------------------- RenderSkyminers - #52, cur 0.0321865, avg 0.1717531, min 0.0259876, max 2.1507740
+-------------------- RenderSkynotes - #52, cur 0.5252361, avg 0.4452605, min 0.4005432, max 0.6296635
+-------------------- AlphaFull - #52, cur 1.1224747, avg 1.0471895, min 0.8764267, max 1.8603802
+-------------------- AlphaHalf - #52, cur 1.0566711, avg 0.8802964, min 0.7195473, max 1.5408993
+------------ RenderDefaultFramebuffer - #52, cur 0.1981258, avg 0.3494895, min 0.1981258, max 0.8945465
+fps : 26, dt : 36.5976629999999972ms
+swap - #53, cur 36.4048462, avg 37.8222198, min 35.6671829, max 54.0575981
+---- frame - #53, cur 35.8388443, avg 37.1492538, min 35.0582581, max 53.2326698
+-------- update - #53, cur 15.7341957, avg 16.6754189, min 15.1295662, max 31.5232277
+------------ sound - #53, cur 0.0309944, avg 0.0268513, min 0.0193119, max 0.0727177
+------------ ui update - #53, cur 15.5572891, avg 16.4899368, min 14.9672031, max 31.3656330
+---------------- gameOnUpdate - #53, cur 15.2511597, avg 16.4011059, min 14.8940086, max 31.2919617
+-------------------- updatePlayers - #53, cur 0.9157658, avg 0.9020680, min 0.7903576, max 1.2562275
+-------------------- updateWeapons - #53, cur 0.0357628, avg 0.0412689, min 0.0343323, max 0.1101494
+-------------------- updateAnimations - #53, cur 1.6565323, avg 2.0954564, min 1.5838146, max 4.7917366
+-------------------- updatePositions - #53, cur 0.0493526, avg 0.0572699, min 0.0483990, max 0.1087189
+-------------------- PhxUpdate - #53, cur 0.4463196, avg 0.5590691, min 0.4463196, max 0.9505749
+-------------------- CameraUpdate - #53, cur 0.4527569, avg 0.4739671, min 0.4220009, max 0.6790161
+-------------------- PhxRemove - #53, cur 0.0267029, avg 0.5457806, min 0.0252724, max 14.1289234
+-------------------- ModelUpdate - #53, cur 11.5156174, avg 11.5500126, min 10.8273029, max 14.3020153
+-------------------- ParticleUpdate - #53, cur 0.0419617, avg 0.0483135, min 0.0393391, max 0.0667572
+------------ ui resize - #53, cur 0.1120567, avg 0.1215665, min 0.0956059, max 0.3015995
+-------- render - #53, cur 20.0831890, avg 20.4504757, min 19.5710659, max 22.6550102
+------------ RenderCurrentScreen - #53, cur 19.8483467, avg 20.1920662, min 19.3350315, max 22.4196911
+---------------- gameOnRender - #53, cur 19.8109150, avg 20.1495018, min 19.2961693, max 22.3839283
+-------------------- RenderClear - #53, cur 0.1130104, avg 0.1144859, min 0.0791550, max 0.1585484
+-------------------- sky - #53, cur 0.1704693, avg 0.1825297, min 0.1261234, max 0.4236698
+-------------------- ground - #53, cur 0.1845360, avg 0.1816120, min 0.1506805, max 0.2849102
+-------------------- PhxRender - #53, cur 0.0050068, avg 0.0052767, min 0.0045300, max 0.0145435
+-------------------- RenderPlayers - #53, cur 13.2715702, avg 12.9919281, min 12.1190548, max 13.9763355
+-------------------- RenderWeapons - #53, cur 3.2989979, avg 3.3811173, min 2.9976368, max 3.8483143
+-------------------- RenderSkyminers - #53, cur 0.0293255, avg 0.1564431, min 0.0255108, max 2.2943020
+-------------------- RenderSkynotes - #53, cur 0.4870892, avg 0.4411778, min 0.3929138, max 0.8385181
+-------------------- AlphaFull - #53, cur 0.8897781, avg 1.0996585, min 0.8361340, max 1.6465187
+-------------------- AlphaHalf - #53, cur 0.7243156, avg 0.8952528, min 0.7243156, max 1.3782978
+------------ RenderDefaultFramebuffer - #53, cur 0.1947880, avg 0.2106631, min 0.1931190, max 0.3333092
+fps : 24, dt : 38.5797310000000024ms
+swap - #49, cur 38.3751373, avg 41.0523643, min 35.1929665, max 59.0641479
+---- frame - #49, cur 37.6820564, avg 40.3472557, min 34.6314926, max 58.2809448
+-------- update - #49, cur 17.6525116, avg 18.0840206, min 15.1679516, max 32.3483963
+------------ sound - #49, cur 0.0207424, avg 0.0281772, min 0.0197887, max 0.0755787
+------------ ui update - #49, cur 17.4887180, avg 17.8840599, min 15.0029659, max 32.0227127
+---------------- gameOnUpdate - #49, cur 17.4140930, avg 17.7899475, min 14.9183273, max 31.8822861
+-------------------- updatePlayers - #49, cur 0.8721352, avg 1.0237743, min 0.7996559, max 2.0391941
+-------------------- updateWeapons - #49, cur 0.0374317, avg 0.0448227, min 0.0348091, max 0.1118183
+-------------------- updateAnimations - #49, cur 4.0841103, avg 2.4860003, min 1.6238689, max 4.5094490
+-------------------- updatePositions - #49, cur 0.0510216, avg 0.0616677, min 0.0474453, max 0.1785755
+-------------------- PhxUpdate - #49, cur 0.4777908, avg 0.6079431, min 0.4465580, max 1.6064644
+-------------------- CameraUpdate - #49, cur 0.5075932, avg 0.5239516, min 0.4236698, max 1.2876987
+-------------------- PhxRemove - #49, cur 0.0288486, avg 0.0323860, min 0.0255108, max 0.0922680
+-------------------- ModelUpdate - #49, cur 11.1613274, avg 12.8191147, min 11.0607147, max 24.5347023
+-------------------- ParticleUpdate - #49, cur 0.0777245, avg 0.0546416, min 0.0388622, max 0.2322197
+------------ ui resize - #49, cur 0.1115799, avg 0.1285319, min 0.0996590, max 0.2331734
+-------- render - #49, cur 19.9973583, avg 22.2371349, min 19.1113949, max 33.1807137
+------------ RenderCurrentScreen - #49, cur 19.6113586, avg 21.9194984, min 18.8777447, max 32.7367783
+---------------- gameOnRender - #49, cur 19.5727348, avg 21.8737755, min 18.8410282, max 32.6509476
+-------------------- RenderClear - #49, cur 0.1230240, avg 0.1359229, min 0.1018047, max 0.2667904
+-------------------- sky - #49, cur 0.1800060, avg 0.1993958, min 0.1549721, max 0.3910065
+-------------------- ground - #49, cur 0.2510548, avg 0.2306627, min 0.1528263, max 1.1584759
+-------------------- PhxRender - #49, cur 0.0052452, avg 0.0064860, min 0.0045300, max 0.0410080
+-------------------- RenderPlayers - #49, cur 12.9139423, avg 14.1052084, min 12.1812820, max 25.0647068
+-------------------- RenderWeapons - #49, cur 3.1714439, avg 3.7520175, min 3.0162334, max 7.0331097
+-------------------- RenderSkyminers - #49, cur 0.0271797, avg 0.0350767, min 0.0262260, max 0.1194477
+-------------------- RenderSkynotes - #49, cur 0.4303455, avg 0.5121669, min 0.3921986, max 1.0054111
+-------------------- AlphaFull - #49, cur 0.9210110, avg 1.1518537, min 0.8723736, max 2.3357868
+-------------------- AlphaHalf - #49, cur 0.7886887, avg 0.9477528, min 0.7195473, max 1.8227100
+------------ RenderDefaultFramebuffer - #49, cur 0.3449917, avg 0.2674424, min 0.1909733, max 0.4873276
+fps : 27, dt : 36.3368749999999991ms
+swap - #54, cur 36.1320953, avg 37.3888931, min 35.3271942, max 51.2869339
+---- frame - #54, cur 35.4442596, avg 36.6887779, min 34.6491318, max 50.6114960
+-------- update - #54, cur 15.1028633, avg 16.6075096, min 15.0637627, max 30.4062366
+------------ sound - #54, cur 0.0212193, avg 0.0274711, min 0.0205040, max 0.0655651
+------------ ui update - #54, cur 14.9390697, avg 16.4234200, min 14.9109364, max 30.1845074
+---------------- gameOnUpdate - #54, cur 14.8665905, avg 16.3412399, min 14.8327351, max 30.0884247
+-------------------- updatePlayers - #54, cur 0.8316040, avg 0.8971868, min 0.7958412, max 1.0733604
+-------------------- updateWeapons - #54, cur 0.0398159, avg 0.0420985, min 0.0345707, max 0.0996590
+-------------------- updateAnimations - #54, cur 1.6102791, avg 2.1136513, min 1.6102791, max 3.8599968
+-------------------- updatePositions - #54, cur 0.0498295, avg 0.0559533, min 0.0479221, max 0.1511574
+-------------------- PhxUpdate - #54, cur 0.5097389, avg 0.5639924, min 0.4475117, max 1.2595654
+-------------------- CameraUpdate - #54, cur 0.5235672, avg 0.4879987, min 0.4262924, max 0.7214546
+-------------------- PhxRemove - #54, cur 0.0288486, avg 0.5210726, min 0.0259876, max 13.6799812
+-------------------- ModelUpdate - #54, cur 11.1231804, avg 11.4930296, min 11.0535622, max 12.3991966
+-------------------- ParticleUpdate - #54, cur 0.0395775, avg 0.0449728, min 0.0371933, max 0.1428127
+------------ ui resize - #54, cur 0.1115799, avg 0.1159818, min 0.1003742, max 0.2036095
+-------- render - #54, cur 20.3230381, avg 20.0597363, min 18.8438892, max 22.0918655
+------------ RenderCurrentScreen - #54, cur 19.9520588, avg 19.6626987, min 18.4435844, max 21.7146873
+---------------- gameOnRender - #54, cur 19.9043751, avg 19.6221409, min 18.4073448, max 21.6782093
+-------------------- RenderClear - #54, cur 0.1664162, avg 0.1219467, min 0.1046658, max 0.2915859
+-------------------- sky - #54, cur 0.1692772, avg 0.1844609, min 0.1580715, max 0.3287792
+-------------------- ground - #54, cur 0.1752377, avg 0.2081350, min 0.1568794, max 0.3843307
+-------------------- PhxRender - #54, cur 0.0052452, avg 0.0066801, min 0.0045300, max 0.0703335
+-------------------- RenderPlayers - #54, cur 13.1909847, avg 12.9400625, min 12.1288300, max 13.6179924
+-------------------- RenderWeapons - #54, cur 3.5386086, avg 3.2725070, min 3.0159950, max 3.9589405
+-------------------- RenderSkyminers - #54, cur 0.0293255, avg 0.1675509, min 0.0236034, max 2.2115707
+-------------------- RenderSkynotes - #54, cur 0.4262924, avg 0.4316127, min 0.3976822, max 0.5521774
+-------------------- AlphaFull - #54, cur 0.8425713, avg 0.8778086, min 0.8075237, max 1.2524128
+-------------------- AlphaHalf - #54, cur 0.7050037, avg 0.7269338, min 0.6122589, max 0.8614063
+------------ RenderDefaultFramebuffer - #54, cur 0.3309250, avg 0.3541443, min 0.3085136, max 0.5505085
+fps : 26, dt : 36.9368550000000013ms
+swap - #53, cur 36.7040634, avg 37.5380821, min 35.2566223, max 51.0201454
+---- frame - #53, cur 35.9656830, avg 36.8255119, min 34.6064568, max 50.2560120
+-------- update - #53, cur 15.4037476, avg 16.8036060, min 15.1021481, max 29.8957825
+------------ sound - #53, cur 0.0212193, avg 0.0293750, min 0.0197887, max 0.1144409
+------------ ui update - #53, cur 15.2134895, avg 16.6175537, min 14.9357319, max 29.7152996
+---------------- gameOnUpdate - #53, cur 15.1388645, avg 16.5247917, min 14.8549080, max 29.6220779
+-------------------- updatePlayers - #53, cur 1.0011196, avg 0.9099987, min 0.7667542, max 1.2454987
+-------------------- updateWeapons - #53, cur 0.0379086, avg 0.0400363, min 0.0343323, max 0.1137257
+-------------------- updateAnimations - #53, cur 1.6829967, avg 2.2914948, min 1.6324520, max 4.4190884
+-------------------- updatePositions - #53, cur 0.0598431, avg 0.0568336, min 0.0486374, max 0.1137257
+-------------------- PhxUpdate - #53, cur 0.5362034, avg 0.5580389, min 0.4422665, max 1.0271072
+-------------------- CameraUpdate - #53, cur 0.4413128, avg 0.5046197, min 0.4231930, max 0.8351803
+-------------------- PhxRemove - #53, cur 0.0269413, avg 0.5242285, min 0.0257492, max 13.2040977
+-------------------- ModelUpdate - #53, cur 11.1963749, avg 11.4770517, min 10.9188557, max 12.2311115
+-------------------- ParticleUpdate - #53, cur 0.0371933, avg 0.0423755, min 0.0348091, max 0.0867844
+------------ ui resize - #53, cur 0.1282692, avg 0.1192543, min 0.1003742, max 0.2160072
+-------- render - #53, cur 20.5335617, avg 19.9995079, min 18.8021660, max 22.3495960
+------------ RenderCurrentScreen - #53, cur 20.1144218, avg 19.6055107, min 18.4319019, max 21.9421387
+---------------- gameOnRender - #53, cur 20.0765133, avg 19.5652905, min 18.3951855, max 21.9016075
+-------------------- RenderClear - #53, cur 0.1292229, avg 0.1245580, min 0.0898838, max 0.2515316
+-------------------- sky - #53, cur 0.2350807, avg 0.1872486, min 0.1423359, max 0.3275871
+-------------------- ground - #53, cur 0.2932549, avg 0.2068888, min 0.1556873, max 0.4546642
+-------------------- PhxRender - #53, cur 0.0047684, avg 0.0052407, min 0.0045300, max 0.0154972
+-------------------- RenderPlayers - #53, cur 13.3848190, avg 12.9922647, min 11.7874146, max 14.8141384
+-------------------- RenderWeapons - #53, cur 3.2489300, avg 3.2377603, min 2.9811859, max 3.7171841
+-------------------- RenderSkyminers - #53, cur 0.0305176, avg 0.1582290, min 0.0257492, max 2.2683144
+-------------------- RenderSkynotes - #53, cur 0.4351139, avg 0.4381324, min 0.3972054, max 0.7293224
+-------------------- AlphaFull - #53, cur 0.9298325, avg 0.8266107, min 0.7202625, max 1.0466576
+-------------------- AlphaHalf - #53, cur 0.6504059, avg 0.6896145, min 0.5626678, max 0.8933544
+------------ RenderDefaultFramebuffer - #53, cur 0.3662109, avg 0.3495396, min 0.2725124, max 0.4942417
+fps : 27, dt : 37.7258670000000009ms
+swap - #54, cur 37.4028702, avg 37.3426590, min 35.1836700, max 50.5642891
+---- frame - #54, cur 36.7443542, avg 36.6491241, min 34.5382690, max 49.8619080
+-------- update - #54, cur 16.6535378, avg 16.8187580, min 15.2273178, max 30.4036140
+------------ sound - #54, cur 0.0324249, avg 0.0271709, min 0.0200272, max 0.0565052
+------------ ui update - #54, cur 16.4768696, avg 16.6368046, min 14.9922371, max 30.2166939
+---------------- gameOnUpdate - #54, cur 16.3202286, avg 16.5513878, min 14.9197578, max 30.1132202
+-------------------- updatePlayers - #54, cur 0.9815693, avg 0.8876677, min 0.7779598, max 0.9996891
+-------------------- updateWeapons - #54, cur 0.0388622, avg 0.0411184, min 0.0338554, max 0.1475811
+-------------------- updateAnimations - #54, cur 2.8686523, avg 2.2762616, min 1.6229153, max 4.4000149
+-------------------- updatePositions - #54, cur 0.0505447, avg 0.0563595, min 0.0479221, max 0.1630783
+-------------------- PhxUpdate - #54, cur 0.4477501, avg 0.5581423, min 0.4353523, max 1.0020733
+-------------------- CameraUpdate - #54, cur 0.4346371, avg 0.4767886, min 0.4177094, max 0.7948875
+-------------------- PhxRemove - #54, cur 0.0262260, avg 0.5036902, min 0.0243187, max 13.1304264
+-------------------- ModelUpdate - #54, cur 11.3151073, avg 11.5909977, min 11.0218525, max 13.5145187
+-------------------- ParticleUpdate - #54, cur 0.0369549, avg 0.0400676, min 0.0340939, max 0.0925064
+------------ ui resize - #54, cur 0.1068115, avg 0.1177788, min 0.1006126, max 0.2505779
+-------- render - #54, cur 20.0674534, avg 19.8086319, min 18.9266205, max 21.5897560
+------------ RenderCurrentScreen - #54, cur 19.6275711, avg 19.4132938, min 18.5565948, max 21.2132931
+---------------- gameOnRender - #54, cur 19.5896626, avg 19.3727722, min 18.5186863, max 21.1763382
+-------------------- RenderClear - #54, cur 0.1161098, avg 0.1228562, min 0.1068115, max 0.1857281
+-------------------- sky - #54, cur 0.1790524, avg 0.1836706, min 0.1575947, max 0.2570152
+-------------------- ground - #54, cur 0.1828671, avg 0.2013180, min 0.1542568, max 0.3890991
+-------------------- PhxRender - #54, cur 0.0047684, avg 0.0052011, min 0.0045300, max 0.0145435
+-------------------- RenderPlayers - #54, cur 12.8917694, avg 12.8723078, min 11.9776726, max 13.7562752
+-------------------- RenderWeapons - #54, cur 3.4787655, avg 3.2371194, min 2.9687881, max 3.9308071
+-------------------- RenderSkyminers - #54, cur 0.0307560, avg 0.1480138, min 0.0257492, max 2.0494461
+-------------------- RenderSkynotes - #54, cur 0.4692078, avg 0.4288664, min 0.3938675, max 0.5521774
+-------------------- AlphaFull - #54, cur 0.8447170, avg 0.8079520, min 0.6351471, max 1.1682510
+-------------------- AlphaHalf - #54, cur 0.7061958, avg 0.6684771, min 0.5435944, max 1.0058880
+------------ RenderDefaultFramebuffer - #54, cur 0.3829002, avg 0.3520339, min 0.2720356, max 0.4205704
+fps : 27, dt : 36.0942489999999978ms
+swap - #54, cur 35.9022598, avg 37.2610474, min 34.7452164, max 51.4457245
+---- frame - #54, cur 35.2704544, avg 36.5598030, min 34.0847969, max 50.6296158
+-------- update - #54, cur 15.3071880, avg 16.5781498, min 14.9517059, max 30.5662155
+------------ sound - #54, cur 0.0212193, avg 0.0284071, min 0.0195503, max 0.1180172
+------------ ui update - #54, cur 15.1414871, avg 16.3904037, min 14.7900581, max 30.3871632
+---------------- gameOnUpdate - #54, cur 15.0702000, avg 16.3034248, min 14.7194862, max 30.3020477
+-------------------- updatePlayers - #54, cur 0.9367466, avg 0.8975532, min 0.7915497, max 1.0764599
+-------------------- updateWeapons - #54, cur 0.0362396, avg 0.0397806, min 0.0343323, max 0.1010895
+-------------------- updateAnimations - #54, cur 1.6181469, avg 2.0019391, min 1.6059875, max 4.6801567
+-------------------- updatePositions - #54, cur 0.0493526, avg 0.0572337, min 0.0481606, max 0.1459122
+-------------------- PhxUpdate - #54, cur 0.4622936, avg 0.5685709, min 0.4446507, max 1.1000633
+-------------------- CameraUpdate - #54, cur 0.4832745, avg 0.4947362, min 0.4174709, max 0.7989407
+-------------------- PhxRemove - #54, cur 0.0264645, avg 0.5440888, min 0.0255108, max 14.1079426
+-------------------- ModelUpdate - #54, cur 11.3122463, avg 11.5338831, min 11.0206604, max 12.2251511
+-------------------- ParticleUpdate - #54, cur 0.0367165, avg 0.0414804, min 0.0340939, max 0.1518726
+------------ ui resize - #54, cur 0.1137257, avg 0.1212182, min 0.0996590, max 0.2579689
+-------- render - #54, cur 19.9401379, avg 19.9589825, min 18.8040733, max 23.6296654
+------------ RenderCurrentScreen - #54, cur 19.5698738, avg 19.5665894, min 18.3615685, max 23.2751369
+---------------- gameOnRender - #54, cur 19.5324421, avg 19.5272770, min 18.3241367, max 23.2369900
+-------------------- RenderClear - #54, cur 0.1142025, avg 0.1237083, min 0.1053810, max 0.2734661
+-------------------- sky - #54, cur 0.2074242, avg 0.1890659, min 0.1585484, max 0.4045963
+-------------------- ground - #54, cur 0.1802444, avg 0.1885582, min 0.1542568, max 0.2980232
+-------------------- PhxRender - #54, cur 0.0047684, avg 0.0064285, min 0.0045300, max 0.0636578
+-------------------- RenderPlayers - #54, cur 13.4401321, avg 13.0041046, min 12.2432709, max 15.9635544
+-------------------- RenderWeapons - #54, cur 3.1092167, avg 3.2387266, min 2.9783249, max 3.5092831
+-------------------- RenderSkyminers - #54, cur 0.0257492, avg 0.1768359, min 0.0257492, max 2.2485256
+-------------------- RenderSkynotes - #54, cur 0.4053116, avg 0.4337099, min 0.3979206, max 0.5826950
+-------------------- AlphaFull - #54, cur 0.7762909, avg 0.8258025, min 0.6458759, max 1.2729168
+-------------------- AlphaHalf - #54, cur 0.6356239, avg 0.6671968, min 0.5016327, max 1.2319088
+------------ RenderDefaultFramebuffer - #54, cur 0.3321171, avg 0.3469388, min 0.2810955, max 0.4892349
+SetCurrentFocus :  - 10 - playButton, Type 4, Index 4, Focusable 1, Focusindex 0, Focused 1, ChildFocused 0, Selected 0, Visible 1, Skin 5, Dock 3, Align 0, Autosize 2, Autoscale 0, Padding 5.0000000, 5.0000000, 5.0000000, 5.0000000, Position 0.0000000, 0.0000000, RenderPosition 200.0000000, 560.0000000, Size 624.0000000, 58.0000000, Scale 1.0000000, 1.0000000, Children 0
+ForceFocuse DONE :  - 11 - exitButton, Type 4, Index 5, Focusable 1, Focusindex 1, Focused 0, ChildFocused 0, Selected 0, Visible 1, Skin 5, Dock 3, Align 0, Autosize 2, Autoscale 0, Padding 5.0000000, 5.0000000, 5.0000000, 5.0000000, Position 0.0000000, 0.0000000, RenderPosition 200.0000000, 352.0000000, Size 624.0000000, 58.0000000, Scale 1.0000000, 1.0000000, Children 0
+remove_focus :  - 10 - playButton, Type 4, Index 4, Focusable 1, Focusindex 0, Focused 0, ChildFocused 0, Selected 0, Visible 1, Skin 5, Dock 3, Align 0, Autosize 2, Autoscale 0, Padding 5.0000000, 5.0000000, 5.0000000, 5.0000000, Position 0.0000000, 0.0000000, RenderPosition 200.0000000, 560.0000000, Size 624.0000000, 58.0000000, Scale 1.0000000, 1.0000000, Children 0
+SetCurrentFocus :  - 11 - exitButton, Type 4, Index 5, Focusable 1, Focusindex 1, Focused 1, ChildFocused 0, Selected 0, Visible 1, Skin 5, Dock 3, Align 0, Autosize 2, Autoscale 0, Padding 5.0000000, 5.0000000, 5.0000000, 5.0000000, Position 0.0000000, 0.0000000, RenderPosition 200.0000000, 352.0000000, Size 624.0000000, 58.0000000, Scale 1.0000000, 1.0000000, Children 0
+SetCurrentFocus :  - 6 - no, Type 4, Index 1, Focusable 1, Focusindex 0, Focused 1, ChildFocused 0, Selected 0, Visible 1, Skin 15, Dock 2, Align 0, Autosize 2, Autoscale 0, Padding 0.0000000, 0.0000000, 0.0000000, 0.0000000, Position 0.0000000, 0.0000000, RenderPosition 0.0000000, 0.0000000, Size 50.0000000, 0.0000000, Scale 1.0000000, 1.0000000, Children 0
+fps : 34, dt : 16.2743530000000014ms
+swap - #68, cur 13.8235092, avg 26.3478584, min 4.0268898, max 180.1831665
+---- frame - #68, cur 13.5090351, avg 24.8966331, min 3.5419464, max 145.0233459
+-------- update - #68, cur 1.3723373, avg 7.7771125, min 0.5359650, max 19.4761753
+------------ sound - #68, cur 0.0174046, avg 0.0350931, min 0.0166893, max 0.3168583
+------------ ui update - #68, cur 0.0879765, avg 6.6954913, min 0.0627041, max 19.1633701
+------------ ui resize - #68, cur 1.2283325, avg 0.9864744, min 0.1001358, max 3.1392574
+-------- render - #68, cur 12.1011734, avg 17.0905704, min 2.7098656, max 143.2974396
+------------ RenderCurrentScreen - #68, cur 1.9295216, avg 9.7677565, min 1.7595291, max 21.9571590
+------------ RenderNextScreen - #37, cur 3.8230419, avg 4.0356598, min 1.8322468, max 14.8794651
+------------ RenderScreenEffect - #37, cur 0.2980232, avg 0.4058786, min 0.1604557, max 5.3343773
+------------ RenderModals - #37, cur 5.7492256, avg 8.1996984, min 0.0064373, max 125.0193100
+---------------- RenderModalScreens - #25, cur 5.5265427, avg 11.8405247, min 3.3841133, max 124.4587860
+------------ RenderDefaultFramebuffer - #68, cur 0.1947880, avg 0.3546301, min 0.1759529, max 0.9157658
+ForceFocuse DONE :  - 7 - yes, Type 4, Index 2, Focusable 1, Focusindex 1, Focused 0, ChildFocused 0, Selected 0, Visible 1, Skin 15, Dock 2, Align 0, Autosize 2, Autoscale 0, Padding 0.0000000, 0.0000000, 0.0000000, 0.0000000, Position 0.0000000, 0.0000000, RenderPosition 533.0000000, 325.0000000, Size 50.0000000, 33.0000000, Scale 1.0000000, 1.0000000, Children 0
+remove_focus :  - 6 - no, Type 4, Index 1, Focusable 1, Focusindex 0, Focused 0, ChildFocused 0, Selected 0, Visible 1, Skin 15, Dock 2, Align 0, Autosize 2, Autoscale 0, Padding 0.0000000, 0.0000000, 0.0000000, 0.0000000, Position 0.0000000, 0.0000000, RenderPosition 588.0000000, 325.0000000, Size 50.0000000, 33.0000000, Scale 1.0000000, 1.0000000, Children 0
+SetCurrentFocus :  - 7 - yes, Type 4, Index 2, Focusable 1, Focusindex 1, Focused 1, ChildFocused 0, Selected 0, Visible 1, Skin 15, Dock 2, Align 0, Autosize 2, Autoscale 0, Padding 0.0000000, 0.0000000, 0.0000000, 0.0000000, Position 0.0000000, 0.0000000, RenderPosition 533.0000000, 325.0000000, Size 50.0000000, 33.0000000, Scale 1.0000000, 1.0000000, Children 0
+exiting skylight...
+gl.DeleteProgram(3)
+GL_INVALID_OPERATION
+../../src/gfx/graphics.cx : 928, gl.DeleteProgram
+error: ../../src/gfx/graphics.cx:928, CX_ASSERT, 4
+===Callstack===
+>>> Destroy()
+Expressions
+ 	../../src/gfx/graphics.cx:905 : NullProgram() : {name: 0}
+	../../src/gfx/graphics.cx:908 : identity() : 0
+	../../src/gfx/graphics.cx:908 : len() : []
+	../../src/gfx/graphics.cx:908 : len() : 112
+	../../src/gfx/graphics.cx:914 : lt() : false
+	../../src/gfx/graphics.cx:911 : GlError() : false
+	../../src/gfx/graphics.cx:914 : len() : []
+	../../src/gfx/graphics.cx:914 : len() : 56
+	../../src/gfx/graphics.cx:921 : lt() : false
+	../../src/gfx/graphics.cx:917 : GlError() : false
+	../../src/gfx/graphics.cx:924 : len() : []
+	../../src/gfx/graphics.cx:924 : len() : 19
+	../../src/gfx/graphics.cx:931 : lt() : true
+	../../src/gfx/graphics.cx:928 : GlError() : true
+
+>>> Destroy()
+>>> main()
+Expressions
+ 	./src/skylight.cx:1314 : neg() : -9.8
+	./src/skylight.cx:1314 : mul() : -0.98
+	./src/skylight.cx:1316 : Width() : 1024
+	./src/skylight.cx:1317 : Height() : 768
+	./src/skylight.cx:1319 : identity() : 3
+	./src/skylight.cx:1321 : div() : 341
+	./src/skylight.cx:1322 : div() : 256
+	./src/skylight.cx:1324 : TargetCreate() : {target: 0}
+	./src/skylight.cx:1325 : TextureCreate() : 6
+	./src/skylight.cx:1325 : TextureCreate() : {texture: 100}
+	./src/skylight.cx:1326 : TextureSamplerState() : {min: 1162104405, mag: -1932129724, s: 1279721472, t: 1430406477, r: 1129204063}
+	./src/skylight.cx:1329 : TargetCreate() : {target: 2}
+	./src/skylight.cx:1330 : TextureCreate() : 4
+	./src/skylight.cx:1330 : TextureCreate() : {texture: 101}
+	./src/skylight.cx:1333 : TextureCreate() : 1
+	./src/skylight.cx:1333 : TextureCreate() : {texture: 102}
+	./src/skylight.cx:1336 : TargetCreate() : {target: 8}
+	./src/skylight.cx:1337 : TextureCreate() : 5
+	./src/skylight.cx:1337 : TextureCreate() : {texture: 103}
+	./src/skylight.cx:1338 : TextureSamplerState() : {min: 1730176105, mag: 17461871, s: 16843009, t: 1441792, r: 1181442917}
+	./src/skylight.cx:1340 : TextureCreate() : {texture: 104}
+	./src/skylight.cx:1343 : TextureCreate() : 3
+	./src/skylight.cx:1343 : TextureCreate() : {texture: 105}
+	./src/skylight.cx:1346 : TargetCreate() : {target: 12184064}
+	./src/skylight.cx:1347 : TextureCreate() : {texture: 106}
+	./src/skylight.cx:1350 : TextureCreate() : {texture: 107}
+	./src/skylight.cx:1353 : TextureCreate() : {texture: 108}
+	./src/skylight.cx:1356 : TargetCreate() : {target: 0}
+	./src/skylight.cx:1357 : TextureCreate() : {texture: 109}
+	./src/skylight.cx:1360 : TextureCreate() : {texture: 110}
+	./src/skylight.cx:1364 : MeshLock() : 4
+	./src/skylight.cx:1364 : MeshLock() : 5123
+	./src/skylight.cx:1364 : MeshLock() : []
+	./src/skylight.cx:1364 : MeshLock() : {mesh: 16777216}
+	./src/skylight.cx:1368 : make() : {x: 5000, y: 0, z: 5000}
+	./src/skylight.cx:1368 : make() : {x: 0, y: 0, z: 0}
+	./src/skylight.cx:1368 : make() : {x: 0, y: 5000, z: 3.4438e-41}
+	./src/skylight.cx:1367 : MeshAppendBox() : {x: 1, y: -1e+09, z: -1e+09}
+	./src/skylight.cx:1369 : MeshAppendBox() : {x: 0, y: 0, z: 5.3e-44, w: 1e-45}
+	./src/skylight.cx:1376 : loadModel() : 1
+	./src/skylight.cx:1376 : loadModel() : {model: 0}
+	./src/skylight.cx:1378 : identity() : 0
+	./src/skylight.cx:1380 : mul() : 24576
+	./src/skylight.cx:1380 : mul() : 24576
+	./src/skylight.cx:1380 : MeshCreate() : {mesh: 0}
+	./src/skylight.cx:1381 : mul() : 16
+	./src/skylight.cx:1381 : mul() : 96
+	./src/skylight.cx:1381 : mul() : 16
+	./src/skylight.cx:1381 : mul() : 1536
+	./src/skylight.cx:1381 : mul() : 96
+	./src/skylight.cx:1381 : mul() : 1536
+	./src/skylight.cx:1381 : MeshLock() : {mesh: 65536}
+	./src/skylight.cx:1385 : make() : 1000
+	./src/skylight.cx:1385 : make() : {x: 1000, y: 0, z: 0}
+	./src/skylight.cx:1387 : make() : 1000
+	./src/skylight.cx:1387 : make() : {x: 0, y: 1000, z: 0}
+	./src/skylight.cx:1389 : make() : {x: 0, y: 10, z: NaN, w: -10}
+	./src/skylight.cx:1386 : MeshAppendPlane() : {x: 3.1415927, y: 3.1415927, z: 0}
+	./src/skylight.cx:1392 : neg() : -1
+	./src/skylight.cx:1394 : make() : -10
+	./src/skylight.cx:1394 : make() : {x: 0, y: 0, z: 0}
+	./src/skylight.cx:1395 : make() : {x: 1000, y: 0, z: 0}
+	./src/skylight.cx:1395 : make() : {x: 0, y: 1000, z: 1}
+	./src/skylight.cx:1396 : make() : {x: 0, y: 0, z: 0, w: 1}
+	./src/skylight.cx:1392 : AddObject() : 3
+	./src/skylight.cx:1392 : AddObject() : 1
+	./src/skylight.cx:1393 : AddObject() : 1
+	./src/skylight.cx:1392 : AddObject() : 3
+	./src/skylight.cx:1397 : make() : {x: 0, y: 1, z: NaN, w: -20}
+	./src/skylight.cx:1398 : neg() : -1
+	./src/skylight.cx:1400 : neg() : -100
+	./src/skylight.cx:1400 : mul() : -20
+	./src/skylight.cx:1400 : make() : {x: -100, y: 0, z: 0}
+	./src/skylight.cx:1401 : make() : {x: 1000, y: 0, z: 0}
+	./src/skylight.cx:1401 : make() : {x: 0, y: 1000, z: 1}
+	./src/skylight.cx:1402 : make() : {x: 0, y: 0, z: 3.8738807e-34, w: NaN}
+	./src/skylight.cx:1398 : AddObject() : 4
+	./src/skylight.cx:1404 : DataDir() : ../../resources/
+	./src/skylight.cx:1404 : sprintf() : ../../resources//textures/skynote.png
+	./src/skylight.cx:1405 : neg() : -1
+	./src/skylight.cx:1404 : TextureCreate() : {texture: 0}
+	./src/skylight.cx:1407 : DataDir() : ../../resources/
+	./src/skylight.cx:1407 : sprintf() : ../../resources//textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png
+	./src/skylight.cx:1408 : neg() : -1
+	./src/skylight.cx:1407 : TextureCreate() : {texture: 2883584}
+	./src/skylight.cx:1409 : DataDir() : ../../resources/
+	./src/skylight.cx:1409 : sprintf() : ../../resources//textures/skybox/
+	./src/skylight.cx:1410 : neg() : -1
+	./src/skylight.cx:1409 : TextureCreateCube() : {texture: 0}
+	./src/skylight.cx:1411 : DataDir() : ../../resources/
+	./src/skylight.cx:1411 : sprintf() : ../../resources//textures/irradiance/
+	./src/skylight.cx:1412 : neg() : -1
+	./src/skylight.cx:1411 : TextureCreateCube() : {texture: 0}
+	./src/skylight.cx:1413 : DataDir() : ../../resources/
+	./src/skylight.cx:1413 : sprintf() : ../../resources//textures/brdfLUT.png
+	./src/skylight.cx:1413 : TextureCreate() : {texture: 65793}
+	./src/skylight.cx:1416 : DataDir() : ../../resources/
+	./src/skylight.cx:1416 : sprintf() : ../../resources//textures/smoke.png
+	./src/skylight.cx:1417 : neg() : -1
+	./src/skylight.cx:1416 : TextureCreate() : {texture: 16777216}
+	./src/skylight.cx:1419 : CameraCreate() : {camera: 0}
+	./src/skylight.cx:1420 : CameraSetProjection() : -9.8
+	./src/skylight.cx:1421 : add() : -9
+	./src/skylight.cx:1421 : make() : {x: 0, y: 0, z: 3.8738807e-34}
+	./src/skylight.cx:1424 : DataDir() : ../../resources/
+	./src/skylight.cx:1424 : sprintf() : ../../resources//audios/skycoin_baby.wav
+	./src/skylight.cx:1424 : AudioCreate() : {audio: 0}
+	./src/skylight.cx:1425 : VoiceCreate() : {voice: 50397184}
+	./src/skylight.cx:1428 : ScreenCreate() : {base: {control: 0}, screen: 0}
+	./src/skylight.cx:1429 : ControlSetSkin() : {skin: 0}
+	./src/skylight.cx:1430 : ControlSetDock() : 5
+	./src/skylight.cx:1431 : neg() : -2
+	./src/skylight.cx:1435 : WindowCreate() : {base: {control: 1}, window: 8}
+	./src/skylight.cx:1437 : ControlSetSkin() : {skin: 0}
+	./src/skylight.cx:1438 : ControlSetAutosize() : 3
+	./src/skylight.cx:1439 : ControlSetAlign() : 15
+	./src/skylight.cx:1445 : LabelCreate() : {base: {control: 8}, label: 9}
+	./src/skylight.cx:1449 : LabelSetFont() : {font: 0}
+	./src/skylight.cx:1451 : LabelSetSize() : 25
+	./src/skylight.cx:1452 : LabelSetColor() : {x: 1, y: 0.14509805, z: 2.5e-44, w: 6e-45}
+	./src/skylight.cx:1457 : ScreenCreate() : {base: {control: 9}, screen: 1128792064}
+	./src/skylight.cx:1458 : ControlSetSkin() : {skin: 208115635}
+	./src/skylight.cx:1460 : make() : {x: 200, y: 200, z: 0, w: 1.4e-44}
+	./src/skylight.cx:1461 : neg() : -1
+	./src/skylight.cx:1464 : LabelCreate() : {base: {control: 10}, label: 1084227584}
+	./src/skylight.cx:1466 : ControlSetSkin() : {skin: 6}
+	./src/skylight.cx:1467 : ControlSetDock() : 3
+	./src/skylight.cx:1469 : makef() : {x: 5, y: 5, z: 1.5e-44, w: 5}
+	./src/skylight.cx:1470 : ControlSetAutosize() : 2
+	./src/skylight.cx:1471 : LabelSetFont() : {font: 4}
+	./src/skylight.cx:1474 : LabelSetSize() : 30
+	./src/skylight.cx:1478 : LabelCreate() : {base: {control: 11}, label: 1084227584}
+	./src/skylight.cx:1483 : makef() : {x: 5, y: 5, z: 0, w: 1.8e-44}
+	./src/skylight.cx:1494 : ScreenCreate() : {base: {control: 4}, screen: 0}
+	./src/skylight.cx:1496 : neg() : -1
+	./src/skylight.cx:1504 : ScreenCreate() : {base: {control: 13}, screen: 14}
+	./src/skylight.cx:1510 : LabelCreate() : {base: {control: 14}, label: 0}
+	./src/skylight.cx:1512 : make() : 1024
+	./src/skylight.cx:1512 : make() : 768
+	./src/skylight.cx:1512 : make() : {x: 0, y: 1024, z: 3.8728604e-34, w: 6e-45}
+	./src/skylight.cx:1515 : Name() : skylight
+	./src/skylight.cx:1516 : LabelSetSize() : 64
+	./src/skylight.cx:1518 : LabelSetColor() : {x: 2e-44, y: 3.2e-44, z: 3e-44, w: 1.1e-44}
+	./src/skylight.cx:1522 : ScreenCreate() : {base: {control: 15}, screen: 16}
+	./src/skylight.cx:1529 : PictureCreate() : {base: {control: 16}, picture: 1140850688}
+	./src/skylight.cx:1531 : div() : 512
+	./src/skylight.cx:1531 : div() : 384
+	./src/skylight.cx:1531 : make() : {x: 0, y: 512, z: 2.4e-44, w: 0}
+	./src/skylight.cx:1533 : ControlSetAutoscale() : 3
+	./src/skylight.cx:1535 : PictureSetAnimation() : {index: 1037779368}
+	./src/skylight.cx:1539 : ScreenCreate() : {base: {control: 17}, screen: 0}
+	./src/skylight.cx:1540 : ControlSetSkin() : {skin: 4}
+

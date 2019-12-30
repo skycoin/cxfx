@@ -757,13 +757,6 @@ var firstUpdate bool = false
 func gameOnUpdate(controlIndex i32, controlAction i32) {
 	prfGameOnUpdate = fps.CreateStartProfile(prfGameOnUpdate, "gameOnUpdate")
 
-	// >> HACK : start cx profiling
-	if firstUpdate == false {
-		firstUpdate = true
-		debugI32(0)
-	}
-	// << HACK : start cx profiling
-
 	var scaleBox f32 = 50.0
 	for i:= aimCount; i < aimMax; i++ {
 		newAimBox(v3.add(v3.make((2.0 * f32.rand() - 1.0) * scaleBox, scaleBox + f32.rand() * 5.0, (2.0 * f32.rand() - 1.0) * scaleBox),
@@ -1305,6 +1298,7 @@ func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
 func main()() {
 
 	// init
+	StartCPUProfile("skylight_init", 100)
 	gam.Init("skylight", 1024, 768, 60, "")
 	phx.Init(30U, -9.8 * 0.1)
 
@@ -1356,7 +1350,7 @@ func main()() {
 	gfx.TargetAttachStencil(mergeTarget, mergeStencilTexture)
 
 
-	skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
+	skyMesh = gfx.MeshCreate(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
 	gfx.MeshBegin(skyMesh)
 	gfx.MeshAppendBox(skyMesh, false, true,
 		v3.ZERO,
@@ -1373,7 +1367,7 @@ func main()() {
 	currentPlayer = 0
 
 	dollarMesh = gfx.MeshCreate(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 8192 * 3, gfx.g_vertexLayout, 8192 * 3)
-	groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
+	groundMesh = gfx.MeshCreate(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
 	gfx.MeshBegin(groundMesh)
 	gfx.MeshAppendPlane(groundMesh, false, true,
 		v3.ZERO,
@@ -1539,11 +1533,14 @@ func main()() {
 
 	// run
 	gui.ScreenShow(bootScreen)
+	StopCPUProfile("skylight_init")
+	StartCPUProfile("skylight_run", 100)
 	gam.Run(2U)
 
 	// destroy
 	gfx.MeshUnlock(skyMesh)
 	gfx.MeshUnlock(groundMesh)
-	gam.Destroy()
+	StopCPUProfile("skylight_run")
+	gam.Destroy()//ISSUE : can't call gam.Destroy()
 }
 
