@@ -1,5 +1,5 @@
 test_mat:
-	cx --debug-profile\
+	cx --debug-profile=100\
 		../src/mat/math.cx\
 		../src/mat/v1f.cx\
 		../src/mat/v1d.cx\

@@ -2878,6 +2878,24 @@ func MeshGetPrimitives(id AssetId, mesh i32) (out []Primitive) {
 	}
 }
 
+
+func assetFailure(file i32, error str) (out AssetId) {
+	printf("gltf error : %s", error)
+	var success bool = json.Close(file)
+	out = AssetInvalid()
+}
+
+
+func assetSuccess(file i32, id AssetId) (out AssetId) {
+	if json.Close(file) {
+		out = id
+		return
+	}
+
+	out = AssetInvalid()
+}
+
+
 // AssetCreate ...
 func AssetCreate(dataDir str, filename str, options i32) (out AssetId) {
 	var path str = sprintf("%s%s", dataDir, filename)
@@ -2889,29 +2907,27 @@ func AssetCreate(dataDir str, filename str, options i32) (out AssetId) {
 	g_assets = append(g_assets, asset)
 
 	var file i32 = json.Open(path)
-
 	if alwaysMore(file) == false {
-		out = AssetInvalid()
+		out = assetFailure(file, "invalid gltf : failed to more\n")
 		return
 	}
 
 	if json.MatchDelim(file, json.DELIM_CURLY_LEFT) == false {
-		out = AssetInvalid()
+		out = assetFailure(file, "invalid gltf : failed to read curly left\n")
 		return
 	}
 
 	var stack i32 = 1
-
 	var cont bool = true
 	for cont == true {
-		if alwaysMore(file) == false && stack <= 0 {
-			cont = false
-		} else {
-			var tokenType i32
-			var tokenSuccess bool
-			tokenType, tokenSuccess = json.Next(file)
-			if tokenSuccess == false {
-				out = AssetInvalid()
+  		if alwaysMore(file) == false && stack <= 0 {
+  			cont = false
+  		} else {
+  			var tokenType i32
+  			var tokenSuccess bool
+  			tokenType, tokenSuccess = json.Next(file)
+  			if tokenSuccess == false {
+				out = assetFailure(file, "invalid gltf : failed to read token\n")
 				return
 			}
 
@@ -2927,8 +2943,7 @@ func AssetCreate(dataDir str, filename str, options i32) (out AssetId) {
 
 				if keySuccess == false {
 					json.debugToken(file, tokenType)
-					printf("failed to read string\n")
-					out = AssetInvalid()
+					out = assetFailure(file, "invalid gltf : failed to read string\n")
 					return
 				}
 				//printf(">>>>>>>>>>>>> parse %s\n", key)
@@ -3003,62 +3018,62 @@ func AssetCreate(dataDir str, filename str, options i32) (out AssetId) {
 					out, extensions = parseExtensions(file, out)
 					//printf("<<<<<<<<<<<<< parse EXTENSIONS_REQUIRED\n")
 				} else {
-					printf("gltf : parsing not implemented : %s\n", key)
-					out = AssetInvalid()
-				}
-				//printf("<<<<<<<<<<<<<  parse %s\n", key)
-
-				if AssetIsValid(out) == false {
-					printf("failed to load asset\n")
+					out = assetFailure(file, sprintf("invalid gltf : parsing not implemented %s\n", key))
 					return
+					//printf("<<<<<<<<<<<<<  parse %s\n", key)
 				}
 			}
 		}
+	}
+
+	if AssetIsValid(out) == false {
+		out = assetFailure(file, "invalid gltf\n")
+		return
 	}
 
 	var accessors []Accessor = g_assets[out.asset].accessors
 	var accessorCount i32 = len(accessors)
 
 	if (options & ASSET_GEOMETRY) != 0 {
-		var meshes []Mesh = g_assets[out.asset].meshes
-		var meshCount i32 = len(meshes)
-		for i := 0; i < meshCount; i++ {
-			var primitives []Primitive = meshes[i].primitives
-			var primitiveCount i32 = len(primitives)
-			for k := 0; k < primitiveCount; k++ {
-				var attributes []Attribute = primitives[k].attributes
-				var attributeCount i32 = len(attributes)
-				for l := 0; l < attributeCount; l++ {
-					var accessor i32 = attributes[l].accessor
-					accessors[accessor].loaded = true
-				}
-				var indicesAccessor i32 = primitives[k].indices
-				accessors[indicesAccessor].loaded = true
-			}
-		}
+  		var meshes []Mesh = g_assets[out.asset].meshes
+  		var meshCount i32 = len(meshes)
+  		for i := 0; i < meshCount; i++ {
+  			var primitives []Primitive = meshes[i].primitives
+  			var primitiveCount i32 = len(primitives)
+  			for k := 0; k < primitiveCount; k++ {
+  				var attributes []Attribute = primitives[k].attributes
+  				var attributeCount i32 = len(attributes)
+  				for l := 0; l < attributeCount; l++ {
+  					var accessor i32 = attributes[l].accessor
+  					accessors[accessor].loaded = true
+  				}
+  				var indicesAccessor i32 = primitives[k].indices
+  				accessors[indicesAccessor].loaded = true
+  			}
+  		}
 	}
 
 
 	if (options & ASSET_ANIMATION) != 0 {
-		var animations []Animation = g_assets[out.asset].animations
-		var animationCount i32 = len(animations)
-		for i := 0; i < animationCount; i++ {
-			var samplers []AnimationSampler = animations[i].samplers
-			var samplerCount i32 = len(samplers)
-			for k := 0; k < samplerCount; k++ {
-				var inputAccessor i32 = samplers[k].inputA
-				var outputAccessor i32 = samplers[k].outputA
-				accessors[inputAccessor].loaded = true
-				accessors[outputAccessor].loaded = true
-			}
-		}
+  		var animations []Animation = g_assets[out.asset].animations
+  		var animationCount i32 = len(animations)
+  		for i := 0; i < animationCount; i++ {
+  			var samplers []AnimationSampler = animations[i].samplers
+  			var samplerCount i32 = len(samplers)
+  			for k := 0; k < samplerCount; k++ {
+  				var inputAccessor i32 = samplers[k].inputA
+  				var outputAccessor i32 = samplers[k].outputA
+  				accessors[inputAccessor].loaded = true
+  				accessors[outputAccessor].loaded = true
+  			}
+  		}
 	}
 
 	var skins []Skin = g_assets[out.asset].skins
 	var skinCount i32 = len(skins)
 	for i := 0; i < skinCount; i++ {
-		var ibmAccessor i32 = skins[i].inverseBindMatrices
-		accessors[ibmAccessor].loaded= true
+  		var ibmAccessor i32 = skins[i].inverseBindMatrices
+  		accessors[ibmAccessor].loaded= true
 	}
 
 	var bufferViews []BufferView = g_assets[out.asset].bufferViews
@@ -3067,76 +3082,103 @@ func AssetCreate(dataDir str, filename str, options i32) (out AssetId) {
 	var buffers []Buffer = g_assets[out.asset].buffers
 	var bufferCount i32 = len(buffers)
 
+  	var handle i32 = -1
+  	var previousUri str
 	for a := 0; a < accessorCount; a++ {
-		if accessors[a].loaded {
-			var bufferViewIndex i32 = accessors[a].bufferView
-			if bufferViewIndex < 0 || bufferViewIndex >= bufferViewCount {
-				out = AssetInvalid()
+  		if accessors[a].loaded {
+  			var bufferViewIndex i32 = accessors[a].bufferView
+  			if bufferViewIndex < 0 || bufferViewIndex >= bufferViewCount {
+				out = assetFailure(file, "invalid gltf : invalid buffer view index\n")
 				return
-			}
+  			}
 
-			var bufferView BufferView = bufferViews[bufferViewIndex]
-			var bufferIndex i32 = bufferView.buffer
-			if bufferIndex < 0 || bufferIndex >= bufferCount {
-				out = AssetInvalid()
+  			var bufferView BufferView = bufferViews[bufferViewIndex]
+  			var bufferIndex i32 = bufferView.buffer
+  			if bufferIndex < 0 || bufferIndex >= bufferCount {
+  				out = assetFailure(file, "invalid gltf : invalid buffer index\n")
 				return
-			}
+  			}
+  			var dataF32 []f32
+  			var dataUI16 []ui16
+  			var dataUI32 []ui32
 
-			var buffer Buffer = buffers[bufferIndex]
+  			var buffer Buffer = buffers[bufferIndex]
+
 			var uri str = sprintf("%s%s", dataDir, buffer.uri)
-			os.Open(uri)
-
-			var dataF32 []f32
-			var dataUI16 []ui16
-			var dataUI32 []ui32
-
-			var byteOffset i64 = accessors[a].byteOffset
-			var bufferOffset i64 = bufferView.byteOffset + byteOffset
-
-			if bufferOffset > 0L {
-				os.Seek(uri, bufferOffset, os.SEEK_SET)
-			}
-			var count i32 = accessors[a].count
-			var componentCount i32 = accessors[a].componentCount
-			var componentType i32 = accessors[a].componentType
-			if componentType == gl.FLOAT {
-				for i := 0; i < count; i++ {
-					for c := 0; c < componentCount; c++ {
-						var value f32 = os.ReadF32(uri)
-						dataF32 = append(dataF32, value)
+			if uri != previousUri {
+				if handle != -1 {
+					if os.Close(handle) == false {
+						out = assetFailure(file, "invalid gltf : failed to close .bin\n")
+						return
 					}
 				}
-			} else if componentType == gl.UNSIGNED_SHORT {
-				for i := 0; i < count; i++ {
-					for c := 0; c < componentCount; c++ {
-						var value ui16 = os.ReadUI16(uri)
-						dataUI16 = append(dataUI16, value)
-					}
-				}
-			} else if componentType == gl.UNSIGNED_INT {
-				for i := 0; i < count; i++ {
-					for c := 0; c < componentCount; c++ {
-						var value ui32 = os.ReadUI32(uri)
-						dataUI32 = append(dataUI32, value)
-					}
-				}
+	  			handle = os.Open(uri)
+				previousUri = uri
 			} else {
-				printf("unhandled buffer format %d\n", componentType)
-				out = AssetInvalid()
-				return
+				var startOffset i64 = os.Seek(handle, 0L, os.SEEK_SET)
+				if startOffset < 0L {
+					out = assetFailure(file, "invalid gltf : failed to rewind file\n")
+					return
+				}
 			}
+			if handle >= 0 {
+  				var byteOffset i64 = accessors[a].byteOffset
+  				var bufferOffset i64 = bufferView.byteOffset + byteOffset
 
-			accessors[a].dataF32 = dataF32
-			accessors[a].dataUI16 = dataUI16
-			accessors[a].dataUI32 = dataUI32
+  				if bufferOffset > 0L {
+  					bufferOffset = os.Seek(handle, bufferOffset, os.SEEK_SET)
+  				}
 
-			os.Close(uri) // leaks if early out
+				if bufferOffset < 0L {
+					out = assetFailure(file, "invalid gltf : failed to seek\n")
+					return
+				}
+
+  				var count i32 = accessors[a].count
+  				var componentCount i32 = accessors[a].componentCount
+  				var componentType i32 = accessors[a].componentType
+  				if componentType == gl.FLOAT {
+					var success bool
+					dataF32, success = os.ReadF32Slice(handle, count * componentCount)
+					if success == false {
+						out = assetFailure(file, "invalid gltf : failed to read f32 slice\n")
+						return
+					}
+				} else if componentType == gl.UNSIGNED_SHORT {
+					var success bool
+					dataUI16, success = os.ReadUI16Slice(handle, count * componentCount)
+					if success == false {
+						out = assetFailure(file, "invalid gltf : failed to read f32 slice\n")
+						return
+					}
+  				} else if componentType == gl.UNSIGNED_INT {
+					var success bool
+					dataUI32, success = os.ReadUI32Slice(handle, count * componentCount)
+					if success == false {
+						out = assetFailure(file, "invalid gltf : failed to read f32 slice\n")
+						return
+					}
+  				} else {
+					out = assetFailure(file, sprintf("unhandled buffer format %d\n", componentType))
+					var success bool = os.Close(handle)
+					return
+  				}
+
+  				accessors[a].dataF32 = dataF32
+  				accessors[a].dataUI16 = dataUI16
+  				accessors[a].dataUI32 = dataUI32
+			}
 		}
 	}
 
-	if json.Close(file) == false { // leaks if early out
-		printf("failed to close json\n")
+	if handle != -1 {
+		if os.Close(handle) == false {
+			out = assetFailure(file, "invalid gltf : failed close .bin\n")
+			return
+		}
 	}
+
+	out = assetSuccess(file, out)
 }
 
 

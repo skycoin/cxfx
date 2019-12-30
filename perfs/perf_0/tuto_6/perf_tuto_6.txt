@@ -1,0 +1,431 @@
+cx --debug-profile=100 /home/reash/go/src/github.com/SkycoinProject/cx/lib/args.cx /home/reash/go/src/github.com/SkycoinProject/cx/lib/json.cx ../src/mat/math.cx ../src/mat/v1d.cx ../src/mat/v1f.cx ../src/mat/v2f.cx ../src/mat/v3f.cx ../src/mat/v4f.cx ../src/mat/q4f.cx ../src/mat/m44f.cx ../src/app/application.cx ../src/app/event.cx ../src/fps/profiler.cx ../src/fps/framerate.cx ../src/gfx/batch.cx ../src/gfx/graphics.cx ../src/gfx/state.cx ../src/gfx/effect.cx ../src/gfx/shader.cx ../src/gfx/program.cx ../src/gfx/particle.cx ../src/gfx/mesh.cx ../src/gfx/gltf.cx ../src/gfx/model.cx ../src/gfx/texture.cx ../src/gfx/text.cx ../src/gfx/target.cx ../src/gfx/scissor.cx ../src/gui/callback.cx ../src/gui/layer.cx ../src/gui/skin.cx ../src/gui/scope.cx ../src/gui/font.cx ../src/gui/animation.cx ../src/gui/control.cx ../src/gui/label.cx ../src/gui/picture.cx ../src/gui/screen.cx ../src/gui/interface.cx ../src/gui/focus.cx ../src/gui/splitter.cx ../src/gui/window.cx ../src/gui/keyboard.cx ../src/gui/list.cx ../src/gui/graph.cx ../src/gui/lifter.cx ../src/gui/scroller.cx ../src/gui/binder.cx ../src/gui/combo.cx ../src/snd/sounds.cx ../src/snd/audio.cx ../src/snd/voice.cx ../src/gam/camera.cx ../src/gam/game.cx 6_model.cx ++data=../resources/
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/args.cx : 0ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/json.cx : 0ms
+../src/mat/math.cx : 0ms
+../src/mat/v1d.cx : 0ms
+../src/mat/v1f.cx : 0ms
+../src/mat/v2f.cx : 0ms
+../src/mat/v3f.cx : 0ms
+../src/mat/v4f.cx : 0ms
+../src/mat/q4f.cx : 0ms
+../src/mat/m44f.cx : 0ms
+../src/app/application.cx : 0ms
+../src/app/event.cx : 0ms
+../src/fps/profiler.cx : 0ms
+../src/fps/framerate.cx : 0ms
+../src/gfx/batch.cx : 0ms
+../src/gfx/graphics.cx : 0ms
+../src/gfx/state.cx : 0ms
+../src/gfx/effect.cx : 0ms
+../src/gfx/shader.cx : 0ms
+../src/gfx/program.cx : 0ms
+../src/gfx/particle.cx : 0ms
+../src/gfx/mesh.cx : 0ms
+../src/gfx/gltf.cx : 1ms
+../src/gfx/model.cx : 0ms
+../src/gfx/texture.cx : 0ms
+../src/gfx/text.cx : 0ms
+../src/gfx/target.cx : 0ms
+../src/gfx/scissor.cx : 0ms
+../src/gui/callback.cx : 0ms
+../src/gui/layer.cx : 0ms
+../src/gui/skin.cx : 0ms
+../src/gui/scope.cx : 0ms
+../src/gui/font.cx : 0ms
+../src/gui/animation.cx : 0ms
+../src/gui/control.cx : 0ms
+../src/gui/label.cx : 0ms
+../src/gui/picture.cx : 0ms
+../src/gui/screen.cx : 0ms
+../src/gui/interface.cx : 0ms
+../src/gui/focus.cx : 0ms
+../src/gui/splitter.cx : 0ms
+../src/gui/window.cx : 0ms
+../src/gui/keyboard.cx : 0ms
+../src/gui/list.cx : 0ms
+../src/gui/graph.cx : 0ms
+../src/gui/lifter.cx : 0ms
+../src/gui/scroller.cx : 0ms
+../src/gui/binder.cx : 0ms
+../src/gui/combo.cx : 0ms
+../src/snd/sounds.cx : 0ms
+../src/snd/audio.cx : 0ms
+../src/snd/voice.cx : 0ms
+../src/gam/camera.cx : 0ms
+../src/gam/game.cx : 0ms
+6_model.cx : 0ms
+1. packages/structs : 8ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/args.cx : 0ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/json.cx : 0ms
+../src/mat/math.cx : 0ms
+../src/mat/v1d.cx : 0ms
+../src/mat/v1f.cx : 0ms
+../src/mat/v2f.cx : 0ms
+../src/mat/v3f.cx : 0ms
+../src/mat/v4f.cx : 0ms
+../src/mat/q4f.cx : 0ms
+../src/mat/m44f.cx : 0ms
+../src/app/application.cx : 0ms
+../src/app/event.cx : 0ms
+../src/fps/profiler.cx : 0ms
+../src/fps/framerate.cx : 0ms
+../src/gfx/batch.cx : 0ms
+../src/gfx/graphics.cx : 0ms
+../src/gfx/state.cx : 0ms
+../src/gfx/effect.cx : 0ms
+../src/gfx/shader.cx : 0ms
+../src/gfx/program.cx : 0ms
+../src/gfx/particle.cx : 0ms
+../src/gfx/mesh.cx : 1ms
+../src/gfx/gltf.cx : 2ms
+../src/gfx/model.cx : 1ms
+../src/gfx/texture.cx : 0ms
+../src/gfx/text.cx : 0ms
+../src/gfx/target.cx : 0ms
+../src/gfx/scissor.cx : 0ms
+../src/gui/callback.cx : 0ms
+../src/gui/layer.cx : 0ms
+../src/gui/skin.cx : 0ms
+../src/gui/scope.cx : 0ms
+../src/gui/font.cx : 0ms
+../src/gui/animation.cx : 0ms
+../src/gui/control.cx : 1ms
+../src/gui/label.cx : 0ms
+../src/gui/picture.cx : 0ms
+../src/gui/screen.cx : 0ms
+../src/gui/interface.cx : 1ms
+../src/gui/focus.cx : 0ms
+../src/gui/splitter.cx : 0ms
+../src/gui/window.cx : 0ms
+../src/gui/keyboard.cx : 0ms
+../src/gui/list.cx : 0ms
+../src/gui/graph.cx : 0ms
+../src/gui/lifter.cx : 0ms
+../src/gui/scroller.cx : 0ms
+../src/gui/binder.cx : 0ms
+../src/gui/combo.cx : 0ms
+../src/snd/sounds.cx : 0ms
+../src/snd/audio.cx : 0ms
+../src/snd/voice.cx : 0ms
+../src/gam/camera.cx : 0ms
+../src/gam/game.cx : 0ms
+6_model.cx : 0ms
+2. globals : 18ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/args.cx : 8ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/json.cx : 5ms
+../src/mat/math.cx : 0ms
+../src/mat/v1d.cx : 0ms
+../src/mat/v1f.cx : 0ms
+../src/mat/v2f.cx : 4ms
+../src/mat/v3f.cx : 9ms
+../src/mat/v4f.cx : 7ms
+../src/mat/q4f.cx : 5ms
+../src/mat/m44f.cx : 18ms
+../src/app/application.cx : 3ms
+../src/app/event.cx : 1ms
+../src/fps/profiler.cx : 2ms
+../src/fps/framerate.cx : 1ms
+../src/gfx/batch.cx : 2ms
+../src/gfx/graphics.cx : 14ms
+../src/gfx/state.cx : 0ms
+../src/gfx/effect.cx : 5ms
+../src/gfx/shader.cx : 3ms
+../src/gfx/program.cx : 1ms
+../src/gfx/particle.cx : 4ms
+../src/gfx/mesh.cx : 41ms
+../src/gfx/gltf.cx : 45ms
+../src/gfx/model.cx : 25ms
+../src/gfx/texture.cx : 5ms
+../src/gfx/text.cx : 3ms
+../src/gfx/target.cx : 3ms
+../src/gfx/scissor.cx : 1ms
+../src/gui/callback.cx : 0ms
+../src/gui/layer.cx : 2ms
+../src/gui/skin.cx : 1ms
+../src/gui/scope.cx : 0ms
+../src/gui/font.cx : 1ms
+../src/gui/animation.cx : 1ms
+../src/gui/control.cx : 18ms
+../src/gui/label.cx : 4ms
+../src/gui/picture.cx : 2ms
+../src/gui/screen.cx : 4ms
+../src/gui/interface.cx : 16ms
+../src/gui/focus.cx : 5ms
+../src/gui/splitter.cx : 3ms
+../src/gui/window.cx : 2ms
+../src/gui/keyboard.cx : 3ms
+../src/gui/list.cx : 7ms
+../src/gui/graph.cx : 6ms
+../src/gui/lifter.cx : 4ms
+../src/gui/scroller.cx : 3ms
+../src/gui/binder.cx : 2ms
+../src/gui/combo.cx : 3ms
+../src/snd/sounds.cx : 1ms
+../src/snd/audio.cx : 1ms
+../src/snd/voice.cx : 2ms
+../src/gam/camera.cx : 11ms
+../src/gam/game.cx : 1ms
+6_model.cx : 4ms
+3. cxgo0 : 348ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/args.cx : 7ms
+/home/reash/go/src/github.com/SkycoinProject/cx/lib/json.cx : 5ms
+../src/mat/math.cx : 0ms
+../src/mat/v1d.cx : 0ms
+../src/mat/v1f.cx : 0ms
+../src/mat/v2f.cx : 4ms
+../src/mat/v3f.cx : 9ms
+../src/mat/v4f.cx : 8ms
+../src/mat/q4f.cx : 6ms
+../src/mat/m44f.cx : 23ms
+../src/app/application.cx : 3ms
+../src/app/event.cx : 1ms
+../src/fps/profiler.cx : 3ms
+../src/fps/framerate.cx : 1ms
+../src/gfx/batch.cx : 2ms
+../src/gfx/graphics.cx : 16ms
+../src/gfx/state.cx : 0ms
+../src/gfx/effect.cx : 6ms
+../src/gfx/shader.cx : 4ms
+../src/gfx/program.cx : 2ms
+../src/gfx/particle.cx : 5ms
+../src/gfx/mesh.cx : 50ms
+../src/gfx/gltf.cx : 55ms
+../src/gfx/model.cx : 31ms
+../src/gfx/texture.cx : 7ms
+../src/gfx/text.cx : 4ms
+../src/gfx/target.cx : 4ms
+../src/gfx/scissor.cx : 1ms
+../src/gui/callback.cx : 0ms
+../src/gui/layer.cx : 2ms
+../src/gui/skin.cx : 1ms
+../src/gui/scope.cx : 0ms
+../src/gui/font.cx : 1ms
+../src/gui/animation.cx : 1ms
+../src/gui/control.cx : 22ms
+../src/gui/label.cx : 6ms
+../src/gui/picture.cx : 3ms
+../src/gui/screen.cx : 5ms
+../src/gui/interface.cx : 20ms
+../src/gui/focus.cx : 6ms
+../src/gui/splitter.cx : 3ms
+../src/gui/window.cx : 2ms
+../src/gui/keyboard.cx : 5ms
+../src/gui/list.cx : 9ms
+../src/gui/graph.cx : 8ms
+../src/gui/lifter.cx : 6ms
+../src/gui/scroller.cx : 4ms
+../src/gui/binder.cx : 3ms
+../src/gui/combo.cx : 4ms
+../src/snd/sounds.cx : 2ms
+../src/snd/audio.cx : 1ms
+../src/snd/voice.cx : 3ms
+../src/gam/camera.cx : 13ms
+../src/gam/game.cx : 1ms
+6_model.cx : 5ms
+4. parse : 424ms
+parse : 849ms
+starting Model Tutorial...
+Al Renderer : OpenAL Soft
+Al Vendor : OpenAL Community
+AL Version : 1.1 ALSOFT 1.19.1
+AL Extensions AL_EXT_ALAW AL_EXT_BFORMAT AL_EXT_DOUBLE AL_EXT_EXPONENT_DISTANCE AL_EXT_FLOAT32 AL_EXT_IMA4 AL_EXT_LINEAR_DISTANCE AL_EXT_MCFORMATS AL_EXT_MULAW AL_EXT_MULAW_BFORMAT AL_EXT_MULAW_MCFORMATS AL_EXT_OFFSET AL_EXT_source_distance_model AL_EXT_SOURCE_RADIUS AL_EXT_STEREO_ANGLES AL_LOKI_quadriphonic AL_SOFT_block_alignment AL_SOFT_deferred_updates AL_SOFT_direct_channels AL_SOFTX_events AL_SOFTX_filter_gain_ex AL_SOFT_gain_clamp_ex AL_SOFT_loop_points AL_SOFTX_map_buffer AL_SOFT_MSADPCM AL_SOFT_source_latency AL_SOFT_source_length AL_SOFT_source_resampler AL_SOFT_source_spatialize
+found : AL_EXT_FLOAT32
+found : AL_EXT_DOUBLE
+loading ../resources//models/glTF-Sample-Models/Sponza/glTF/Sponza.gltf
+fps : 0, dt : 15465.3231980000000476ms
+fps : 0, dt : 3401.1539210000000821ms
+swap - #1, cur 3392.2885742, avg 3392.2885742, min 3392.2885742, max 3392.2885742
+---- frame - #1, cur 3370.8676758, avg 3370.8676758, min 3370.8676758, max 3370.8676758
+-------- update - #1, cur 14.9204731, avg 14.9204731, min 14.9204731, max 14.9204731
+------------ sound - #1, cur 0.2770424, avg 0.2770424, min 0.2770424, max 0.2770424
+------------ ui update - #1, cur 13.7486458, avg 13.7486458, min 13.7486458, max 13.7486458
+------------ ui resize - #1, cur 0.1392365, avg 0.1392365, min 0.1392365, max 0.1392365
+-------- render - #1, cur 3355.9189453, avg 3355.9189453, min 3355.9189453, max 3355.9189453
+------------ RenderCurrentScreen - #1, cur 0.0107288, avg 0.0107288, min 0.0107288, max 0.0107288
+------------ RenderNextScreen - #1, cur 2548.0507812, avg 2548.0507812, min 2548.0507812, max 2548.0507812
+------------ RenderScreenEffect - #1, cur 802.3634033, avg 802.3634033, min 802.3634033, max 802.3634033
+------------ RenderModals - #1, cur 0.0183582, avg 0.0183582, min 0.0183582, max 0.0183582
+------------ RenderDefaultFramebuffer - #1, cur 4.6541691, avg 4.6541691, min 4.6541691, max 4.6541691
+fps : 18, dt : 56.5420640000000034ms
+swap - #36, cur 56.3554764, avg 56.4161072, min 53.0943871, max 61.0010605
+---- frame - #36, cur 55.9101105, avg 55.8494263, min 52.6537895, max 59.7226639
+-------- update - #36, cur 1.1513233, avg 1.2107359, min 1.0309219, max 2.5098324
+------------ sound - #36, cur 0.0071526, avg 0.0076161, min 0.0064373, max 0.0164509
+------------ ui update - #36, cur 1.0092258, avg 1.0636978, min 0.8928776, max 2.2907257
+------------ ui resize - #36, cur 0.1022816, avg 0.1035002, min 0.0910759, max 0.1683235
+-------- render - #36, cur 54.7342300, avg 54.6173859, min 51.5630264, max 57.1639557
+------------ RenderCurrentScreen - #36, cur 54.4049759, avg 54.2689438, min 51.2418747, max 56.8208694
+------------ RenderDefaultFramebuffer - #36, cur 0.2739429, avg 0.2881951, min 0.2303123, max 0.4429817
+fps : 13, dt : 101.2410449999999997ms
+swap - #26, cur 101.0210495, avg 79.1728439, min 53.0385971, max 134.7005310
+---- frame - #26, cur 100.3127136, avg 78.5515289, min 52.5920410, max 134.1192780
+-------- update - #26, cur 1.9867420, avg 1.8111651, min 1.0180473, max 8.7628365
+------------ sound - #26, cur 0.0109673, avg 0.0089132, min 0.0064373, max 0.0252724
+------------ ui update - #26, cur 1.7604828, avg 1.6069045, min 0.8857250, max 8.1963539
+------------ ui resize - #26, cur 0.1485348, avg 0.1338720, min 0.0936985, max 0.1835823
+-------- render - #26, cur 98.2143860, avg 76.7052460, min 51.4063835, max 125.3228149
+------------ RenderCurrentScreen - #26, cur 97.7840424, avg 76.3034363, min 51.0919113, max 124.9177475
+------------ RenderDefaultFramebuffer - #26, cur 0.3342628, avg 0.3275963, min 0.2489090, max 0.5187988
+fps : 10, dt : 56.4947519999999983ms
+swap - #21, cur 56.3490372, avg 95.8630219, min 56.3490372, max 122.3988495
+---- frame - #21, cur 55.8979492, avg 95.2370148, min 55.8979492, max 121.7157822
+-------- update - #21, cur 1.7080307, avg 2.0477545, min 1.0359287, max 4.0872097
+------------ sound - #21, cur 0.0071526, avg 0.0262374, min 0.0069141, max 0.3030300
+------------ ui update - #21, cur 1.5497208, avg 1.8261274, min 0.9019375, max 3.7589073
+------------ ui resize - #21, cur 0.1077652, avg 0.1420861, min 0.0956059, max 0.3442764
+-------- render - #21, cur 54.1660767, avg 93.1576767, min 54.1660767, max 119.9393311
+------------ RenderCurrentScreen - #21, cur 53.8523178, avg 92.7516632, min 53.8523178, max 119.5268631
+------------ RenderDefaultFramebuffer - #21, cur 0.2563000, avg 0.3292901, min 0.2563000, max 0.4978180
+fps : 18, dt : 54.7823619999999991ms
+swap - #37, cur 54.6202660, avg 55.0778046, min 52.1290283, max 63.3177757
+---- frame - #37, cur 54.0423393, avg 54.5433846, min 51.5880585, max 62.7968292
+-------- update - #37, cur 1.2650490, avg 1.2198590, min 1.0249615, max 2.1765232
+------------ sound - #37, cur 0.0073910, avg 0.0082931, min 0.0064373, max 0.0417233
+------------ ui update - #37, cur 1.0986328, avg 1.0503434, min 0.8802414, max 2.0318031
+------------ ui resize - #37, cur 0.1101494, avg 0.1221219, min 0.0920296, max 0.5900860
+-------- render - #37, cur 52.7582169, avg 53.3033981, min 50.4522324, max 60.6002808
+------------ RenderCurrentScreen - #37, cur 52.2327423, avg 52.9496269, min 50.1010437, max 60.2712631
+------------ RenderDefaultFramebuffer - #37, cur 0.4611015, avg 0.2906000, min 0.2474785, max 0.4611015
+fps : 18, dt : 53.6299629999999965ms
+swap - #36, cur 53.4515381, avg 55.8695450, min 52.8788567, max 63.3194427
+---- frame - #36, cur 52.6962280, avg 55.2197495, min 52.3664932, max 62.7298355
+-------- update - #36, cur 1.1174679, avg 1.2091663, min 1.0418892, max 1.5430450
+------------ sound - #36, cur 0.0090599, avg 0.0083844, min 0.0064373, max 0.0498295
+------------ ui update - #36, cur 0.9698868, avg 1.0382864, min 0.9090900, max 1.3396740
+------------ ui resize - #36, cur 0.0967979, avg 0.1170105, min 0.0910759, max 0.1883507
+-------- render - #36, cur 51.5589714, avg 53.9901047, min 51.0077477, max 61.4683609
+------------ RenderCurrentScreen - #36, cur 51.1686783, avg 53.4754791, min 50.6918411, max 60.4207535
+------------ RenderDefaultFramebuffer - #36, cur 0.3294945, avg 0.4497766, min 0.2543926, max 1.0404587
+fps : 19, dt : 53.4668569999999974ms
+swap - #38, cur 53.2999039, avg 53.7143364, min 51.8074036, max 56.4897079
+---- frame - #38, cur 52.7298431, avg 53.1389580, min 51.3913651, max 55.5503387
+-------- update - #38, cur 1.2049675, avg 1.1462412, min 0.9875298, max 1.5101433
+------------ sound - #38, cur 0.0071526, avg 0.0091477, min 0.0064373, max 0.0369549
+------------ ui update - #38, cur 1.0552406, avg 0.9918966, min 0.8542538, max 1.3401508
+------------ ui resize - #38, cur 0.1077652, avg 0.1083110, min 0.0936985, max 0.1826286
+-------- render - #38, cur 51.5060425, avg 51.9714928, min 50.3733139, max 54.4033051
+------------ RenderCurrentScreen - #38, cur 51.0294418, avg 51.5854340, min 50.0741005, max 54.0928841
+------------ RenderDefaultFramebuffer - #38, cur 0.4184246, avg 0.3176300, min 0.2207756, max 0.4546642
+fps : 19, dt : 52.6357309999999998ms
+swap - #38, cur 52.4840355, avg 53.0854340, min 51.9158859, max 55.6385498
+---- frame - #38, cur 51.8853683, avg 52.5336647, min 51.3663292, max 54.6309967
+-------- update - #38, cur 1.1885166, avg 1.1681507, min 1.0194778, max 2.1059513
+------------ sound - #38, cur 0.0157356, avg 0.0080435, min 0.0064373, max 0.0162125
+------------ ui update - #38, cur 1.0356903, avg 1.0125700, min 0.8637905, max 1.9640923
+------------ ui resize - #38, cur 0.1010895, avg 0.1120881, min 0.0917912, max 0.1835823
+-------- render - #38, cur 50.6684799, avg 51.3446388, min 50.2665024, max 53.3995628
+------------ RenderCurrentScreen - #38, cur 50.2355118, avg 50.9637718, min 49.8471260, max 52.7863503
+------------ RenderDefaultFramebuffer - #38, cur 0.3612041, avg 0.3167516, min 0.2439022, max 0.5345345
+fps : 19, dt : 53.6068089999999984ms
+swap - #38, cur 53.4362793, avg 53.7080193, min 52.0544052, max 56.0669899
+---- frame - #38, cur 52.6940842, avg 53.0500603, min 51.6026001, max 55.4954987
+-------- update - #38, cur 1.1970997, avg 1.1858689, min 0.9963512, max 1.4514923
+------------ sound - #38, cur 0.0071526, avg 0.0087587, min 0.0064373, max 0.0565052
+------------ ui update - #38, cur 1.0271072, avg 1.0253316, min 0.8621216, max 1.2817383
+------------ ui resize - #38, cur 0.0977516, avg 0.1162604, min 0.0922680, max 0.2043247
+-------- render - #38, cur 51.4776688, avg 51.8441467, min 50.3606796, max 54.2926788
+------------ RenderCurrentScreen - #38, cur 50.7123489, avg 51.3241272, min 49.9217529, max 53.8091660
+------------ RenderDefaultFramebuffer - #38, cur 0.6973743, avg 0.4555677, min 0.2496243, max 0.8482933
+fps : 19, dt : 53.9983500000000021ms
+swap - #38, cur 53.8682938, avg 53.7184486, min 52.2701721, max 55.8841248
+---- frame - #38, cur 53.2455444, avg 53.0384026, min 51.6233444, max 54.9747925
+-------- update - #38, cur 1.1391640, avg 1.2009583, min 1.0359287, max 1.6710758
+------------ sound - #38, cur 0.0069141, avg 0.0077235, min 0.0064373, max 0.0135899
+------------ ui update - #38, cur 0.9927750, avg 1.0411301, min 0.8995533, max 1.4426708
+------------ ui resize - #38, cur 0.1065731, avg 0.1139202, min 0.0920296, max 0.1907349
+-------- render - #38, cur 52.0870667, avg 51.8156548, min 50.4260063, max 53.8251419
+------------ RenderCurrentScreen - #38, cur 51.6440887, avg 51.3015671, min 49.9680023, max 53.2786865
+------------ RenderDefaultFramebuffer - #38, cur 0.3855228, avg 0.4439668, min 0.3740788, max 0.5812645
+fps : 19, dt : 53.4876080000000016ms
+swap - #38, cur 53.2801132, avg 53.5521202, min 52.6504517, max 55.1469345
+---- frame - #38, cur 52.5999069, avg 52.8735657, min 52.0250778, max 54.4941406
+-------- update - #38, cur 1.7187595, avg 1.2080104, min 0.9899139, max 1.7187595
+------------ sound - #38, cur 0.0085831, avg 0.0080874, min 0.0064373, max 0.0314713
+------------ ui update - #38, cur 1.4874935, avg 1.0333124, min 0.8578300, max 1.4874935
+------------ ui resize - #38, cur 0.1823902, avg 0.1227040, min 0.0932217, max 0.2725124
+-------- render - #38, cur 50.8604050, avg 51.6436615, min 50.6799240, max 53.2648544
+------------ RenderCurrentScreen - #38, cur 50.3876190, avg 51.1388779, min 50.2130966, max 52.7322311
+------------ RenderDefaultFramebuffer - #38, cur 0.4043579, avg 0.4364942, min 0.3762245, max 0.6115437
+fps : 18, dt : 66.9967390000000051ms
+swap - #36, cur 66.7049866, avg 56.0708694, min 52.7877808, max 66.7049866
+---- frame - #36, cur 66.1180038, avg 55.4255562, min 52.2000809, max 66.1180038
+-------- update - #36, cur 1.3525486, avg 1.2073781, min 1.0211468, max 1.5170574
+------------ sound - #36, cur 0.0097752, avg 0.0074440, min 0.0064373, max 0.0104904
+------------ ui update - #36, cur 1.1692047, avg 1.0424852, min 0.8661747, max 1.3000965
+------------ ui resize - #36, cur 0.1196861, avg 0.1180304, min 0.0932217, max 0.2782345
+-------- render - #36, cur 64.7292175, avg 54.1961250, min 50.7669449, max 64.7292175
+------------ RenderCurrentScreen - #36, cur 64.1784668, avg 53.6793518, min 50.3263474, max 64.1784668
+------------ RenderDefaultFramebuffer - #36, cur 0.4556179, avg 0.4468560, min 0.3471375, max 0.5676746
+exiting Model Tutorial...
+gl.DeleteProgram(3)
+GL_INVALID_OPERATION
+../src/gfx/graphics.cx : 928, gl.DeleteProgram
+error: ../src/gfx/graphics.cx:928, CX_ASSERT, 4
+===Callstack===
+>>> Destroy()
+Expressions
+ 	../src/gfx/graphics.cx:905 : NullProgram() : {name: 0}
+	../src/gfx/graphics.cx:908 : identity() : 0
+	../src/gfx/graphics.cx:908 : len() : []
+	../src/gfx/graphics.cx:908 : len() : 114
+	../src/gfx/graphics.cx:914 : lt() : false
+	../src/gfx/graphics.cx:911 : GlError() : false
+	../src/gfx/graphics.cx:914 : len() : []
+	../src/gfx/graphics.cx:914 : len() : 57
+	../src/gfx/graphics.cx:921 : lt() : false
+	../src/gfx/graphics.cx:917 : GlError() : false
+	../src/gfx/graphics.cx:924 : len() : []
+	../src/gfx/graphics.cx:924 : len() : 14
+	../src/gfx/graphics.cx:931 : lt() : true
+	../src/gfx/graphics.cx:928 : GlError() : true
+
+>>> Destroy()
+>>> main()
+Expressions
+ 	6_model.cx:220 : MeshLock() : 4
+	6_model.cx:220 : MeshLock() : 5123
+	6_model.cx:220 : MeshLock() : []
+	6_model.cx:220 : MeshLock() : {mesh: 2120480}
+	6_model.cx:224 : make() : {x: 5000, y: 0, z: 5000}
+	6_model.cx:224 : make() : {x: 0, y: 0, z: 0}
+	6_model.cx:224 : make() : {x: 0, y: 5000, z: 2.152e-42}
+	6_model.cx:223 : MeshAppendBox() : {x: 1, y: -1e+09, z: -1e+09}
+	6_model.cx:225 : MeshAppendBox() : {x: 0, y: 0, z: 5.3e-44, w: 1e-45}
+	6_model.cx:250 : mul() : 16
+	6_model.cx:250 : mul() : 96
+	6_model.cx:250 : mul() : 16
+	6_model.cx:250 : mul() : 1536
+	6_model.cx:250 : mul() : 96
+	6_model.cx:250 : mul() : 1536
+	6_model.cx:250 : MeshLock() : {mesh: 0}
+	6_model.cx:251 : identity() : 20
+	6_model.cx:254 : make() : -10
+	6_model.cx:254 : make() : {x: 0, y: 0, z: 0}
+	6_model.cx:255 : make() : 100
+	6_model.cx:255 : make() : {x: 100, y: 0, z: 0}
+	6_model.cx:257 : make() : 100
+	6_model.cx:257 : make() : {x: 0, y: 100, z: 0}
+	6_model.cx:259 : make() : {x: 0, y: 10, z: 3.871623e-34, w: NaN}
+	6_model.cx:256 : MeshAppendPlane() : {x: 3.1415927, y: 3.1415927, z: 0}
+	6_model.cx:263 : DataDir() : ../resources/
+	6_model.cx:263 : sprintf() : ../resources//textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png
+	6_model.cx:264 : neg() : -1
+	6_model.cx:264 : TextureCreate() : 4
+	6_model.cx:263 : TextureCreate() : {texture: 16777216}
+	6_model.cx:265 : DataDir() : ../resources/
+	6_model.cx:265 : sprintf() : ../resources//textures/skybox/
+	6_model.cx:266 : neg() : -1
+	6_model.cx:265 : TextureCreateCube() : {texture: 620756992}
+	6_model.cx:267 : DataDir() : ../resources/
+	6_model.cx:267 : sprintf() : ../resources//textures/irradiance/
+	6_model.cx:268 : neg() : -1
+	6_model.cx:267 : TextureCreateCube() : {texture: 67108864}
+	6_model.cx:269 : DataDir() : ../resources/
+	6_model.cx:269 : sprintf() : ../resources//textures/brdfLUT.png
+	6_model.cx:269 : TextureCreate() : {texture: 18885747}
+	6_model.cx:272 : CameraCreate() : {camera: 16843009}
+	6_model.cx:273 : CameraSetProjection() : 5000
+	6_model.cx:278 : ScreenCreate() : {base: {control: 0}, screen: 1}
+	6_model.cx:279 : ControlSetDock() : 5
+	6_model.cx:280 : neg() : -1
+

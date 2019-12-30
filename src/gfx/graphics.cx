@@ -135,7 +135,7 @@ var g_particleLayout []VertexAttribute
 // Debug ...
 //var g_debugMesh MeshId
 var g_debugColorCount i32 = 8
-var g_debugColors [8]mat.v4
+//var g_debugColors [8]mat.v4 // ISSUE ../..//src/gfx/graphics.cx:138: syntax error: unexpected PERIOD
 var g_useDebugColors bool
 
 // VertexLayout ...
@@ -650,14 +650,14 @@ func Init(width i32, height i32, dataDir str)() {
 	g_particleLayout = append(g_particleLayout, VertexAttributeCreate(ATTRIBUTE_TEXCOORD_5, 3, FLOAT))
 	g_particleLayout = append(g_particleLayout, VertexAttributeCreate(ATTRIBUTE_TEXCOORD_6, 4, FLOAT))
 
-	g_debugColors[0] = v4.RED
+	/*g_debugColors[0] = v4.RED
 	g_debugColors[1] = v4.GREEN
 	g_debugColors[2] = v4.BLUE
 	g_debugColors[3] = v4.PINK
 	g_debugColors[4] = v4.YELLOW
 	g_debugColors[5] = v4.SKY
 	g_debugColors[6] = v4.ONE
-	g_debugColors[7] = v4.BLACK
+	g_debugColors[7] = v4.BLACK*/
 
 	g_clearColor = v4.PINK
 
