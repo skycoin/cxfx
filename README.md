@@ -8,7 +8,7 @@
 
 #### Installation :
 
-##### Install patched cx (cxfx temporarly relies on unpublished cx modifications, this will be fixed in the future):
+##### Install cx
 ```
 mkdir -p ~/go/src/github.com/SkycoinProject/
 cd ~/go/src/github.com/SkycoinProject/
