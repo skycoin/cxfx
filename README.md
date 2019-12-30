@@ -17,7 +17,7 @@ cd cx
 git checkout develop
 make install-gfx-deps
 make install
-make build
+make build-full
 ```
 ##### Install cxfx :
 ```
