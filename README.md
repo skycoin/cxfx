@@ -13,7 +13,7 @@
 mkdir -p ~/go/src/github.com/SkycoinProject/
 cd ~/go/src/github.com/SkycoinProject/
 git clone https://github.com/SkycoinProject/cx
-cd cx
+cd ~/go/src/github.com/SkycoinProject/cx
 git checkout develop
 make install-gfx-deps
 make install
@@ -24,9 +24,9 @@ make build-full
 mkdir -p ~/go/src/github.com/SkycoinProject/
 cd ~/go/src/github.com/SkycoinProject/
 git clone https://github.com/SkycoinProject/cxfx
-cx cxfx/games/skylight
+cd ~/go/src/github.com/SkycoinProject/cxfx/games/skylight
 make
-cd cxfx/tutorials
+cd ~/go/src/github.com/SkycoinProject/cxfx/tutorials
 make 6_model
 ```
 
