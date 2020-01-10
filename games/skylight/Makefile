@@ -1,5 +1,6 @@
 ## TODO : can't order files alphabetically without breaking tuto 7->14
 
+GOPATH := $(subst \,/,${GOPATH})
 SKYCOIN = $(GOPATH)/src/github.com/SkycoinProject
 CX = $(SKYCOIN)/cx
 
