@@ -157,25 +157,45 @@ func TextureSetResizable(id TextureId, resizable bool) {
 }*/
 
 func textureCreate0(path str, extension str, target i32, format i32, width i32, height i32, mipmap i32, resizable bool) (out TextureId) {
-	var name i32
+	var name i32 = gl.GenTextures(1, name) // TODO : change gl.GenTextures signature
+	panicIf(GlError(), "gl.GenTextures")
 	if (path == "") {
-		name = gl.GenTextures(1, name) // TODO : change gl.GenTextures signature
-		panicIf(GlError(), "gl.GenTextures")
 	} else {
 		var textureCount i32 = len(g_textures)
 		for t := 0; t < textureCount; t++ {
 			if g_textures[t].path == path &&
-			   g_textures[t].extension == extension &&
-			   g_textures[t].format == format {
+				g_textures[t].extension == extension &&
+				g_textures[t].format == format {
 				out.texture = t
 				return
 			}
 		}
 
+		gl.BindTexture(target, name)
+		panicIf(GlError(), "gl.BindTexture")
+
+		gl.TexParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		panicIf(GlError(), "gl.TexParameteri")
+
+		gl.TexParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		panicIf(GlError(), "gl.TexParameteri")
+
+		gl.TexParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+		panicIf(GlError(), "gl.TexParameteri")
+
+		gl.TexParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+		panicIf(GlError(), "gl.TexParameteri")
+
 		if target == gl.TEXTURE_2D {
-			name = gl.NewTexture(path)
+			gl.UploadImageToTexture(path, target)
 		} else if target == gl.TEXTURE_CUBE_MAP {
-			name = gl.NewTextureCube(path, extension)
+			gl.TexParameteri(target, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE)
+			gl.UploadImageToTexture(sprintf("%sposx%s", path, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_X)
+			gl.UploadImageToTexture(sprintf("%snegx%s", path, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_X)
+			gl.UploadImageToTexture(sprintf("%sposy%s", path, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Y)
+			gl.UploadImageToTexture(sprintf("%snegy%s", path, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Y)
+			gl.UploadImageToTexture(sprintf("%sposz%s", path, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Z)
+			gl.UploadImageToTexture(sprintf("%snegz%s", path, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Z)
 		}
 		panicIf(GlError(), "gl.NewTexture")
 	}

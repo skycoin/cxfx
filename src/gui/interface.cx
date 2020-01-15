@@ -219,7 +219,8 @@ func Init(width i32, height i32, dataDir str) {
 	app.SetKeyboardCallback("gui", "ProcessKeyboard")
 	app.SetMouseButtonCallback("gui", "ProcessButton")
 	app.SetMousePositionCallback("gui", "ProcessCursor")
-	app.SetWindowResizeCallback("gui", "ProcessResize")
+	app.SetWindowResizeCallback("gui", "ProcessWindowResize")
+	app.SetFramebufferResizeCallback("gui", "ProcessFramebufferResize")
 
 	// meshes
 	g_opaqueVertexColoredTriangles = gfx.MeshCreate(gl.TRIANGLES, gl.UNSIGNED_SHORT, 2048 * 3, gfx.g_vertexLayout, 2048 * 3)
@@ -227,7 +228,7 @@ func Init(width i32, height i32, dataDir str) {
 	g_alphaVertexColoredTriangles = gfx.MeshCreate(gl.TRIANGLES, gl.UNSIGNED_SHORT, 2048 * 3, gfx.g_vertexLayout, 2048 * 3)
 	g_alphaVertexColoredLines = gfx.MeshCreate(gl.LINES, gl.UNSIGNED_SHORT, 2048 * 2, gfx.g_vertexLayout, 2048 * 2)
 	g_fullscreenQuad = gfx.MeshCreate(gl.TRIANGLES, gl.UNSIGNED_SHORT, 6 * 3, gfx.g_vertexLayout, 6 * 3)
-    resizeFullscreenQuad(width, height)
+	resizeFullscreenQuad(width, height)
 
 	// fonts
 	//  var skycoinRunes []ui32
@@ -354,10 +355,13 @@ func ComputeDepth(stack i32) (out f32) {
 
 // ProcessCursor ...
 func ProcessCursor(window str, x f64, y f64) {
-	var xx f32 = f64.f32(x)
-	var yy f32 = gfx.gfx_height - f64.f32(y)
 
-	//printf("cursor : %f, %f\n", xx, yy)
+	var sx f32 = f64.f32(x) * app.ScaleX()
+	var sy f32 = f64.f32(y) * app.ScaleY()
+
+	var xx f32 = sx
+	var yy f32 = gfx.gfx_height - sy
+
 	g_cursorPos.x = xx
 	g_cursorPos.y = yy
 
@@ -365,6 +369,7 @@ func ProcessCursor(window str, x f64, y f64) {
 	event.mouse.position = g_cursorPos
 	event.mouse.action = app.MOUSE_MOVE
 
+	//printf("cursor : %f, %f, scaled %f, %f\n", xx, yy, g_cursorPos.x, g_cursorPos.y)
 	g_events = append(g_events, event)
 }
 
@@ -493,9 +498,17 @@ func ProcessEvent(event *app.Event) () {
 }
 
 
-// ProcessResize ...
-func ProcessResize(window str, width i32, height i32) (){
-	//printf("ProcessResize %s, %d, %d\n", window, width, height)
+// ProcessWindowResize ...
+func ProcessWindowResize(window str, width i32, height i32, scale i32) (){
+	/*printf("------------------------->>>>> ProcessResize %s, %d, %d\n", window, width, height)
+	resizeFullscreenQuad(width, height)
+	app.Resize(width, height)
+	gfx.Resize(width * 2, height * 2)*/
+}
+
+// ProcessFramebufferResize ...
+func ProcessFramebufferResize(window str, width i32, height i32, scale i32) (){
+	printf("------------------------->>>>> ProcessResize %s, %d, %d\n", window, width, height)
 	resizeFullscreenQuad(width, height)
 	app.Resize(width, height)
 	gfx.Resize(width, height)

@@ -4,6 +4,9 @@ import "args"
 import "cx"
 import "glfw"
 import "os"
+import "mat"
+import "v2"
+import "v4"
 
 // TODO : handle position in options
 // TODO : handle fullscreen in options
@@ -38,6 +41,10 @@ type Application struct {
 	y i32
 	width i32
 	height i32
+	xscale f32
+	yscale f32
+	xy_scale mat.v2
+	xyxy_scale mat.v4
 	fullscreen bool
 }
 
@@ -62,6 +69,26 @@ func Width()(out i32) {
 // Height ...
 func Height()(out i32) {
 	out = g_application.height
+}
+
+// ScaleX ...
+func ScaleX()(out f32) {
+	out = g_application.xscale
+}
+
+// ScaleY ...
+func ScaleY()(out f32) {
+	out = g_application.yscale
+}
+
+// ScaleXY ...
+func ScaleXY()(out v2) {
+	out = g_application.xy_scale
+}
+
+// ScaleXYXY ...
+func ScaleXYXY()(out v4) {
+	out = g_application.xyxy_scale
 }
 
 // DataDir ...
@@ -174,15 +201,33 @@ func Init(name str, window str, major i32, minor i32) {
 	}
 
 	glfw.WindowHint(glfw.Resizable, resizable)
+	glfw.WindowHint(glfw.OpenGLForwardCompat, 1)
+	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.ContextVersionMajor, g_application.major)
 	glfw.WindowHint(glfw.ContextVersionMinor, g_application.minor)
-	glfw.CreateWindow(g_application.window, g_application.options.width, g_application.options.height, g_application.name)
+	//glfw.WindowHint(glfw.CocoaRetinaFramebuffer, glfw.True)
+	//glfw.WindowHint(glfw.ScaleToMonitor, glfw.True)
+
+	var xscale f32
+	var yscale f32
+	xscale, yscale = glfw.GetMonitorContentScale()
+
+	g_application.xscale = xscale
+	g_application.yscale = yscale
+	g_application.xy_scale = v2.make(xscale, yscale)
+	g_application.xyxy_scale = v4.make(xscale, yscale, xscale, yscale)
+
+	var windowWidth i32 = f32.i32(i32.f32(g_application.options.width) / xscale)
+	var windowHeight i32 = f32.i32(i32.f32(g_application.options.height) / yscale)
+
+	glfw.CreateWindow(g_application.window, windowWidth, windowHeight, g_application.name)
+
 	glfw.MakeContextCurrent(g_application.window)
 	glfw.SetWindowPosCallback(g_application.window, "windowPosCallback", "app")
 	glfw.SetWindowSizeCallback(g_application.window, "windowSizeCallback", "app")
 
 	g_application.x, g_application.y = glfw.GetWindowPos(g_application.window)
-	g_application.width, g_application.height = glfw.GetWindowSize(g_application.window)
+	g_application.width, g_application.height = glfw.GetFramebufferSize(g_application.window)
 
 	var swapInterval i32 = 0
 	if g_application.options.fps > 0 {
@@ -261,6 +306,11 @@ func SetMousePositionCallback(packageName str, functionName str) {
 
 // SetWindowResizeCallback ...
 func SetWindowResizeCallback(packageName str, functionName str) {
+	glfw.SetWindowSizeCallback(g_application.window, functionName, packageName)
+}
+
+// SetFramebufferResizeCallback ...
+func SetFramebufferResizeCallback(packageName str, functionName str) {
 	glfw.SetFramebufferSizeCallback(g_application.window, functionName, packageName)
 }
 

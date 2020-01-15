@@ -22,7 +22,7 @@ func LoadTrueType(name str, path str, scale i32, min i32, max i32, dir i32) (tex
 		//	if (range == true) {
 		//  var min i32 = ui32.i32(runes[0])
 		//  var max i32 = ui32.i32(runes[1])
-		gltext.LoadTrueType(handle, name, scale, min, max, dir) // ##0 release
+		gltext.LoadTrueTypeCore(handle, name, scale, min, max, dir) // ##0 release
 		//  }// else {
 		//  gltext.LoadTrueTypeEx(name, path, scale, runes, dir) // ##0 release
 		// }

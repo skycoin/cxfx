@@ -61,7 +61,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 func main()() {
 	// init
-	gam.Init("Text Tutorial", 800, 600, 60, "")
+	gam.Init("Text Tutorial", 1024, 768, 60, "")
 	var nameLen i32 = len(app.Name())
 	mesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, nameLen * 6, gfx.g_vertexLayout, nameLen * 4)
 	texture = gfx.TextureCreateFont(font, sprintf("%s/fonts/Skycoin-Regular.ttf", app.DataDir()),

@@ -95,7 +95,10 @@ func ShaderDefineGetStr(flag i64) (out str) {
 
 // ShaderDefineGetHeader ...
 func ShaderDefineGetHeader(flags i64) (out str) {
-	out = "#version 130\n"
+	out = "#version 150\n"
+	out = str.concat(out, "#define texture2D texture\n")
+	out = str.concat(out, "#define textureCube texture\n")
+	out = str.concat(out, "#define textureCubeLod textureLod\n")
 	for i := 0; i < 32; i++ {
 		var flag i64 = 1L << i32.i64(i)
 		if (flags & flag) == flag {

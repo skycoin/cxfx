@@ -29,7 +29,7 @@ func Init(name str, width i32, height i32, fps i32, dataDir str)() {
     app.g_application.options.dataDir = dataDir
 
     fps.Init(i32.ui32(app.Fps()))
-    app.Init(name, "mainWindow", 2, 1)
+    app.Init(name, "mainWindow", 3, 2)
     gfx.Init(app.Width(), app.Height(), app.DataDir())
     gui.Init(app.Width(), app.Height(), app.DataDir())
     snd.Init(64, 64)
