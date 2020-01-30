@@ -86,7 +86,6 @@ var g_skycoinTexture gfx.TextureId
 var g_skycoinAnim AnimationId
 
 var g_synthAnim AnimationId
-var g_synthAnim AnimationId
 
 var g_black             mat.v4 = v4.divf(v4.make( 30.0,  34.0,  39.0, 255.0), 255.0)
 var g_white             mat.v4 = v4.divf(v4.make(255.0, 251.0, 251.0, 255.0), 255.0)
@@ -237,14 +236,15 @@ func Init(width i32, height i32, dataDir str) {
 	//  printf("RUNES :%d\n", len(skycoinRunes))
 	//  skycoinRunes = ui32[]{ 32U, 127U
 
-	g_regularFont = FontCreate("skycoinRegular", sprintf("%s/fonts/Skycoin-Regular.ttf", dataDir),32, 127, gfx.TEXT_LEFT_TO_RIGHT)
+    printf("DATA_DIR>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s\n", dataDir)
+	g_regularFont = FontCreate("skycoinRegular", sprintf("%sfonts/Skycoin-Regular.ttf", dataDir),32, 127, gfx.TEXT_LEFT_TO_RIGHT)
 	FontAddSize(g_regularFont, g_fontSizeSmall)
 	FontAddSize(g_regularFont, g_fontSizeText)
 	FontAddSize(g_regularFont, g_fontSizeButton)
 	FontAddSize(g_regularFont, g_fontSizeHeader)
 	FontAddSize(g_regularFont, g_fontSizeTitle)
 
-	g_boldFont = FontCreate("skycoinBold", sprintf("%s/fonts/Skycoin-Bold.ttf", dataDir), 32, 127, gfx.TEXT_LEFT_TO_RIGHT)
+	g_boldFont = FontCreate("skycoinBold", sprintf("%sfonts/Skycoin-Bold.ttf", dataDir), 32, 127, gfx.TEXT_LEFT_TO_RIGHT)
 	FontAddSize(g_boldFont, g_fontSizeSmall)
 	FontAddSize(g_boldFont, g_fontSizeText)
 	FontAddSize(g_boldFont, g_fontSizeButton)
@@ -254,16 +254,16 @@ func Init(width i32, height i32, dataDir str) {
 	var awesomeRunes []i32
 	awesomeRunes = append(awesomeRunes, 61441)
 	awesomeRunes = append(awesomeRunes, 61444)
-	g_awesomeBoldFont = FontCreate("awesomeBold", sprintf("%s/fonts/fa-solid-900.ttf", dataDir), 61441, 61841, gfx.TEXT_LEFT_TO_RIGHT)
+	g_awesomeBoldFont = FontCreate("awesomeBold", sprintf("%sfonts/fa-solid-900.ttf", dataDir), 61441, 61841, gfx.TEXT_LEFT_TO_RIGHT)
 	FontAddSize(g_awesomeBoldFont, g_fontSizeSmall)
 	FontAddSize(g_awesomeBoldFont, g_fontSizeText)
 	FontAddSize(g_awesomeBoldFont, g_fontSizeHeader)
 
 
 	// textures
-	g_skycoinTexture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", dataDir), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+	g_skycoinTexture = gfx.TextureCreate(sprintf("%stextures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", dataDir), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
 
-	g_synthAnim = AnimationCreateFromPath(sprintf("%s/textures/synth.gif", dataDir))
+	g_synthAnim = AnimationCreateFromPath(sprintf("%stextures/synth.gif", dataDir))
 	g_skycoinAnim = AnimationCreateFromTexture(g_skycoinTexture)
 
 	// layers

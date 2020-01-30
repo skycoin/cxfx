@@ -6,7 +6,7 @@ import "gam"
 import "gfx"
 import "gui"
 import "mat"
-import "snd"
+//import "snd"
 import "phx"
 import "v1"
 import "v2"
@@ -101,6 +101,7 @@ var prf14 fps.ProfileId = fps.InvalidProfile()
 var prfUpdateAnimations fps.ProfileId = fps.InvalidProfile()
 var prfUpdatePositions fps.ProfileId = fps.InvalidProfile()
 var prfCameraUpdate fps.ProfileId = fps.InvalidProfile()
+var prfPhxEmit fps.ProfileId = fps.InvalidProfile()
 var prfPhxRemove fps.ProfileId = fps.InvalidProfile()
 var prfParticleUpdate fps.ProfileId = fps.InvalidProfile()
 var prfAlphaFull fps.ProfileId = fps.InvalidProfile()
@@ -156,7 +157,7 @@ var groundBack f32 = worldSizeZ / groundScale
 var groundWidth i32 = 16
 var groundHeight i32 = 16
 
-var voiceId snd.VoiceId
+//var voiceId snd.VoiceId
 
 var TAG_GROUND i32 = 1
 var TAG_PLAYER i32 = 2
@@ -559,13 +560,14 @@ func updatePlayers(dt f32)() {
 	fps.StopProfile(prfUpdatePlayers)
 }
 
+var fireCount i32
 func updateWeapons(dt f32)() {
 	prfUpdateWeapons = fps.CreateStartProfile(prfUpdateWeapons, "updateWeapons")
 	for i := 0; i < len(players); i++ {
 		if currentPlayer != i && currentCamera != CAMERA_FREE {
 			var cpuFire f32 = players[i].cpuFire
 			//var cpuZdir f32 = players[i].cpuZdir
-			if cpuFire > 2.5 {
+			if cpuFire > 4.0 {
 				cpuFire = 0.0
 				players[i].fireWeapon = 1
 			}
@@ -583,9 +585,10 @@ func updateWeapons(dt f32)() {
 		}
 		players[i].fireAnimLength = gfx.AnimationGetMax(players[i].throw.anim)
 
-		if players[i].fireWeapon > 0 && players[i].fireAnimTime < 0.0 {
+		if players[i].fireWeapon > 0 && players[i].fireAnimTime < 0.0 && fireCount < 15 {
 			players[i].fireAnimTime = 0.0
 			gfx.AnimationSetTime(players[i].throw.anim, 0.0)
+            fireCount = fireCount + 1
 		}
 
 		var nextFireAnimTime f32 = players[i].fireAnimTime + dt * 2.5
@@ -798,12 +801,12 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	//-------------------------------------------------------------------------
 	// PhxRemove
 	//-------------------------------------------------------------------------
-	prfPhxRemove = fps.CreateStartProfile(prfPhxRemove, "PhxRemove")
+    prfPhxEmit = fps.CreateStartProfile(prfPhxEmit, "PhxEmit")
 	phxRemoveList = resize(phxRemoveList, 0)
 
 	var collisions []phx.Collision = phx.GetCollisions()
 	var collisionCount i32 = len(collisions)
-	for colIndex := 0; colIndex < collisionCount; colIndex++ {
+    for colIndex := 0; colIndex < collisionCount; colIndex++ {
 		var col phx.Collision = collisions[colIndex]
 		if col.LeftTag == TAG_MINER && col.RightTag == TAG_MINER {
 			phxRemoveList = append(phxRemoveList, col.LeftIndex)
@@ -836,6 +839,8 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 			emitSmoke(col.Position, col.RightTag2)
 		}
 	}
+	fps.StopProfile(prfPhxEmit)
+	prfPhxRemove = fps.CreateStartProfile(prfPhxRemove, "PhxRemove")
 
 	phxSortedList = resize(phxSortedList, 0)
 	var removeCount i32 = len(phxRemoveList)
@@ -866,12 +871,12 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 					aimCount = aimCount - 1
 				}
 				phx.RemoveObject(toRemove)
+                fireCount = fireCount - 1
 			}
 			previousRemoved = toRemove
 		}
 	}
 	fps.StopProfile(prfPhxRemove)
-
 	//-------------------------------------------------------------------------
 	// ModelUpdate
 	//-------------------------------------------------------------------------
@@ -1179,9 +1184,9 @@ func writeEdges()() {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func skycoinOnUpdate(controlIndex i32, controlAction i32) {
-	if snd.VoiceState(voiceId) == snd.VOICE_STOPPED {
+	/*if snd.VoiceState(voiceId) == snd.VOICE_STOPPED {
 		snd.VoicePlay(voiceId)
-	}
+	}*/
 }
 
 //-----------------------------------------------------------------------------
@@ -1299,13 +1304,15 @@ func main()() {
 
 	// init
 	StartCPUProfile("skylight_init", 100)
-	gam.Init("skylight", 1024, 768, 60, "")
+	if gam.Init("skylight", 1024, 768, 60, "", gfx.GL_VERSION_NONE) == false {
+        return
+    }
 	phx.Init(30U, -9.8 * 0.1)
 
 	var width i32 = app.Width()
 	var height i32 = app.Height()
 
-	var scale i32 = 3
+	var scale i32 = 5
 
 	var halfWidth i32 = width / scale
 	var halfHeight i32 = height / scale
@@ -1410,8 +1417,8 @@ func main()() {
 	gam.CameraSetPosition(camera, v3.make(0.0, worldPosY + 1.0, 0.0), true)
 	gam.CameraSetYawPitch(camera, 0.0, 0.0, true)
 
-	var audioId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
-	voiceId = snd.VoiceCreate(audioId)
+	//var audioId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
+	//voiceId = snd.VoiceCreate(audioId)
 
    	// exitScreen
 	exitScreen  = gui.ScreenCreate("exitScreen")
@@ -1494,8 +1501,9 @@ func main()() {
 	gui.ControlSetSkin(titleScreen.base, gui.g_blackSkin)
 	gui.ControlSetDock(titleScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(titleScreen, 2.0D)
-	gui.ScreenSetOnNext(titleScreen, mainScreen)
-	{
+	//gui.ScreenSetOnNext(titleScreen, mainScreen)
+	gui.ScreenSetOnNext(titleScreen, gameScreen)
+    {
 		var label gui.LabelId= gui.LabelCreate("titleLabel")
 		gui.ControlAddChild(titleScreen.base, label.base)
 		gui.ControlSetBounds(label.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))

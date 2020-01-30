@@ -52,8 +52,10 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 func main()() {
 	// init
-	gam.Init("Colored Quad Tutorial", 1024, 768, 60, "")
-	var mesh gfx.MeshId = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6, gfx.g_vertexLayout, 4)
+	if gam.Init("Colored Quad Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE) == false {
+        return
+    }
+	mesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6, gfx.g_vertexLayout, 4)
 
 	// gameScreen
 	var gameScreen gui.ScreenId = gui.ScreenCreate("gameScreen")

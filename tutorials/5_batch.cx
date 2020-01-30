@@ -165,7 +165,9 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 func main()() {
 	// init
-	gam.Init("Batch Tutorial", 1024, 767, 60, "")
+	if gam.Init("Batch Tutorial", 1024, 767, 60, "", gfx.GL_VERSION_NONE) == false {
+        return
+    }
 
 	cubeMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 36)
 	groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)

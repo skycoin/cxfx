@@ -87,7 +87,7 @@ var g_debugMeshWire gfx.MeshId
 
 // Init ...
 func Init(targetFPS ui32, gforce f32) {
-	g_lockStep = fps.SecondToNano(1.0D) / ui32.i64(targetFPS)
+	g_lockStep = fps.SecondToNano(1.0D) / ui32.i64(30U)//targetFPS)
 	g_gforce = gforce
 
 	if g_debug {

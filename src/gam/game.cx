@@ -4,7 +4,7 @@ import "app"
 import "fps"
 import "gfx"
 import "gui"
-import "snd"
+//import "snd"
 
 // Globals ...
 var g_game Game
@@ -22,17 +22,24 @@ type Game struct {
 }
 
 // Init ...
-func Init(name str, width i32, height i32, fps i32, dataDir str)() {
+func Init(name str, width i32, height i32, fps i32, dataDir str, glVersion i32)(success bool) {
+    printf(">> GAME_INIT\n")
     app.g_application.options.width = width
     app.g_application.options.height = height
     app.g_application.options.fps = fps
     app.g_application.options.dataDir = dataDir
+    app.g_application.options.glVersion = gfx.GetGLVersionToString(glVersion)
 
     fps.Init(i32.ui32(app.Fps()))
-    app.Init(name, "mainWindow", 3, 2)
-    gfx.Init(app.Width(), app.Height(), app.DataDir())
+    if app.Init(name, "mainWindow") == false {
+        printf("App init failed...\n")
+        success = false
+        return
+    }
+
+    gfx.Init(app.Width(), app.Height(), app.DataDir(), app.GLVersion())
     gui.Init(app.Width(), app.Height(), app.DataDir())
-    snd.Init(64, 64)
+    //snd.Init(64, 64)
 
     g_game.prfSwap = fps.CreateProfile("swap")
     g_game.prfFrame = fps.CreateProfile("frame")
@@ -41,11 +48,15 @@ func Init(name str, width i32, height i32, fps i32, dataDir str)() {
     g_game.prfUIUpdate = fps.CreateProfile("ui update")
     g_game.prfUIResize = fps.CreateProfile("ui resize")
     g_game.prfRender = fps.CreateProfile("render")
+
+    success = true
+    printf("<< GAME_INIT\n")
 }
 
+var fakeExit f64
 // Run ...
 func Run(fpsUpdate ui32)() {
-    for app.Running() {
+    for app.Running()  && (fakeExit < 60.0D) {
         fps.BeginUpdate(fpsUpdate)
         fps.StartProfile(g_game.prfSwap)
         {
@@ -59,10 +70,11 @@ func Run(fpsUpdate ui32)() {
                 }
 
                 fps.StartProfile(g_game.prfSound)
-                snd.Update()
+                //snd.Update()
                 fps.StopProfile(g_game.prfSound)
 
                 fps.StartProfile(g_game.prfUIUpdate)
+                //fakeExit = fakeExit + fps.DeltaSecond()
                 gui.Update(fps.DeltaSecond())
                 fps.StopProfile(g_game.prfUIUpdate)
 
@@ -88,6 +100,6 @@ func Run(fpsUpdate ui32)() {
 // Destroy ...
 func Destroy() {
     app.Destroy()
-    snd.Destroy()
+    //snd.Destroy()
     gfx.Destroy()
 }

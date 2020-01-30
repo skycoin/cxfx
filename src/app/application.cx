@@ -3,6 +3,7 @@ package app
 import "args"
 import "cx"
 import "glfw"
+import "gfx"
 import "os"
 import "mat"
 import "v2"
@@ -25,6 +26,7 @@ type Options struct {
 	width i32
 	height i32
 	fps i32
+    glVersion str
 	hints i32
 	dataDir str
 }
@@ -37,7 +39,8 @@ type Application struct {
 	window str
 	major i32
 	minor i32
-	x i32
+    glVersion i32
+    x i32
 	y i32
 	width i32
 	height i32
@@ -51,14 +54,15 @@ type Application struct {
 // Help ...
 func Help(message str, exitCode i32) {
 	printf(message)
-	printf("Usage:\n")
-	printf("++help   : Prints this message.\n")
-	printf("++width  : Width in pixels\n")
-	printf("++height : Height in pixels\n")
-	printf("++fps    : Target framerate, vsyng disabled when >= 0\n")
-	printf("++hints  : Window hint flags (fullscreen, resizable)\n")
-	printf("++data   : Resource path\n")
-	os.Exit(exitCode)
+	printf("\nUsage:\n")
+	printf("++help      : Prints this message.\n")
+	printf("++width     : Width in pixels\n")
+	printf("++height    : Height in pixels\n")
+	printf("++fps       : Target framerate, vsyng disabled when >= 0\n")
+	printf("++hints     : Window hint flags (fullscreen, resizable)\n")
+	printf("++data      : Resource path\n")
+	printf("++glVersion : Select opengl version\n")
+    os.Exit(exitCode)
 }
 
 // Width ...
@@ -101,6 +105,11 @@ func Fps()(out i32) {
 	out = g_application.options.fps
 }
 
+// GLVersion ...
+func GLVersion()(out i32) {
+    out = g_application.glVersion
+}
+
 // Name ...
 func Name()(out str) {
 	out = g_application.name
@@ -122,7 +131,8 @@ func Parse() {
 	var hints i32
 	var dataDir str
 	var help bool
-	// << tmp issue #214
+	var glVersion str
+    // << tmp issue #214
 
 	var helpMatch bool
 	var widthMatch bool
@@ -130,6 +140,7 @@ func Parse() {
 	var fpsMatch bool
 	var hintsMatch bool
 	var dataDirMatch bool
+    var glVersionMatch bool
 
 	var hintNames []str
 	hintNames = []str {"fullscreen", "resizable" }
@@ -172,6 +183,15 @@ func Parse() {
 			continue
 		}
 
+
+        if args.Str(arg, "glVersion", &glVersion, &glVersionMatch) {
+            g_application.options.glVersion = glVersion
+		    if gfx.GetGLVersionFromString(glVersion) == gfx.GL_VERSION_NONE {
+                Help(sprintf("invalid value %s\n", arg), cx.PANIC)
+            }
+            continue
+        }
+
 		if args.Flags(arg, "hints", &hints, &hintsMatch, hintNames, hintValues) {
 			continue
 		}
@@ -180,21 +200,34 @@ func Parse() {
 	}
 }
 
-// Init ...
-func Init(name str, window str, major i32, minor i32) {
 
+// Init ...
+func Init(name str, window str) (success bool) {
 	g_application.exit = false
 	g_application.window = window
 	g_application.name = name
-	g_application.major = major
-	g_application.minor = minor
 
 	Parse()
+
+    g_application.glVersion = gfx.GetGLVersionFromString(g_application.options.glVersion)
+    printf("OpenGL Version :  %d, '%s'\n", g_application.glVersion, g_application.options.glVersion)
+
+    if g_application.glVersion == gfx.GL_VERSION_DS_3_2 {
+        g_application.major = 3
+        g_application.minor = 2
+    } else if g_application.glVersion == gfx.GL_VERSION_ES_3_1 {
+        g_application.major = 3
+        g_application.minor = 1
+    } else {
+        success = false
+        return
+    }
 
 	printf("starting %s...\n", g_application.name)
 
 	glfw.Init() // ##0 terminate
 
+    printf("GLFW DONE\n")
 	var resizable i32 = glfw.False
 	if (g_application.options.hints & APP_HINT_RESIZABLE) == APP_HINT_RESIZABLE {
 		resizable = glfw.True
@@ -228,6 +261,10 @@ func Init(name str, window str, major i32, minor i32) {
 
 	g_application.x, g_application.y = glfw.GetWindowPos(g_application.window)
 	g_application.width, g_application.height = glfw.GetFramebufferSize(g_application.window)
+    //g_application.width = g_application.width / 2
+    //g_application.height = g_application.height / 2
+    //g_application.width = g_application.options.width
+    //g_application.height = g_application.options.height
 
 	var swapInterval i32 = 0
 	if g_application.options.fps > 0 {
@@ -239,6 +276,8 @@ func Init(name str, window str, major i32, minor i32) {
 	if (g_application.options.hints & APP_HINT_FULLSCREEN) == APP_HINT_FULLSCREEN {
 		ToggleFullscreen()
 	}
+
+    success = true
 }
 
 // Exit ...

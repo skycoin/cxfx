@@ -116,6 +116,7 @@ func TargetBind(id TargetId) {
 
 // TargetAttachColor ...
 func TargetAttachColor(id TargetId, texture TextureId, i i32) {
+    //printf("TargetAttachColor\n")
 	panicIfNot(IsValidTarget(id), "")
 	targetAttachTexture(id, gl.COLOR_ATTACHMENT0 + i, texture)
 	var colors []TextureId = g_targets[id.target].colors
@@ -125,6 +126,7 @@ func TargetAttachColor(id TargetId, texture TextureId, i i32) {
 
 // TargetAttachDepth ...
 func TargetAttachDepth(id TargetId, depth TextureId) {
+    //printf("TargetAttachDepth\n")
 	panicIfNot(IsValidTarget(id), "")
 	targetAttachTexture(id, gl.DEPTH_ATTACHMENT, depth)
 	g_targets[id.target].depth = depth
@@ -132,6 +134,7 @@ func TargetAttachDepth(id TargetId, depth TextureId) {
 
 // TargetAttachStencil ...
 func TargetAttachStencil(id TargetId, stencil TextureId) {
+    printf("TargetAttachStencil\n")
 	panicIfNot(IsValidTarget(id), "invalid target")
 	targetAttachTexture(id, gl.STENCIL_ATTACHMENT, stencil)
 	g_targets[id.target].stencil = stencil
@@ -216,7 +219,8 @@ func ResizeTargets(width i32, height i32) {
 					if IsValidTexture(colors[c]) {
 						TextureResize(colors[c], targetWidth, targetHeight)
 						TextureSamplerState(colors[c], g_nearestClamp)
-						TargetAttachColor(id, colors[c], c)
+						printf("ResizeTargets\n")
+                        TargetAttachColor(id, colors[c], c)
 					}
 				}
 
@@ -240,8 +244,8 @@ func ResizeTargets(width i32, height i32) {
 
 func targetAttachTexture(id TargetId, attachment i32, texture TextureId) {
 	panicIfNot(IsValidTarget(id), "")
-	bindFramebuffer(g_targets[id.target].framebuffer)
 	//TexturePrint("targetAttachTexture", texture)
+	bindFramebuffer(g_targets[id.target].framebuffer)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, TextureName(texture), 0)
 	panicIf(GlError(), "gl.FramebufferTexture2D")
 	panicIf(GlStatus(), "gl.CheckFramebufferStatus")

@@ -76,6 +76,6 @@ void main()
 	vec4 accum = vec4(alpha0.rgb, alpha0.a);
 	float reveal = alpha0.a;
 
-	o_v4Color = vec4(invgamma(mix(opaque, 2.0 * accum.rgb / max(accum.a, 1e-5), clamp(0.3 * accum.a, 0, 1))), 1.0);
+	o_v4Color = vec4(invgamma(mix(opaque, 2.0 * accum.rgb / max(accum.a, 1e-5), clamp(0.3 * accum.a, 0.0, 1.0))), 1.0);
 #endif
 }

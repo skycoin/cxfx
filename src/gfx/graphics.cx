@@ -43,6 +43,11 @@ var ZERO i32 = gl.ZERO
 // Globals ...
 var DEBUG_0 mat.v4
 
+var GL_VERSION_NONE i32 = 0
+var GL_VERSION_DS_3_2 i32 = 1
+var GL_VERSION_ES_3_1 i32 = 2
+
+var g_glVersion i32 = 0
 var g_sizeofF32 i32 = 4
 var g_sizeofI32 i32 = 4
 var g_sizeofUI32 i32 = 4
@@ -164,7 +169,7 @@ func GlError() (error bool) {
 			} else if glerr == gl.OUT_OF_MEMORY {
 				printf("GL_OUT_OF_MEMORY\n")
 			} else if glerr != 0 {
-				panicIfNot(false, "invalid glError\n")
+				panicIfNot(false, sprintf("invalid glError %d\n", glerr))
 			}
 		}
 	}
@@ -220,6 +225,8 @@ func GlString(value i32) (out str) {
 		out = "TEXTURE_2D"
 	} else if value == gl.TEXTURE_CUBE_MAP {
 		out = "TEXTURE_CUBE_MAP"
+    } else if value == gl.RGBA8 {
+        out = "RGBA8"
 	} else {
 		out = "unknown gl enum"
 	}
@@ -281,12 +288,12 @@ func assignVector4(slot i32, value mat.v4) {
 
 func assignMatrix4(slot i32, value mat.m44, transpose bool) {
 	gl.UniformM44F(slot, transpose, value)
-	panicIf(GlError(), "gl.UniformM4f")
+	panicIf(GlError(), "gl.UniformM44F")
 }
 
 func assignMatrix4V(slot i32, value []mat.m44, transpose bool) {
 	gl.UniformM44FV(slot, len(value), transpose, value)
-	panicIf(GlError(), "gl.UniformM4f")
+	panicIf(GlError(), "gl.UniformM44FV")
 }
 
 func bindTexture(target i32, name i32) {
@@ -581,6 +588,7 @@ func SetViewport(bounds mat.v4) {
 	var width i32 = f32.i32(bounds.z)
 	var height i32 = f32.i32(bounds.w)
 
+    //printf("SET_VIEWPORT %f, %f, %f, %f\n", bounds.x, bounds.y, bounds.z, bounds.w)
 	if (gfx_viewportX != x ||
 		gfx_viewportY != y ||
 		gfx_viewportWidth != width ||
@@ -621,8 +629,31 @@ func SetScissor(bounds mat.v4) {
 }
 
 
+func GetGLVersion() (out i32) {
+    out = g_glVersion
+}
+
+func GetGLVersionFromString(glVersion str) (out i32) {
+    if glVersion == "gl32" {
+        out = GL_VERSION_DS_3_2
+    } else if glVersion == "gles31" {
+        out = GL_VERSION_ES_3_1
+    }
+}
+
+func GetGLVersionToString(glVersion i32) (out str) {
+    if glVersion == GL_VERSION_DS_3_2 {
+        out = "gl32"
+    } else if glVersion == GL_VERSION_ES_3_1 {
+        out = "gles31"
+    } else {
+        out = "unsupported"
+    }
+}
+
 // Init ...
-func Init(width i32, height i32, dataDir str)() {
+func Init(width i32, height i32, dataDir str, glVersion i32)() {
+    g_glVersion = glVersion
 	/*var view []f32
 	view = resize(view, 16)
 	State.View = view

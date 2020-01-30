@@ -18,7 +18,7 @@ func MeasureText(name str, text str) (w i32, h i32) {
 // LoadTrueType ...
 func LoadTrueType(name str, path str, scale i32, min i32, max i32, dir i32) (texture i32) {
 	var handle i32 = os.Open(path)
-	if handle >= 0 {
+    if handle >= 0 {
 		//	if (range == true) {
 		//  var min i32 = ui32.i32(runes[0])
 		//  var max i32 = ui32.i32(runes[1])
@@ -29,7 +29,7 @@ func LoadTrueType(name str, path str, scale i32, min i32, max i32, dir i32) (tex
 		if os.Close(handle) {
 		}
 		texture = gltext.Texture(name)
-	}
+    }
 }
 
 // GlyphBounds ...
@@ -49,7 +49,6 @@ func NextGlyph(name str, text str, index i32) (r i32, s i32, x i32, y i32, w i32
 
 // TextureCreateFont ...
 func TextureCreateFont(name str, path str, scale i32, min i32, max i32, dir i32, mipmap i32) (out TextureId) {
-
 	var glName i32 = LoadTrueType(name, path, scale, min, max, dir)
 	out = textureCreate(glName, TEXTURE_2D, FORMAT_R8_G8_B8_A8, 0, 0, mipmap, false)
 }

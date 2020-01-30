@@ -72,7 +72,9 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 func main()() {
 	// init
-	gam.Init("Camera Tutorial", 1024, 768, 60, "")
+	if gam.Init("Camera Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE) == false {
+        return
+    }
 	mesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 36)
 	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()),
 		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)

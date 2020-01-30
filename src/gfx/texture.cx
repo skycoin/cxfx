@@ -85,7 +85,7 @@ func TexturePrint(message str, id TextureId) {
 	panicIf(GlError(), "gl.GetTexLevelParameteriv")
 	var height i32 = gl.GetTexLevelParameteriv(face, 0, gl.TEXTURE_HEIGHT);
 	panicIf(GlError(), "gl.GetTexLevelParameteriv")
-	printf("%s : path '%s', name %d, width %d, height %d, mipmap %d, target %s, format %s, internal %s, pixel %s, type %s, glWidth %d, glHeight %d\n",
+	printf("%s : path '%s', name %d, width %d, height %d, mipmap %d, target %s, format %s, internal %d, %s, pixel %s, type %s, glWidth %d, glHeight %d\n",
 		message,
 		g_textures[id.texture].path,
 		g_textures[id.texture].name,
@@ -94,6 +94,7 @@ func TexturePrint(message str, id TextureId) {
 		g_textures[id.texture].mipmap,
 		GlString(g_textures[id.texture].target),
 		GfxString(g_textures[id.texture].format),
+        g_textures[id.texture].internalFormat,
 		GlString(g_textures[id.texture].internalFormat),
 		GlString(g_textures[id.texture].pixelFormat),
 		GlString(g_textures[id.texture].pixelType),
@@ -336,7 +337,7 @@ func getGlFormat(format i32) (internalFormat i32, pixelFormat i32, pixelType i32
 	if format == FORMAT_DEPTH24 {
 		internalFormat = gl.DEPTH_COMPONENT24
 		pixelFormat = gl.DEPTH_COMPONENT
-		pixelType = gl.UNSIGNED_BYTE
+		pixelType = gl.UNSIGNED_INT
 	} else if format == FORMAT_DEPTH24_STENCIL8 {
 		internalFormat = gl.DEPTH24_STENCIL8
 		pixelFormat = gl.DEPTH_STENCIL

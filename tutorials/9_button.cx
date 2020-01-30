@@ -247,7 +247,9 @@ func loadModel(path str, filename str, s f32, r f32, v f32) {
 //-----------------------------------------------------------------------------
 func main()() {
 	// init
-	gam.Init("Button Tutorial", 1024, 768, 60, "")
+	if gam.Init("Button Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE) == false {
+        return
+    }
 
 	skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
 	gfx.MeshBegin(skyMesh)
