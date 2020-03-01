@@ -2,10 +2,13 @@ package app
 
 import "args"
 import "cx"
+import "fps"
 import "glfw"
 import "gfx"
+import "gui"
 import "os"
 import "mat"
+import "snd"
 import "v2"
 import "v4"
 
@@ -13,7 +16,8 @@ import "v4"
 // TODO : handle fullscreen in options
 
 // Globals ...
-var g_application Application
+var g_app Application
+var fakeExit f64 // TODO : REMOVE
 
 // Constants ...
 var APP_HINT_NONE i32       = 0
@@ -35,6 +39,7 @@ type Options struct {
 type Application struct {
 	options Options
 	exit bool
+    visible bool
 	name str
 	window str
 	major i32
@@ -49,6 +54,14 @@ type Application struct {
 	xy_scale mat.v2
 	xyxy_scale mat.v4
 	fullscreen bool
+
+    prfSwap fps.ProfileId
+    prfFrame fps.ProfileId
+    prfUpdate fps.ProfileId
+    prfSound fps.ProfileId
+    prfUIUpdate fps.ProfileId
+    prfUIResize fps.ProfileId
+    prfRender fps.ProfileId
 }
 
 // Help ...
@@ -65,63 +78,235 @@ func Help(message str, exitCode i32) {
     os.Exit(exitCode)
 }
 
+// Run ...
+func Run(name str, width i32, height i32, fps i32, dataDir str, glVersion i32, fpsUpdate ui32) (success bool) {
+    g_app.options.width = width
+    g_app.options.height = height
+    g_app.options.fps = fps
+    g_app.options.dataDir = dataDir
+    g_app.options.glVersion = gfx.GetGLVersionToString(glVersion)
+
+    parse()
+
+	g_app.exit = false
+	g_app.window = name
+	g_app.name = name
+    g_app.glVersion = gfx.GetGLVersionFromString(g_app.options.glVersion)
+    printf("OpenGL Version :  %d, '%s'\n", g_app.glVersion, g_app.options.glVersion)
+
+    if g_app.glVersion == gfx.GL_VERSION_DS_3_2 {
+        g_app.major = 3
+        g_app.minor = 2
+    } else if g_app.glVersion == gfx.GL_VERSION_ES_3_1 {
+        g_app.major = 3
+        g_app.minor = 1
+    } else {
+        success = false
+        return
+    }
+    fps.Init(i32.ui32(Fps()))
+
+    //SetStartCallback("app", "StartCallback")
+    SetStopCallback("app", "StopCallback")
+
+    g_app.prfSwap = fps.CreateProfile("swap")
+    g_app.prfFrame = fps.CreateProfile("frame")
+    g_app.prfUpdate = fps.CreateProfile("update")
+    g_app.prfSound = fps.CreateProfile("sound")
+    g_app.prfUIUpdate = fps.CreateProfile("ui update")
+    g_app.prfUIResize = fps.CreateProfile("ui resize")
+    g_app.prfRender = fps.CreateProfile("render")
+
+    for Running()  && (fakeExit < 60.0D) {
+        fps.BeginUpdate(fpsUpdate)
+        glfw.PollEvents()
+        if Visible() {
+            fps.StartProfile(g_app.prfSwap)
+            {
+            	glfw.MakeContextCurrent(g_app.window)
+                fps.StartProfile(g_app.prfFrame)
+                {
+                    // Update ...
+                    fps.StartProfile(g_app.prfUpdate)
+                    {
+                        fps.StartProfile(g_app.prfSound)
+                        snd.Update()
+                        fps.StopProfile(g_app.prfSound)
+
+                        fps.StartProfile(g_app.prfUIUpdate)
+                        //fakeExit = fakeExit + fps.DeltaSecond()
+                        gui.Update(fps.DeltaSecond())
+                        fps.StopProfile(g_app.prfUIUpdate)
+
+                        fps.StartProfile(g_app.prfUIResize)
+                        gui.Resize()
+                        fps.StopProfile(g_app.prfUIResize)
+                    }
+                    fps.StopProfile(g_app.prfUpdate)
+
+                    // Render ...
+                    fps.StartProfile(g_app.prfRender)
+                    gui.Render()
+                    fps.StopProfile(g_app.prfRender)
+                }
+                fps.StopProfile(g_app.prfFrame)
+	            glfw.SwapBuffers(g_app.window)
+            }
+            fps.StopProfile(g_app.prfSwap)
+        }
+        fps.EndUpdate()
+    }
+}
+
 // Width ...
 func Width()(out i32) {
-	out = g_application.width
+	out = g_app.width
 }
 
 // Height ...
 func Height()(out i32) {
-	out = g_application.height
+	out = g_app.height
 }
 
 // ScaleX ...
 func ScaleX()(out f32) {
-	out = g_application.xscale
+	out = g_app.xscale
 }
 
 // ScaleY ...
 func ScaleY()(out f32) {
-	out = g_application.yscale
+	out = g_app.yscale
 }
 
 // ScaleXY ...
 func ScaleXY()(out v2) {
-	out = g_application.xy_scale
+	out = g_app.xy_scale
 }
 
 // ScaleXYXY ...
 func ScaleXYXY()(out v4) {
-	out = g_application.xyxy_scale
+	out = g_app.xyxy_scale
 }
 
 // DataDir ...
 func DataDir()(out str) {
-	out = g_application.options.dataDir
+	out = g_app.options.dataDir
 }
 
 // Fps ...
 func Fps()(out i32) {
-	out = g_application.options.fps
+	out = g_app.options.fps
 }
 
 // GLVersion ...
 func GLVersion()(out i32) {
-    out = g_application.glVersion
+    out = g_app.glVersion
 }
 
 // Name ...
 func Name()(out str) {
-	out = g_application.name
+	out = g_app.name
 }
 
 // WindowName ...
 func WindowName()(out str) {
-	out = g_application.window
+	out = g_app.window
 }
 
-// Parse ...
-func Parse() {
+// Exit ...
+func Exit() {
+	printf("exiting %s...\n", g_app.name)
+	g_app.exit = true
+}
+
+// ToggleFullscreen ...
+func ToggleFullscreen() {
+	var fullscreen bool = g_app.fullscreen == false
+	if fullscreen {
+		g_app.fullscreen = fullscreen
+	}
+	glfw.Fullscreen(g_app.window, fullscreen, g_app.x, g_app.y, g_app.options.width, g_app.options.height)
+	g_app.fullscreen = fullscreen
+}
+
+// Running ...
+func Running()(out bool) { // ISSUE : member function does not contain expressions
+    if Visible() {
+	out = (glfw.ShouldClose(g_app.window) == false && g_app.exit == false)
+    } else {
+    out = true
+    }
+}
+
+// Visible ...
+func Visible() (out bool) {
+    out = g_app.visible
+}
+
+// Resize ...
+func Resize(width i32, height i32) {
+	/*if g_app.fullscreen == false {
+		g_app.options.width = width
+		g_app.options.height = height
+	}*/
+
+	g_app.width = width
+	g_app.height = height
+}
+
+// Destroy ...
+func Destroy()() {
+	glfw.MakeContextCurrent(g_app.window)
+    snd.Destroy()
+    gfx.Destroy()
+}
+
+// SetStartCallback ...
+func SetStartCallback(packageName str, functionName str) {
+    glfw.SetStartCallback(g_app.window, functionName, packageName)
+}
+
+// SetStopCallback ...
+func SetStopCallback(packageName str, functionName str) {
+    glfw.SetStopCallback(g_app.window, functionName, packageName)
+}
+
+// SetKeyboardCallback ...
+func SetKeyboardCallback(packageName str, functionName str) {
+	glfw.SetKeyCallbackEx(g_app.window, functionName, packageName)
+}
+
+// SetMouseButtonCallback ...
+func SetMouseButtonCallback(packageName str, functionName str) {
+	glfw.SetMouseButtonCallbackEx(g_app.window, functionName, packageName)
+}
+
+// SetMousePositionCallback ...
+func SetMousePositionCallback(packageName str, functionName str) {
+	glfw.SetCursorPosCallbackEx(g_app.window, functionName, packageName)
+}
+
+// SetTouchCallback ...
+func SetTouchCallback(packageName str, functionName str) {
+    glfw.SetTouchCallback(g_app.window, functionName, packageName)
+}
+
+// SetFramebufferResizeCallback ...
+func SetFramebufferResizeCallback(packageName str, functionName str) {
+	glfw.SetFramebufferSizeCallback(g_app.window, functionName, packageName)
+}
+
+// SetWindowResizeCallback ...
+func SetWindowResizeCallback(packageName str, functionName str) {
+	glfw.SetWindowSizeCallback(g_app.window, functionName, packageName)
+}
+
+// SetWindowPositionCallback ...
+func SetWindowPositionCallback(packageName str, functionName str) {
+    glfw.SetWindowPosCallback(g_app.window, functionName, packageName)
+}
+
+func parse() {
 	var argc i32 = len(os.Args) // ISSUE : doubious compilation error : function 'len' expected receiving variable of type 'i32'; 'str' was provided
 
 	// >> tmp issue #214
@@ -158,7 +343,7 @@ func Parse() {
 			if (width < 0 || width > 65536) {
 				 Help(sprintf("invalid value %s\n", arg), cx.PANIC)
 			}
-			g_application.options.width = width
+			g_app.options.width = width
 			continue
 		}
 
@@ -166,7 +351,7 @@ func Parse() {
 			if (height < 0 || height > 65536) {
 				 Help(sprintf("invalid value %s\n", arg), cx.PANIC)
 			}
-			g_application.options.height = height
+			g_app.options.height = height
 			continue
 		}
 
@@ -174,18 +359,17 @@ func Parse() {
 			if (fps < 0 || fps > 65536) {
 				 Help(sprintf("invalid value %s\n", arg), cx.PANIC)
 			}
-			g_application.options.fps = fps
+			g_app.options.fps = fps
 			continue
 		}
 
 		if args.Str(arg, "data", &dataDir, &dataDirMatch) {
-			g_application.options.dataDir = dataDir
+			g_app.options.dataDir = dataDir
 			continue
 		}
 
-
         if args.Str(arg, "glVersion", &glVersion, &glVersionMatch) {
-            g_application.options.glVersion = glVersion
+            g_app.options.glVersion = glVersion
 		    if gfx.GetGLVersionFromString(glVersion) == gfx.GL_VERSION_NONE {
                 Help(sprintf("invalid value %s\n", arg), cx.PANIC)
             }
@@ -200,44 +384,22 @@ func Parse() {
 	}
 }
 
-
-// Init ...
-func Init(name str, window str) (success bool) {
-	g_application.exit = false
-	g_application.window = window
-	g_application.name = name
-
-	Parse()
-
-    g_application.glVersion = gfx.GetGLVersionFromString(g_application.options.glVersion)
-    printf("OpenGL Version :  %d, '%s'\n", g_application.glVersion, g_application.options.glVersion)
-
-    if g_application.glVersion == gfx.GL_VERSION_DS_3_2 {
-        g_application.major = 3
-        g_application.minor = 2
-    } else if g_application.glVersion == gfx.GL_VERSION_ES_3_1 {
-        g_application.major = 3
-        g_application.minor = 1
-    } else {
-        success = false
-        return
-    }
-
-	printf("starting %s...\n", g_application.name)
+func Init() {
+    g_app.visible = true
+	printf("app start : %s...\n", g_app.name)
 
 	glfw.Init() // ##0 terminate
-
-    printf("GLFW DONE\n")
-	var resizable i32 = glfw.False
-	if (g_application.options.hints & APP_HINT_RESIZABLE) == APP_HINT_RESIZABLE {
+   
+    var resizable i32 = glfw.False
+	if (g_app.options.hints & APP_HINT_RESIZABLE) == APP_HINT_RESIZABLE {
 		resizable = glfw.True
 	}
 
 	glfw.WindowHint(glfw.Resizable, resizable)
 	glfw.WindowHint(glfw.OpenGLForwardCompat, 1)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
-	glfw.WindowHint(glfw.ContextVersionMajor, g_application.major)
-	glfw.WindowHint(glfw.ContextVersionMinor, g_application.minor)
+	glfw.WindowHint(glfw.ContextVersionMajor, g_app.major)
+	glfw.WindowHint(glfw.ContextVersionMinor, g_app.minor)
 	//glfw.WindowHint(glfw.CocoaRetinaFramebuffer, glfw.True)
 	//glfw.WindowHint(glfw.ScaleToMonitor, glfw.True)
 
@@ -245,125 +407,78 @@ func Init(name str, window str) (success bool) {
 	var yscale f32
 	xscale, yscale = glfw.GetMonitorContentScale()
 
-	g_application.xscale = xscale
-	g_application.yscale = yscale
-	g_application.xy_scale = v2.make(xscale, yscale)
-	g_application.xyxy_scale = v4.make(xscale, yscale, xscale, yscale)
+	g_app.xscale = xscale
+	g_app.yscale = yscale
+	g_app.xy_scale = v2.make(xscale, yscale)
+	g_app.xyxy_scale = v4.make(xscale, yscale, xscale, yscale)
 
-	var windowWidth i32 = f32.i32(i32.f32(g_application.options.width) / xscale)
-	var windowHeight i32 = f32.i32(i32.f32(g_application.options.height) / yscale)
+	var windowWidth i32 = f32.i32(i32.f32(g_app.options.width) / xscale)
+	var windowHeight i32 = f32.i32(i32.f32(g_app.options.height) / yscale)
 
-	glfw.CreateWindow(g_application.window, windowWidth, windowHeight, g_application.name)
+	glfw.CreateWindow(g_app.window, windowWidth, windowHeight, g_app.name)
+	glfw.MakeContextCurrent(g_app.window)
 
-	glfw.MakeContextCurrent(g_application.window)
-	glfw.SetWindowPosCallback(g_application.window, "windowPosCallback", "app")
-	glfw.SetWindowSizeCallback(g_application.window, "windowSizeCallback", "app")
-
-	g_application.x, g_application.y = glfw.GetWindowPos(g_application.window)
-	g_application.width, g_application.height = glfw.GetFramebufferSize(g_application.window)
-    //g_application.width = g_application.width / 2
-    //g_application.height = g_application.height / 2
-    //g_application.width = g_application.options.width
-    //g_application.height = g_application.options.height
+	g_app.x, g_app.y = glfw.GetWindowPos(g_app.window)
+	g_app.width, g_app.height = glfw.GetFramebufferSize(g_app.window)
+    //g_app.width = g_app.width / 2
+    //g_app.height = g_app.height / 2
+    //g_app.width = g_app.options.width
+    //g_app.height = g_app.options.height
 
 	var swapInterval i32 = 0
-	if g_application.options.fps > 0 {
+	if g_app.options.fps > 0 {
 		swapInterval = 1 // should be based on targetFps
 	}
 
 	glfw.SwapInterval(swapInterval)
 
-	if (g_application.options.hints & APP_HINT_FULLSCREEN) == APP_HINT_FULLSCREEN {
+	if (g_app.options.hints & APP_HINT_FULLSCREEN) == APP_HINT_FULLSCREEN {
 		ToggleFullscreen()
 	}
 
-    success = true
+    SetFramebufferResizeCallback("app", "FramebufferResizeCallback")
+    SetWindowResizeCallback("app", "WindowResizeCallback")
+    SetWindowPositionCallback("app","WindowPositionCallback")
+
+
+    gfx.Init(Width(), Height(), DataDir(), GLVersion())
+    gui.Init(Width(), Height(), DataDir())
+    snd.Init(64, 64)
+
+    g_app.visible = true
 }
 
-// Exit ...
-func Exit() {
-	printf("exiting %s...\n", g_application.name)
-	g_application.exit = true
+func stopCallback() {
+    printf("app stop...\n")
 }
 
-// ToggleFullscreen ...
-func ToggleFullscreen() {
-	var fullscreen bool = g_application.fullscreen == false
-	if fullscreen {
-		g_application.fullscreen = fullscreen
-	}
-	glfw.Fullscreen(g_application.window, fullscreen, g_application.x, g_application.y, g_application.options.width, g_application.options.height)
-	g_application.fullscreen = fullscreen
+func StartCallback(window str) {
+    Init()
 }
 
-// Running ...
-func Running()(out bool) { // ISSUE : member function does not contain expressions
-	out = (glfw.ShouldClose(g_application.window) == false && g_application.exit == false)
+func StopCallback(window str) {
 }
 
-// Resize ...
-func Resize(width i32, height i32) {
-	/*if g_application.fullscreen == false {
-		g_application.options.width = width
-		g_application.options.height = height
-	}*/
-
-	g_application.width = width
-	g_application.height = height
+func FramebufferResizeCallback(window str, width i32, height i32) {
+	printf("------------------------->>>>> FramebufferResizeCallback %s, %d, %d\n", window, width, height)
+	gfx.Resize(width, height)
 }
 
-// Destroy ...
-func Destroy()() {
-	glfw.MakeContextCurrent(g_application.window)
-}
-
-// BeginFrame ...
-func BeginFrame() {
-	glfw.MakeContextCurrent(g_application.window)
-}
-
-// EndFrame ...
-func EndFrame() {
-	glfw.PollEvents()
-	glfw.SwapBuffers(g_application.window)
-}
-
-// SetKeyboardCallback ...
-func SetKeyboardCallback(packageName str, functionName str) {
-	glfw.SetKeyCallbackEx(g_application.window, functionName, packageName)
-}
-
-// SetMouseButtonCallback ...
-func SetMouseButtonCallback(packageName str, functionName str) {
-	glfw.SetMouseButtonCallbackEx(g_application.window, functionName, packageName)
-}
-
-// SetMousePositionCallback ...
-func SetMousePositionCallback(packageName str, functionName str) {
-	glfw.SetCursorPosCallbackEx(g_application.window, functionName, packageName)
-}
-
-// SetWindowResizeCallback ...
-func SetWindowResizeCallback(packageName str, functionName str) {
-	glfw.SetWindowSizeCallback(g_application.window, functionName, packageName)
-}
-
-// SetFramebufferResizeCallback ...
-func SetFramebufferResizeCallback(packageName str, functionName str) {
-	glfw.SetFramebufferSizeCallback(g_application.window, functionName, packageName)
-}
-
-func windowPosCallback(window str, x i32, y i32) {
-	if g_application.fullscreen == false {
-		g_application.x = x
-		g_application.y = y
+func WindowResizeCallback(window str, width i32, height i32) {
+	printf("------------------------->>>>> WindowResizeCallback %s, %d, %d\n", window, width, height)
+	/*app.Resize(width, height)
+	gfx.Resize(width * 2, height * 2)*/
+	if g_app.fullscreen == false {
+		g_app.options.width = width
+		g_app.options.height = height
 	}
 }
 
-func windowSizeCallback(window str, w i32, h i32) {
-	if g_application.fullscreen == false {
-		g_application.options.width = w
-		g_application.options.height = h
+func WindowPositionCallback(window str, x i32, y i32) {
+	if g_app.fullscreen == false {
+		g_app.x = x
+		g_app.y = y
 	}
 }
+
 

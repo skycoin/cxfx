@@ -59,10 +59,10 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func main()() {
-	// init
-	if gam.Init("Text Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE) {
-	var nameLen i32 = len(app.Name())
+func gameOnStart(window str) {
+    app.Init()
+
+    var nameLen i32 = len(app.Name())
 	mesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, nameLen * 6, gfx.g_vertexLayout, nameLen * 4)
 	texture = gfx.TextureCreateFont(font, sprintf("%s/fonts/Skycoin-Regular.ttf", app.DataDir()),
 		64, 32, 127, gfx.TEXT_LEFT_TO_RIGHT, -1)
@@ -74,14 +74,16 @@ func main()() {
 	gui.ScreenSetOnEvent(gameScreen, "main", "gameOnEvent")
 	gui.ScreenSetOnUpdate(gameScreen, "main", "gameOnUpdate")
 	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
-
-	// run
 	gui.ScreenShow(gameScreen)
-	gam.Run(2U)
+}
 
-	// destroy
-	gfx.MeshUnlock(mesh)
-	gam.Destroy()
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+	app.SetStartCallback("main", "gameOnStart")
+    if app.Run("Text Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
+	    gfx.MeshUnlock(mesh)
+	    gam.Destroy()
     }
 }
 

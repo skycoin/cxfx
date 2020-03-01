@@ -1083,7 +1083,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.EffectUse(gfx.g_fxEdge)
 	gfx.EffectAssignTexture(gfx.g_fxEdge, gfx.SAMPLER_COLOR_3, gfx.TargetGetDepth(opaqueTarget), gfx.g_nearestClamp)
 	gfx.EffectAssignV4(gfx.g_fxEdge, gfx.UNIFORM_TARGET_SIZE, gfx.TargetGetSize(opaqueTarget))
-	gfx.MeshRender(gui.g_fullscreenQuad)
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 //-------------------------------------------------------------------------
 // AlphaFull
@@ -1159,12 +1159,12 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.StencilState(true, gfx.EQUAL, 1, 1, gfx.KEEP, gfx.KEEP, gfx.KEEP, 0)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaFullTarget, 0), gfx.g_nearestClamp)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaFullTarget, 1), gfx.g_nearestClamp)
-	gfx.MeshRender(gui.g_fullscreenQuad)
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 	gfx.StencilState(true, gfx.EQUAL, 0, 1, gfx.KEEP, gfx.KEEP, gfx.KEEP, 0)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaTarget, 0), gfx.g_nearestClamp)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaTarget, 1), gfx.g_nearestClamp)
-	gfx.MeshRender(gui.g_fullscreenQuad)
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 	fps.StopProfile(prfGameOnRender)
 }
@@ -1177,8 +1177,7 @@ func writeEdges()() {
 
 	gfx.EffectUse(gfx.g_fxStencil)
 	gfx.EffectAssignTexture(gfx.g_fxStencil, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(edgeTarget, 0), gfx.g_nearestClamp)
-	gfx.MeshRender(gui.g_fullscreenQuad)
-
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 }
 
 //-----------------------------------------------------------------------------
@@ -1300,13 +1299,10 @@ func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func main()() {
+func gameOnStart(window str) {
+    StartCPUProfile("skylight_init", 100)
+    app.Init()
 
-	// init
-	StartCPUProfile("skylight_init", 100)
-	if gam.Init("skylight", 1024, 768, 60, "", gfx.GL_VERSION_NONE) == false {
-        return
-    }
 	phx.Init(30U, -9.8 * 0.1)
 
 	var width i32 = app.Width()
@@ -1538,17 +1534,21 @@ func main()() {
 	gui.ControlSetDock(bootScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(bootScreen, 2.0D)
 	gui.ScreenSetOnNext(bootScreen, skycoinScreen)
-
-	// run
 	gui.ScreenShow(bootScreen)
-	StopCPUProfile("skylight_init")
-	StartCPUProfile("skylight_run", 100)
-	gam.Run(2U)
 
-	// destroy
-	gfx.MeshUnlock(skyMesh)
-	gfx.MeshUnlock(groundMesh)
+    StopCPUProfile("skylight_init")
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+    StartCPUProfile("skylight_run", 100)
+	app.SetStartCallback("main", "gameOnStart")
+	if app.Run("skylight", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
+	    gfx.MeshUnlock(skyMesh)
+	    gfx.MeshUnlock(groundMesh)
+	    //gam.Destroy()//ISSUE : can't call gam.Destroy()
+    }
 	StopCPUProfile("skylight_run")
-	gam.Destroy()//ISSUE : can't call gam.Destroy()
 }
 

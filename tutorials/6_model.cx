@@ -210,14 +210,11 @@ func loadModel(path str, filename str, s f32, r f32, v f32) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func main()() {
-	// init
-	//StartCPUProfile("6_model_init", 100)
-	if gam.Init("Model Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE) == false {
-        return
-    }
+func gameOnStart(window str) {
+	StartCPUProfile("6_model_init", 100)
+	app.Init()
 
-	skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
+    skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
 	gfx.MeshBegin(skyMesh)
 	gfx.MeshAppendBox(skyMesh, false, true,
 		v3.ZERO,
@@ -245,7 +242,6 @@ func main()() {
 	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
-
 
 	groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
 	var groundScale f32 = 20.0
@@ -281,17 +277,20 @@ func main()() {
 	gui.ScreenSetOnEvent(gameScreen, "main", "gameOnEvent")
 	gui.ScreenSetOnUpdate(gameScreen, "main", "gameOnUpdate")
 	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
-
-	// run
 	gui.ScreenShow(gameScreen)
 	StopCPUProfile("6_model_init")
-	StartCPUProfile("6_model_run", 100)
-	gam.Run(2U)
+}
 
-	// destroy
-	gfx.MeshUnlock(skyMesh)
-	gfx.MeshUnlock(groundMesh)
-	StopCPUProfile("6_model_run")
-	gam.Destroy()//ISSUE : can't call gam.Destroy()
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+	StartCPUProfile("6_model_run", 100)
+    app.SetStartCallback("main", "gameOnStart")
+	if app.Run("Model Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
+	    gfx.MeshUnlock(skyMesh)
+	    gfx.MeshUnlock(groundMesh)
+	    //gam.Destroy()//ISSUE : can't call gam.Destroy()
+	}
+    StopCPUProfile("6_model_run")
 }
 

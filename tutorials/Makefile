@@ -5,10 +5,17 @@ SKYCOIN = $(GOPATH)/src/github.com/SkycoinProject
 CX = $(SKYCOIN)/cx
 CXFX = ..
 PPROF = --debug-profile=100
+GLVERSION = ++glVersion=gl32
 OPTS = $(PPROF)
 OPTS_MEM = $(OPTS) --stack-size=128M --heap-initial=800M -heap-max=800M
 
-DATA = $(CXFX)/resources/
+DATA = ++data=$(CXFX)/resources/
+GLVERSION = ++glVersion=gl32
+GLFWHINTS = ++hints=resizable
+FPS = ++fps=30
+
+CXFXOPTS = $(GLVERSION) $(DATA) ##$(GLFWHINTS)
+
 SRC = $(CX)/lib/args.cx\
 	  $(CX)/lib/json.cx\
 	  $(CXFX)/src/mat/math.cx\
@@ -61,39 +68,38 @@ SRC = $(CX)/lib/args.cx\
 	  $(CXFX)/src/snd/sounds.cx\
 	  $(CXFX)/src/snd/audio.cx\
 	  $(CXFX)/src/snd/voice.cx\
-	  $(CXFX)/src/gam/camera.cx\
-	  $(CXFX)/src/gam/game.cx
+	  $(CXFX)/src/gam/camera.cx
 
 0_colored_quad:
-	cx $(OPTS) $(SRC) 0_colored_quad.cx ++data=$(DATA) ##++hints=resizable
+	cx $(OPTS) $(SRC) 0_colored_quad.cx $(CXFXOPTS)
 
 1_textured_quad:
-	cx $(OPTS) $(SRC) 1_textured_quad.cx ++data=$(DATA)
+	cx $(OPTS) $(SRC) 1_textured_quad.cx $(CXFXOPTS)
 
 2_text:
-	cx $(OPTS) $(SRC) 2_text.cx ++data=$(DATA)
+	cx $(OPTS) $(SRC) 2_text.cx $(CXFXOPTS)
 
 3_perspective:
-	cx $(OPTS) $(SRC) 3_perspective.cx ++data=$(DATA)
+	cx $(OPTS) $(SRC) 3_perspective.cx $(CXFXOPTS)
 
 4_camera:
-	cx $(OPTS) $(SRC) 4_camera.cx ++data=$(DATA)
+	cx $(OPTS) $(SRC) 4_camera.cx $(CXFXOPTS)
 
 5_batch:
-	cx $(OPTS) $(SRC) 5_batch.cx ++data=$(DATA)
+	cx $(OPTS) $(SRC) 5_batch.cx $(CXFXOPTS)
 
 6_model:
-	cx $(OPTS_MEM) $(SRC) 6_model.cx ++data=$(DATA)
+	cx $(OPTS_MEM) $(SRC) 6_model.cx $(CXFXOPTS)
 
 7_menu:
-	cx $(OPTS_MEM) $(SRC) 7_menu.cx ++data=$(DATA)
+	cx $(OPTS_MEM) $(SRC) 7_menu.cx $(CXFXOPTS)
 
 8_sound:
-	cx $(OPTS_MEM) $(SRC) 8_sound.cx ++data=$(DATA)
+	cx $(OPTS_MEM) $(SRC) 8_sound.cx $(CXFXOPTS)
 
 9_button:
-	cx $(OPTS_MEM) $(SRC) 9_button.cx ++data=$(DATA)
+	cx $(OPTS_MEM) $(SRC) 9_button.cx $(CXFXOPTS)
 
 10_dialog:
-	cx $(OPTS_MEM) $(SRC) 10_dialog.cx ++data=$(DATA)
+	cx $(OPTS_MEM) $(SRC) 10_dialog.cx $(CXFXOPTS)
 

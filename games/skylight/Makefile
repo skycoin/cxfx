@@ -3,12 +3,21 @@
 GOPATH := $(subst \,/,${GOPATH})
 SKYCOIN = $(GOPATH)/src/github.com/SkycoinProject
 CX = $(SKYCOIN)/cx
-
-##CXFX = $(SKYCOIN)/cxfx
 CXFX = ../..
+PPROF = --debug-profile=100
+GLVERSION = ++glVersion=gl32
+OPTS = $(PPROF)
+OPTS_MEM = $(OPTS) --stack-size=128M --heap-initial=800M -heap-max=800M
+
+DATA = ++data=$(CXFX)/resources/
+GLVERSION = ++glVersion=gl32
+GLFWHINTS = ++hints=resizable
+FPS = ++fps=30
+
+CXFXOPTS = $(GLVERSION) $(DATA) ##$(GLFWHINTS)
+
 SKYLIGHT = .
 
-DATA = $(CXFX)/resources/
 SRC = $(CX)/lib/args.cx\
 	  $(CX)/lib/json.cx\
 	  $(CXFX)/src/mat/math.cx\
@@ -62,9 +71,8 @@ SRC = $(CX)/lib/args.cx\
 	  $(CXFX)/src/gui/binder.cx\
 	  $(CXFX)/src/gui/combo.cx\
 	  $(CXFX)/src/gam/camera.cx\
-	  $(CXFX)/src/gam/game.cx\
 	  $(CXFX)/src/phx/physics.cx
 
 skylight:
-	cx --stack-size=128M --heap-initial=800M --heap-max=800M --debug-profile=100 $(SRC) $(SKYLIGHT)/src/skylight.cx ++data=$(DATA) ++hints=resizable ##++fps=30
+	cx $(OPTS_MEM) $(SRC) $(SKYLIGHT)/src/skylight.cx $(CXFXOPTS)
 

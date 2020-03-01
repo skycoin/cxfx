@@ -223,13 +223,10 @@ func loadModel(path str, filename str, s f32, r f32, v f32) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func main()() {
-	// init
-	if gam.Init("Sound Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE) == false {
-        return
-    }
+func gameOnStart(window str) {
+    app.Init()
 
-	skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
+    skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
 	gfx.MeshBegin(skyMesh)
 	gfx.MeshAppendBox(skyMesh, false, true,
 		v3.ZERO,
@@ -338,14 +335,17 @@ func main()() {
 	gui.ControlSetDock(bootScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(bootScreen, 2.0D)
 	gui.ScreenSetOnNext(bootScreen, skycoinScreen)
-
-	// run
 	gui.ScreenShow(bootScreen)
-	gam.Run(2U)
+}
 
-	// destroy
-	gfx.MeshUnlock(skyMesh)
-	gfx.MeshUnlock(groundMesh)
-	//gam.Destroy()//ISSUE : can't call gam.Destroy()()
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+    app.SetStartCallback("main", "gameOnStart")
+    if app.Run("Sound Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
+	    gfx.MeshUnlock(skyMesh)
+	    gfx.MeshUnlock(groundMesh)
+	    //gam.Destroy()//ISSUE : can't call gam.Destroy()()
+    }
 }
 
