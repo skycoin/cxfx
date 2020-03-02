@@ -9,7 +9,8 @@ var BUTTON_RIGHT i32 = 1
 
 var MOUSE_RELEASE i32 = 0
 var MOUSE_PRESS   i32 = 1
-var MOUSE_MOVE    i32 = 38
+var MOUSE_REPEATE i32 = 2
+var MOUSE_MOVE    i32 = 3
 
 var KEY_RELEASE i32 = 0
 var KEY_PRESS   i32 = 1
@@ -67,7 +68,8 @@ type KeyboardEvent struct {
 type MouseEvent struct {
 	position mat.v2
 	button i32
-	action i32
+	touch i64
+    action i32
 	mods i32
 }
 

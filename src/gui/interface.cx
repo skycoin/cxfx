@@ -209,9 +209,7 @@ var g_renderExTarget TargetId
 // Init ...
 func Init(width i32, height i32, dataDir str) {
 	app.SetKeyboardCallback("gui", "KeyboardCallback")
-	app.SetMouseButtonCallback("gui", "MouseButtonCallback")
-	app.SetMousePositionCallback("gui", "MousePositionCallback")
-    app.SetTouchCallback("gui", "TouchCallback")
+	app.SetMouseCallback("gui", "MouseCallback")
 
     // meshes
 	g_opaqueVertexColoredTriangles = gfx.MeshCreate(gl.TRIANGLES, gl.UNSIGNED_SHORT, 2048 * 3, gfx.g_vertexLayout, 2048 * 3)
@@ -343,8 +341,21 @@ func ComputeDepth(stack i32) (out f32) {
 	out = i32.f32(stack) / 100.0
 }
 
-// MousePositionCallback ...
-func MousePositionCallback(window str, x f64, y f64) {
+// KeyboardCallback ...
+func KeyboardCallback(window str, key i32, scancode i32, action i32, mods i32) () {
+	//printf("keyboard : %s, %d, scancode %d, action %d, mods %d\n", window, key, scancode, action, mods)
+
+	var event app.Event = app.InvalidEvent()
+	event.keyboard.key = key
+	event.keyboard.scancode = scancode
+	event.keyboard.action = action
+	event.keyboard.mods = mods
+
+	g_events = append(g_events, event)
+}
+
+// MouseCallback ...
+func MouseCallback(window str, key i32, scancode i64, action i32, mods i32, x f64, y f64) {
 
 	var sx f32 = f64.f32(x) * app.ScaleX()
 	var sy f32 = f64.f32(y) * app.ScaleY()
@@ -356,44 +367,16 @@ func MousePositionCallback(window str, x f64, y f64) {
 	g_cursorPos.y = yy
 
 	var event app.Event = app.InvalidEvent()
-	event.mouse.position = g_cursorPos
-	event.mouse.action = app.MOUSE_MOVE
-
-	//printf("cursor : %f, %f, scaled %f, %f\n", xx, yy, g_cursorPos.x, g_cursorPos.y)
-	g_events = append(g_events, event)
-}
-
-// MouseButtonCallback ...
-func MouseButtonCallback(window str, key i32, action i32, mods i32) {
-	//printf("button : %s, %d, %d, %d\n", window, key, action, mods)
-
-	var event app.Event = app.InvalidEvent()
-	event.mouse.button = key
-	event.mouse.action = action
-	event.mouse.mods = mods
+    event.mouse.button = key
+    event.mouse.touch = scancode
+    event.mouse.action = action
+    event.mouse.mods = mods
 	event.mouse.position = g_cursorPos
 
+	printf("mouse: %s, %d, scancode %d, action %d, mods %d, %f, %f, scaled %f, %f\n",
+     window, key, scancode, action, mods, xx, yy, g_cursorPos.x, g_cursorPos.y)
 	g_events = append(g_events, event)
 }
-
-// KeyboardCallback ...
-func KeyboardCallback(window str, key i32, scancode i32, action i32, mods i32) () {
-	//printf("key pressed : %s, %d, scancode %d, action %d, mods %d\n", window, key, scancode, action, mods)
-
-	var event app.Event = app.InvalidEvent()
-	event.keyboard.key = key
-	event.keyboard.scancode = scancode
-	event.keyboard.action = action
-	event.keyboard.mods = mods
-
-	g_events = append(g_events, event)
-}
-
-// TouchCallback ...
-func TouchCallback(window str, x i32, y i32) {
-    var event app.Event = app.InvalidIvent()
-}
-
 
 // ProcessEvents ...
 func ProcessEvents() () {

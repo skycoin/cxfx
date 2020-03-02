@@ -273,22 +273,12 @@ func SetStopCallback(packageName str, functionName str) {
 
 // SetKeyboardCallback ...
 func SetKeyboardCallback(packageName str, functionName str) {
-	glfw.SetKeyCallbackEx(g_app.window, functionName, packageName)
+	glfw.SetKeyboardCallback(g_app.window, functionName, packageName)
 }
 
-// SetMouseButtonCallback ...
-func SetMouseButtonCallback(packageName str, functionName str) {
-	glfw.SetMouseButtonCallbackEx(g_app.window, functionName, packageName)
-}
-
-// SetMousePositionCallback ...
-func SetMousePositionCallback(packageName str, functionName str) {
-	glfw.SetCursorPosCallbackEx(g_app.window, functionName, packageName)
-}
-
-// SetTouchCallback ...
-func SetTouchCallback(packageName str, functionName str) {
-    glfw.SetTouchCallback(g_app.window, functionName, packageName)
+// SetMouseCallback ...
+func SetMouseCallback(packageName str, functionName str) {
+	glfw.SetMouseCallback(g_app.window, functionName, packageName)
 }
 
 // SetFramebufferResizeCallback ...
