@@ -1308,7 +1308,7 @@ func gameOnStart(window str) {
 	var width i32 = app.Width()
 	var height i32 = app.Height()
 
-	var scale i32 = 5
+	var scale i32 = 2
 
 	var halfWidth i32 = width / scale
 	var halfHeight i32 = height / scale
