@@ -38,6 +38,23 @@ func VoiceState(id VoiceId) (out i32) {
 	out = g_voices[id.voice].state
 }
 
+// VoiceGetSource ...
+func VoiceGetSource(id VoiceId) (out i32) {
+	panicIfNot(IsValidVoice(id), "invalid id")
+    out = g_voices[id.voice].source
+}
+
+// VoiceGetUsedCount ...
+func VoiceGetUsedCount() (out i32) {
+    out = len(g_used)
+}
+
+// VoiceGetUsed ...
+func VoiceGetUsed(index i32) (out VoiceId) {
+    panicIfNot(index >= 0 && index < len(g_used), "invalid id")
+    out = g_used[index]
+}
+
 // VoiceCreate ...
 func VoiceCreate(id AudioId) (out VoiceId) {
 	panicIfNot(IsValidAudio(id), "invalid id")
