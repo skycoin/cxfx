@@ -373,8 +373,8 @@ func MouseCallback(window str, key i32, scancode i64, action i32, mods i32, x f6
     event.mouse.mods = mods
 	event.mouse.position = g_cursorPos
 
-	printf("mouse: %s, %d, scancode %d, action %d, mods %d, %f, %f, scaled %f, %f\n",
-     window, key, scancode, action, mods, xx, yy, g_cursorPos.x, g_cursorPos.y)
+	//printf("mouse: %s, %d, scancode %d, action %d, mods %d, %f, %f, scaled %f, %f\n",
+    // window, key, scancode, action, mods, xx, yy, g_cursorPos.x, g_cursorPos.y)
 	g_events = append(g_events, event)
 }
 
