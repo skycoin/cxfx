@@ -1237,7 +1237,7 @@ func onExitDialogYes(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 func loadModel(path str, filename str, options i32) (out gfx.ModelId) {
 	printf("loading '%s/%s'\n", path, filename)
-	out = gfx.ModelCreateFromFile(sprintf("%s/models/%s/", app.DataDir(), path), filename, options)
+	out = gfx.ModelCreateFromFile(sprintf("%s/models/skylight/%s/", app.DataDir(), path), filename, options)
 }
 
 //-----------------------------------------------------------------------------
