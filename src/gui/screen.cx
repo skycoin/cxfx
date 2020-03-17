@@ -257,6 +257,9 @@ func ScreenShow(id ScreenId) () {
 // ScreenUpdate ...
 func ScreenUpdate(id ScreenId, deltaTime f64) () {
 	panicIfNot(IsValidScreen(id), "invalid id")
+
+    ControlUpdate(id.base, deltaTime)
+
 	var t f64 = g_screens[id.screen].time
 	var d f64 = g_screens[id.screen].duration
 

@@ -108,6 +108,10 @@ SRC = $(CX_SRC)/lib/args.cx\
 	  $(CXFX_SRC)/src/gam/camera.cx\
 	  $(CXFX_SRC)/src/phx/physics.cx
 
+.PHONY:all
+all:skylight
+
+.PHONY:copy_android_assets
 copy_android_assets:
 	$(call CXCP, $(CXFX)/resources/audios/, $(CXFX_ASSETS)/audios/)
 	$(call CXCP, $(CXFX)/resources/fonts/, $(CXFX_ASSETS)/fonts/)
@@ -116,61 +120,73 @@ copy_android_assets:
 	$(call CXCP, $(CXFX)/src/, $(CX_ASSETS)/cxfx/src/)
 	$(call CXCP, $(CX)/lib/, $(CX_ASSETS)/lib/)
 
+.PHONY:copy_android_tutorials_assets
 copy_android_tutorials_assets: $(COPY_ASSETS)
 	$(call CXCP, $(CXFX)/resources/models/glTF-Sample-Models/DamagedHelmet/, $(CXFX_ASSETS)/models/glTF-Sample-Models/DamagedHelmet/)
 	$(call CXCP, $(CXFX)/tutorials/, $(CX_ASSETS)/cxfx/tutorials/)
 
+.PHONY:copy_android_skylight_assets
 copy_android_skylight_assets: $(COPY_ASSETS)
 	$(call CXCP, $(CXFX)/resources/models/skylight/, $(CXFX_ASSETS)/models/skylight/)
 	$(call CXCP, $(CXFX)/games/skylight/src/, $(CX_ASSETS)/cxfx/games/skylight/src/)
 
+.PHONY:tuto0
 tuto0: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) colored quad tutorial...
 	$(call runcx,$(TUTORIALS)/0_colored_quad.cx)
 
+.PHONY:tuto1
 tuto1: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) textured quad tutorial...
 	$(call runcx,$(TUTORIALS)/1_textured_quad.cx)
 
+.PHONY:tuto2
 tuto2: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) text tutorial...
 	$(call runcx,$(TUTORIALS)/2_text.cx)
 
+.PHONY:tuto3
 tuto3: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) perspective tutorial...
 	$(call runcx,$(TUTORIALS)/3_perspective.cx)
 
+.PHONY:tuto4
 tuto4: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) camera tutorial...
 	$(call runcx,$(TUTORIALS)/4_camera.cx)
 
+.PHONY:tuto5
 tuto5: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) batch tutorial...
 	$(call runcx,$(TUTORIALS)/5_batch.cx)
 
+.PHONY:tuto6
 tuto6: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) model tutorial...
 	$(call runcx,$(TUTORIALS)/6_model.cx)
 
+.PHONY:tuto7
 tuto7: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) menu tutorial...
 	$(call runcx,$(TUTORIALS)/7_menu.cx)
 
+.PHONY:tuto8
 tuto8: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) sound tutorial...
 	$(call runcx,$(TUTORIALS)/8_sound.cx)
 
+.PHONY:tuto9
 tuto9: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) button tutorial...
 	$(call runcx,$(TUTORIALS)/9_button.cx)
 
+.PHONY:tuto10
 tuto10: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) dialog tutorial...
 	$(call runcx,$(TUTORIALS)/10_dialog.cx)
 
+.PHONY:skylight
 skylight: $(COPY_SKYLIGHT_ASSETS)
 	@echo $(STATE) skylight...
 	$(call runcx,$(SKYLIGHT)/skylight.cx)
-
-
 

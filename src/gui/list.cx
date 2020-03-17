@@ -118,7 +118,7 @@ func ListLineAddLabel(id ControlId, text str, align i32, color mat.v4, size i32,
 }
 
 // ListLineAddPicture ...
-func ListLineAddPicture(id ControlId, align i32, animation AnimationId) {
+func ListLineAddPicture(id ControlId, align i32, animation AnimationId, loop bool, rate i32) {
 	panicIfNot(IsValidControl(id), "invalid id")
 
 	var lineName str = g_controls[id.control].name
@@ -135,7 +135,7 @@ func ListLineAddPicture(id ControlId, align i32, animation AnimationId) {
 	ControlSetAutoscale(label.base, AUTOSCALE)
 	//ControlSetAlign(label, align)
 	PictureSetAlign(label, align)
-	PictureSetAnimation(label, animation)
+	PictureSetAnimation(label, animation, loop, rate)
 	/*LabelSetFont(label, g_regularFont)
 	LabelSetText(label, text)
 	LabelSetSize(label, size)

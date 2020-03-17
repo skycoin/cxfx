@@ -242,8 +242,11 @@ func gameOnStart(window str) {
 	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
-
-	groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
+    loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
+    loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
+    loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
+    loadModel("skylight/skyminer/high", "scene.gltf", 10.0, 0.0, 1.0)
+    groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
 	var groundScale f32 = 20.0
 	gfx.MeshBegin(groundMesh)
 	gfx.MeshAppendPlane(groundMesh, false, true,
