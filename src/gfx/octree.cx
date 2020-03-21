@@ -1,0 +1,106 @@
+package gfx
+
+// Globals ...
+var g_octrees []Octree
+var g_octreeCells []mat.v3
+
+// Types ...
+type Octree struct {
+    debugMesh MeshId
+    center mat.v3
+    size mat.v3
+    min mat.v3
+    max mat.v3
+    maxLevel i32
+    centers []mat.v3
+    sizes []mat.v3
+    mins []mat.v3
+    maxs []mat.v3
+    corners []mat.v3
+}
+
+// OctreeId ...
+type OctreeId struct {
+    octree i32
+}
+
+// InvalidOctree ...
+func InvalidOctree() (out OctreeId) {
+    out.octree = -1
+}
+
+// OctreeIsValid ...
+func OctreeIsValid(id OctreeId) (out bool) {
+    out = id.octree >= 0 && id.octree < len(g_octrees)
+}
+
+// OctreeCreate ...
+func OctreeCreate(min mat.v3, max mat.v3, maxLevel i32)(out OctreeId) {
+    printf("OCTREE_CREATE\n")
+    out.octree = len(g_octrees)
+
+    var octree Octree
+    octree.debugMesh = MeshCreate(LINES, UNSIGNED_SHORT, 10 * 8192 * 3, g_vertexLayout, 10 * 8192 * 3)
+    octree.size = v3.sub(max, min)
+    octree.center = v3.add(min, v3.mulf(octree.size, 0.5))
+    octree.min = min
+    octree.max = max
+    octree.maxLevel = maxLevel
+
+    g_octrees = append(g_octrees, octree)
+    g_octreeCells = append(g_octreeCells, v3.make( 1.0,  1.0,  1.0))
+    g_octreeCells = append(g_octreeCells, v3.make( 1.0,  1.0, -1.0))
+    g_octreeCells = append(g_octreeCells, v3.make( 1.0, -1.0,  1.0))
+    g_octreeCells = append(g_octreeCells, v3.make( 1.0, -1.0, -1.0))
+    g_octreeCells = append(g_octreeCells, v3.make(-1.0,  1.0,  1.0))
+    g_octreeCells = append(g_octreeCells, v3.make(-1.0,  1.0, -1.0))
+    g_octreeCells = append(g_octreeCells, v3.make(-1.0, -1.0,  1.0))
+    g_octreeCells = append(g_octreeCells, v3.make(-1.0, -1.0, -1.0))
+    octreeUpdate(out)
+}
+
+// OctreeUpdate ...
+func OctreeUpdate(id OctreeId) {
+    panicIfNot(OctreeIsValid(id), "invalid id")
+}
+
+// OctreeRender ...
+func OctreeRender(id OctreeId, world mat.m44, view mat.m44, projection mat.m44) {
+    panicIfNot(OctreeIsValid(id), "invalid id")
+
+    DepthState(true, LESS, false)
+	EffectUse(g_fxVertexColor3D)
+	EffectAssignM44(g_fxVertexColor3D, UNIFORM_WORLD, world, false)
+	EffectAssignM44(g_fxVertexColor3D, UNIFORM_VIEW, view, false)
+	EffectAssignM44(g_fxVertexColor3D, UNIFORM_PROJECTION, projection, false)
+	MeshRender(g_octrees[id.octree].debugMesh)
+}
+
+func octreeUpdate(id OctreeId) {
+    MeshBegin(g_octrees[id.octree].debugMesh)
+
+    octreeUpdateLevel(id, 0, g_octrees[id.octree].center, g_octrees[id.octree].size)
+
+    MeshEnd(g_octrees[id.octree].debugMesh)
+}
+
+func octreeUpdateLevel(id OctreeId, level i32, center mat.v3, size mat.v3) {
+    printf("octreeUpdateLevel %d\n", level)
+
+    if level < g_octrees[id.octree].maxLevel {
+        var childSize mat.v3 = v3.mulf(size, 0.5)
+        var childLevel i32 = level + 1
+        var childOffset mat.v3 = v3.mulf(childSize, 0.5)
+        MeshAppendBox(g_octrees[id.octree].debugMesh, true, false,
+            center, v3.make(center.x, 0.0, 0.0), v3.make(0.0, center.y, 0.0), v3.make(0.0, 0.0, center.z),
+            v4.GREEN)
+
+        for i := 0; i < 8; i++ {
+            var childCenter mat.v3 = v3.add(center, v3.mul(g_octreeCells[i], childOffset))
+            octreeUpdateLevel(id, childLevel, childCenter, childSize)
+        }
+    }
+}
+
+
+

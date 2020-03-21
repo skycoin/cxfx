@@ -81,6 +81,7 @@ SRC = $(CX_SRC)/lib/args.cx\
 	  $(CXFX_SRC)/src/gfx/text.cx\
 	  $(CXFX_SRC)/src/gfx/target.cx\
 	  $(CXFX_SRC)/src/gfx/scissor.cx\
+	  $(CXFX_SRC)/src/gfx/octree.cx\
 	  $(CXFX_SRC)/src/gui/callback.cx\
 	  $(CXFX_SRC)/src/gui/layer.cx\
 	  $(CXFX_SRC)/src/gui/skin.cx\

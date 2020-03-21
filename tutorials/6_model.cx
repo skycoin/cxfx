@@ -31,6 +31,7 @@ var skyDiffuse gfx.TextureId = gfx.InvalidTexture()
 var skySpecular gfx.TextureId = gfx.InvalidTexture()
 var brdf gfx.TextureId = gfx.InvalidTexture()
 
+var octree gfx.OctreeId = gfx.InvalidOctree()
 
 var world mat.m44
 
@@ -153,6 +154,8 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 		gfx.AnimationUpdate(anim, step, true, -1.0)
 	}
 	gfx.ModelUpdate(model, anim, step, true)
+
+    gfx.OctreeUpdate(octree)
 }
 
 //-----------------------------------------------------------------------------
@@ -195,6 +198,8 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.ModelSetBRDF(model, brdf)
 	gfx.ModelSetCameraPosition(model, cameraPosition)
 	gfx.ModelRender(model)
+
+    gfx.OctreeRender(octree, m44.IDENTITY, view, projection)
 }
 
 //-----------------------------------------------------------------------------
@@ -222,6 +227,7 @@ func gameOnStart(window str) {
 		v4.ONE)
 	gfx.MeshEnd(skyMesh)
 
+    octree = gfx.OctreeCreate(v3.makef(-100.0), v3.makef(100.0), 4)
 	//loadModel("glTF-Sample-Models/Box/glTF", "Box.gltf", 1.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/BoxAnimated/glTF", "BoxAnimated.gltf", 1.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/NormalTangentTest/glTF", "NormalTangentTest.gltf", 3.0, 1.0, 1.0)
@@ -242,10 +248,10 @@ func gameOnStart(window str) {
 	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
-    loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
-    loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
-    loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
-    loadModel("skylight/skyminer/high", "scene.gltf", 10.0, 0.0, 1.0)
+    //loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
+    //loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
+    //loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
+    //loadModel("skylight/skyminer/high", "scene.gltf", 10.0, 0.0, 1.0)
     groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
 	var groundScale f32 = 20.0
 	gfx.MeshBegin(groundMesh)
