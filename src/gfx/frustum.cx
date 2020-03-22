@@ -144,32 +144,30 @@ func BoxIntersectsPlane(min mat.v3, max mat.v3, plane mat.v4) (out i32) {
 
 	if (plane.x * neg.x + plane.y * neg.y + plane.z * neg.z + plane.w)  > 0.0 {
 		out = -1
-		return
-	}
-
-	if (plane.x * pos.x + plane.y * pos.y + plane.z * pos.z + plane.w) < 0.0 {
+		//return
+	} else if (plane.x * pos.x + plane.y * pos.y + plane.z * pos.z + plane.w) < 0.0 {
 		out = 1
-		return
-	}
-
-    out = 0
+		//return
+	} else {
+        out = 0
+    }
 }
 
 // BoxIntersectFrustumVolume ...
-func BoxIntersectsFrustumVolume(min mat.v3, max mat.v3, id FrustumId) (out bool) {
+func BoxIntersectsFrustumVolume(min mat.v3, max mat.v3, id FrustumId) (out i32) {
+    out = -1
     var planes []mat.v4 = g_frustums[id.frustum].planes
+    var intersect bool
     for i := 0; i < 6; i++ {
         var inter i32 = BoxIntersectsPlane(min, max, planes[i])
         if inter == 1 {
-            out = false
+            out = 1
             return
         } else if inter == 0 {
-            out = true
-            return
+            out = 0
         } else if inter == -1 {
         }
     }
-    out = true
 }
 
 // FrustumRender ...

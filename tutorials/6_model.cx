@@ -237,8 +237,6 @@ func gameOnStart(window str) {
 		v4.ONE)
 	gfx.MeshEnd(skyMesh)
 
-    octree = gfx.OctreeCreate(v3.makef(-100.0), v3.makef(100.0), 4)
-    frustum = gfx.FrustumCreate()
 	//loadModel("glTF-Sample-Models/Box/glTF", "Box.gltf", 1.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/BoxAnimated/glTF", "BoxAnimated.gltf", 1.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/NormalTangentTest/glTF", "NormalTangentTest.gltf", 3.0, 1.0, 1.0)
@@ -255,14 +253,20 @@ func gameOnStart(window str) {
 	//loadModel("glTF-Sample-Models/Monster/glTF", "Monster.gltf", 0.05, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/BrainStem/glTF", "BrainStem.gltf", 1.0, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/Duck/glTF", "Duck.gltf", 1.0, 1.0, 1.0)
-	loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
+	//loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
     //loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
     //loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
     //loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
-    //loadModel("skylight/skyminer/high", "scene.gltf", 10.0, 0.0, 1.0)
+    loadModel("skylight/skyminer/high", "scene.gltf", 1.0, 0.0, 1.0)
+
+    var skyminerModel gfx.ModelId = models[len(models) - 1]
+    octree = gfx.OctreeCreate(gfx.ModelGetMin(skyminerModel), gfx.ModelGetMax(skyminerModel), 3)
+    frustum = gfx.FrustumCreate()
+
+
     groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
 	var groundScale f32 = 20.0
 	gfx.MeshBegin(groundMesh)
