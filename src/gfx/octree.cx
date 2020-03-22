@@ -36,7 +36,6 @@ func OctreeIsValid(id OctreeId) (out bool) {
 
 // OctreeCreate ...
 func OctreeCreate(min mat.v3, max mat.v3, maxLevel i32)(out OctreeId) {
-    printf("OCTREE_CREATE\n")
     out.octree = len(g_octrees)
 
     var octree Octree
@@ -56,12 +55,16 @@ func OctreeCreate(min mat.v3, max mat.v3, maxLevel i32)(out OctreeId) {
     g_octreeCells = append(g_octreeCells, v3.make(-1.0,  1.0, -1.0))
     g_octreeCells = append(g_octreeCells, v3.make(-1.0, -1.0,  1.0))
     g_octreeCells = append(g_octreeCells, v3.make(-1.0, -1.0, -1.0))
-    octreeUpdate(out)
+    //octreeUpdate(out)
 }
 
 // OctreeUpdate ...
-func OctreeUpdate(id OctreeId) {
+func OctreeUpdate(id OctreeId, frustum FrustumId) {
     panicIfNot(OctreeIsValid(id), "invalid id")
+    MeshBegin(g_octrees[id.octree].debugMesh)
+    octreeUpdateLevel(id, 0, g_octrees[id.octree].center, g_octrees[id.octree].size, frustum, false)
+    octreeUpdateLevel(id, 0, g_octrees[id.octree].center, g_octrees[id.octree].size, frustum, true)
+    MeshEnd(g_octrees[id.octree].debugMesh)
 }
 
 // OctreeRender ...
@@ -76,28 +79,34 @@ func OctreeRender(id OctreeId, world mat.m44, view mat.m44, projection mat.m44) 
 	MeshRender(g_octrees[id.octree].debugMesh)
 }
 
-func octreeUpdate(id OctreeId) {
-    MeshBegin(g_octrees[id.octree].debugMesh)
+func octreeUpdateLevel(id OctreeId, level i32, center mat.v3, size mat.v3, frustum FrustumId, render bool) {
 
-    octreeUpdateLevel(id, 0, g_octrees[id.octree].center, g_octrees[id.octree].size)
-
-    MeshEnd(g_octrees[id.octree].debugMesh)
-}
-
-func octreeUpdateLevel(id OctreeId, level i32, center mat.v3, size mat.v3) {
-    printf("octreeUpdateLevel %d\n", level)
-
-    if level < g_octrees[id.octree].maxLevel {
+    var maxLevel i32 = g_octrees[id.octree].maxLevel
+    if level < maxLevel {
         var childSize mat.v3 = v3.mulf(size, 0.5)
+
+        if level == (maxLevel - 1) {
+            var min mat.v3 = v3.sub(center, childSize)
+            var max mat.v3 = v3.add(center, childSize)
+
+            if render {
+            if BoxIntersectsFrustumVolume(min, max, frustum) {
+            MeshAppendBox(g_octrees[id.octree].debugMesh, true, false,
+                center, v3.make(size.x, 0.0, 0.0), v3.make(0.0, size.y, 0.0), v3.make(0.0, 0.0, size.z),
+                v4.GREEN)
+            }
+            } else {
+            MeshAppendBox(g_octrees[id.octree].debugMesh, true, false,
+                center, v3.make(size.x, 0.0, 0.0), v3.make(0.0, size.y, 0.0), v3.make(0.0, 0.0, size.z),
+                v4.RED)
+            }
+        }
+
         var childLevel i32 = level + 1
         var childOffset mat.v3 = v3.mulf(childSize, 0.5)
-        MeshAppendBox(g_octrees[id.octree].debugMesh, true, false,
-            center, v3.make(center.x, 0.0, 0.0), v3.make(0.0, center.y, 0.0), v3.make(0.0, 0.0, center.z),
-            v4.GREEN)
-
         for i := 0; i < 8; i++ {
             var childCenter mat.v3 = v3.add(center, v3.mul(g_octreeCells[i], childOffset))
-            octreeUpdateLevel(id, childLevel, childCenter, childSize)
+            octreeUpdateLevel(id, childLevel, childCenter, childSize, frustum, render)
         }
     }
 }

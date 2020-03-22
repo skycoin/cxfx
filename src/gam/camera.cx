@@ -134,11 +134,16 @@ func CameraGetInvViewProj(id CameraId) (out m44) {
     out = g_cameras[id.camera].invViewProj
 }
 
-// CameraGetAt ...
-func CameraGetAt(id CameraId) (out mat.v3) {
+// CameraGetNear ...
+func CameraGetNear(id CameraId) (out f32) {
     panicIfNot(CameraIsValid(id), "")
-    var view m44 = g_cameras[id.camera].view
-    out = v3.make(view.v02, view.v12, view.v22)
+    out = g_cameras[id.camera].current.near
+}
+
+// CameraGetFar ...
+func CameraGetFar(id CameraId) (out f32) {
+    panicIfNot(CameraIsValid(id), "")
+    out = g_cameras[id.camera].current.far
 }
 
 // CameraGetRight ...
@@ -146,6 +151,20 @@ func CameraGetRight(id CameraId) (out mat.v3) {
     panicIfNot(CameraIsValid(id), "")
     var view m44 = g_cameras[id.camera].view
     out = v3.make(view.v00, view.v10, view.v20)
+}
+
+// CameraGetUp ...
+func CameraGetUp(id CameraId) (out mat.v3) {
+    panicIfNot(CameraIsValid(id), "")
+    var view m44 = g_cameras[id.camera].view
+    out = v3.make(view.v01, view.v11, view.v21)
+}
+
+// CameraGetAt ...
+func CameraGetAt(id CameraId) (out mat.v3) {
+    panicIfNot(CameraIsValid(id), "")
+    var view m44 = g_cameras[id.camera].view
+    out = v3.make(view.v02, view.v12, view.v22)
 }
 
 // CameraGetProjection ...

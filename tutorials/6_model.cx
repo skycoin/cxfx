@@ -32,11 +32,12 @@ var skySpecular gfx.TextureId = gfx.InvalidTexture()
 var brdf gfx.TextureId = gfx.InvalidTexture()
 
 var octree gfx.OctreeId = gfx.InvalidOctree()
+var frustum gfx.FrustumId = gfx.InvalidFrustum()
 
 var world mat.m44
 
 var camera gam.CameraId
-
+var snapFrustum bool = true
 
 var worldPosY f32 = -10.0
 
@@ -80,7 +81,13 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 	if mods == app.MOD_NONE {
 		if key == app.KEYCODE_ESCAPE && action == app.KEY_PRESS {
 			app.Exit()
-		}
+		} else if key == app.KEYCODE_1 && action == app.KEY_PRESS {
+            if snapFrustum {
+                snapFrustum = false
+            } else {
+                snapFrustum = true
+            }
+        }
 	} else if mods == app.MOD_CTRL && action == app.KEY_PRESS {
 		if key == app.KEYCODE_LEFT {
 			if currentModel <= 0 {
@@ -131,7 +138,9 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 func gameOnUpdate(controlIndex i32, controlAction i32) {
 	gam.FreeCameraUpdate(camera, fps.DeltaSecond())
-
+    if snapFrustum {
+        gfx.FrustumUpdate(frustum, gam.CameraGetInvViewProj(camera))
+    }
 	var dts f64 = fps.DeltaSecond()
 	var dt f32 = f64.f32(dts)
 
@@ -155,7 +164,7 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	}
 	gfx.ModelUpdate(model, anim, step, true)
 
-    gfx.OctreeUpdate(octree)
+    gfx.OctreeUpdate(octree, frustum)
 }
 
 //-----------------------------------------------------------------------------
@@ -200,6 +209,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.ModelRender(model)
 
     gfx.OctreeRender(octree, m44.IDENTITY, view, projection)
+    gfx.FrustumRender(frustum, m44.IDENTITY, view, projection)
 }
 
 //-----------------------------------------------------------------------------
@@ -228,6 +238,7 @@ func gameOnStart(window str) {
 	gfx.MeshEnd(skyMesh)
 
     octree = gfx.OctreeCreate(v3.makef(-100.0), v3.makef(100.0), 4)
+    frustum = gfx.FrustumCreate()
 	//loadModel("glTF-Sample-Models/Box/glTF", "Box.gltf", 1.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/BoxAnimated/glTF", "BoxAnimated.gltf", 1.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/NormalTangentTest/glTF", "NormalTangentTest.gltf", 3.0, 1.0, 1.0)
