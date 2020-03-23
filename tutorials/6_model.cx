@@ -264,6 +264,7 @@ func gameOnStart(window str) {
 
     var skyminerModel gfx.ModelId = models[len(models) - 1]
     octree = gfx.OctreeCreate(gfx.ModelGetMin(skyminerModel), gfx.ModelGetMax(skyminerModel), 3)
+    //octree = gfx.OctreeCreate(v3.makef(-100.0), v3.makef(100.0), 3)
     frustum = gfx.FrustumCreate()
 
 
@@ -303,12 +304,12 @@ func gameOnStart(window str) {
 	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
 	gui.ScreenShow(gameScreen)
 	StopCPUProfile("6_model_init")
+	StartCPUProfile("6_model_run", 100)
 }
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func main()() {
-	StartCPUProfile("6_model_run", 100)
     app.SetStartCallback("main", "gameOnStart")
 	if app.Run("Model Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
 	    gfx.MeshUnlock(skyMesh)
