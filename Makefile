@@ -1,3 +1,7 @@
+## options:
+## TARGET=android
+## PPROF=100
+
 ## TODO : can't order files alphabetically without breaking tuto 7->14
 
 GOPATH := $(subst \,/,${GOPATH})
@@ -14,8 +18,13 @@ ifeq ($(TARGET), android)
 endif
 
 STATE = Running
-PPROF = --debug-profile=100
-OPTS = $(PPROF)
+ifeq ($(PPROF),)
+DEBUG = --debug-profile=0
+else
+DEBUG := --debug-profile=$(PPROF)
+endif
+
+OPTS = $(DEBUG)
 OPTS_MEM = $(OPTS) --stack-size=128M --heap-initial=800M --heap-max=800M
 
 DATA = ++data=$(CXFX_SRC)/resources/
