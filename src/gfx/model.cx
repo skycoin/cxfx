@@ -119,6 +119,7 @@ type Model struct {
 	skeleton Skeleton
 	animations []AnimationId
 
+    worldIsIdentity bool
 	world mat.m44 // TODO : optim inverse
 	view mat.m44 // TODO : remove
 	projection mat.m44 // TODO : remove
@@ -153,6 +154,7 @@ func ModelCreate() (out ModelId) {
 	model.skeleton.root = -1
 	model.asset = gltf.AssetInvalid()
 	g_models = append(g_models, model)
+    ModelSetWorld(out, m44.IDENTITY)
 }
 
 // ModelCreateFromFile ...
@@ -537,13 +539,13 @@ func ModelSetCameraPosition(id ModelId, position mat.v3) {
 
 
 // ModelSetEnvironmentSpecular ...
-func ModelSetEnvironmentSpecular(id ModelId, environment TextureId) { 
+func ModelSetEnvironmentSpecular(id ModelId, environment TextureId) {
 	panicIfNot(ModelIsValid(id), "invalid model")
 	g_models[id.model].environmentSpecular = environment
 }
 
 // ModelSetEnvironmentDiffuse...
-func ModelSetEnvironmentDiffuse(id ModelId, environment TextureId) { 
+func ModelSetEnvironmentDiffuse(id ModelId, environment TextureId) {
 	panicIfNot(ModelIsValid(id), "invalid model")
 	g_models[id.model].environmentDiffuse = environment
 }
@@ -558,6 +560,7 @@ func ModelSetBRDF(id ModelId, brdf TextureId) {
 func ModelSetWorld(id ModelId, world mat.m44) {
 	panicIfNot(ModelIsValid(id), "invalid model")
 	g_models[id.model].world = world
+    g_models[id.model].worldIsIdentity = m44.isident(world)
 }
 
 // ModelSetView ...
@@ -1024,6 +1027,9 @@ func modelInstance(id ModelId, options i32) (success bool) {
 		}
 	}
 
+
+    
+
 	stack = resize(stack, 0)
 	g_models[modelIndex].stack = stack
 	g_models[modelIndex].nodes = nodes
@@ -1031,8 +1037,8 @@ func modelInstance(id ModelId, options i32) (success bool) {
 	g_models[modelIndex].determinants = determinants
 	g_models[modelIndex].meshes = meshes
 	g_models[modelIndex].primitives = primitives
-	g_models[modelIndex].opaqueMeshes = opaqueMeshes
-	g_models[modelIndex].transparentMeshes = transparentMeshes
+	g_models[modelIndex].opaqueMeshes = sortMeshes(primitives, opaqueMeshes)
+	g_models[modelIndex].transparentMeshes = sortMeshes(primitives, transparentMeshes)
 	g_models[modelIndex].meshCacheKey = meshCacheKey
 	g_models[modelIndex].meshCacheVal = meshCacheVal
 	g_models[modelIndex].animations = animations
@@ -1383,6 +1389,49 @@ func ModelGetNodeTransform(id ModelId, node i32) (out m44) {
 	out = transforms[nodeIndex]
 }
 
+func sortMeshes(primitives []Primitive, meshes []i32) (out []i32) {
+    var meshCount i32 = len(meshes)
+    for i := 0; i < meshCount; i++ {
+        var mesh i32 = meshes[i]
+        var p Primitive = primitives[mesh]
+        var sortedCount i32 = len(out)
+        for si := 0; si < sortedCount; si++ {
+            var smesh i32 = out[si]
+            var sp Primitive = primitives[smesh]
+            var in bool
+            if p.effect.effect < sp.effect.effect {
+                in = true
+            } else if p.effect.effect == sp.effect.effect {
+                if p.baseTexture.texture < sp.baseTexture.texture {
+                    in = true
+                } else if p.baseTexture.texture == sp.baseTexture.texture {
+                    if p.normalTexture.texture < sp.normalTexture.texture {
+                        in = true
+                    } else if p.normalTexture.texture == sp.normalTexture.texture {
+                        if p.metalRoughTexture.texture < sp.metalRoughTexture.texture {
+                            in = true
+                        } else if p.metalRoughTexture.texture == sp.metalRoughTexture.texture {
+                            if p.emissiveTexture.texture < sp.emissiveTexture.texture {
+                                in = true
+                            } else if p.emissiveTexture.texture == sp.emissiveTexture.texture {
+                                if p.occlusionTexture.texture < sp.occlusionTexture.texture {
+                                    in = true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if in {
+                out = insert(out, si, mesh)
+                si = sortedCount
+            }
+        }
+        if sortedCount == len(out) {
+            out = append(out, mesh)
+        }
+    }
+}
 
 func modelRender(id ModelId, renderables []i32, alpha f32) {
 	panicIfNot(ModelIsValid(id), "invalid model")
@@ -1398,60 +1447,149 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
 	var projection m44 = g_models[modelIndex].projection // TODO : renderState
 	var cameraPosition mat.v4 = g_models[modelIndex].cameraPosition // TODO : renderState
 	var jointMatrices []m44 = g_models[modelIndex].jointMatrices
+	var skinned bool = g_models[modelIndex].skinned
+	var world m44 = g_models[modelIndex].world
+    var worldIsIdentity bool = g_models[modelIndex].worldIsIdentity
 
 	var renderableCount i32 = len(renderables)
 
 
+    var lastEffect i32 = -1
+    var lastBaseTexture i32 = -1
+    var lastNormalTexture i32 = -1
+    var lastMetalRoughTexture i32 = -1
+    var lastEmissiveTexture i32 = -1
+    var lastOcclusionTexture i32 = -1
+    var lastBaseColorFactor mat.v4 = v4.makef(-1.0)
+    var lastEmissiveFactor mat.v4 = v4.makef(-1.0)
+    var lastMetalRoughFactor mat.v4 = v4.makef(-1.0)
+    var lastTransform mat.m44 = m44.INVALID
+
 	for p := 0; p < renderableCount; p++ {
 
 		var renderable i32 = renderables[p]
-		var primitive Primitive = primitives[renderable]//renderables[p]]
-		var world m44 = g_models[modelIndex].world
-		var effect EffectId = effectInstance(&primitive)
+		var primitive Primitive = primitives[renderable]
+		var effect EffectId = primitive.effect
+        EffectUse(effect)
 
-		EffectTryAssignTexture(effect, SAMPLER_COLOR_0, primitive.baseTexture, g_linearWrap) // TODO : use gltf sampler
-		EffectTryAssignTexture(effect, SAMPLER_NORMAL, primitive.normalTexture, g_linearWrap) // TODO : use gltf sampler
-		EffectTryAssignTexture(effect, SAMPLER_METAL_ROUGH, primitive.metalRoughTexture, g_linearWrap) // TODO : use gltf sampler
-		EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearWrap) // TODO : use gltf sampler
-		EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linearWrap) // TODO : use gltf sampler
-		EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Wrap) // TODO : use gltf sampler
-		EffectTryAssignTexture(effect, SAMPLER_EMISSIVE, primitive.emissiveTexture, g_linearWrap) // TODO : use gltf sampler
-		EffectTryAssignTexture(effect, SAMPLER_OCCLUSION, primitive.occlusionTexture, g_linearWrap) // TODO : use gltf sampler
+        /*printf("EFFECT %d, COLOR %d, NORMAL %d, METAL %d, ENVSPEC %d, ENVDIFF %d, BRDF %d, EMISSIVE %d, OCCLUSION %d\n",
+                effect.effect,
+                primitive.baseTexture.texture,
+                primitive.normalTexture.texture,
+                primitive.metalRoughTexture.texture, 
+                environmentSpecular.texture,
+                environmentDiffuse.texture, 
+                brdf.texture,
+                primitive.emissiveTexture.texture, 
+                primitive.occlusionTexture.texture)*/
 
-		var skinned bool = g_models[modelIndex].skinned
-		if skinned == false {
-			world = m44.mulISSUE(transforms[primitive.nodeIndex], world)
-		}
+        if lastEffect != effect.effect {
+            lastEffect = effect.effect
 
-		EffectAssignM44(effect, UNIFORM_WORLD, world, false)
-		EffectAssignM44(effect, UNIFORM_VIEW, view, false)
-		EffectAssignM44(effect, UNIFORM_PROJECTION, projection, false)
-		//EffectAssignM44(effect, UNIFORM_WORLD_INVERSE, m44.inverse(world), false) // TODO : optim inverse sooner in callstack
+		    EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearWrap) // TODO : use gltf sampler
+            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linearWrap) // TODO : use gltf sampler
+		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Wrap) // TODO : use gltf sampler
 
-		if primitive.useSkin == 1 {
-	  		EffectAssignM44V(effect, UNIFORM_SKELETON, jointMatrices, false)
-		}
+            EffectAssignM44(effect, UNIFORM_VIEW, view, false)
+	    	EffectAssignM44(effect, UNIFORM_PROJECTION, projection, false)
+
+            EffectAssignV4(effect, UNIFORM_CAMERA_POSITION, cameraPosition)
+	    	EffectAssignV4(effect, UNIFORM_DEBUG_0, DEBUG_0)
+
+            if primitive.useSkin == 1 {
+	      		EffectAssignM44V(effect, UNIFORM_SKELETON, jointMatrices, false)
+		    }
+
+            lastBaseTexture = -1
+            lastNormalTexture = -1
+            lastMetalRoughTexture = -1
+            lastEmissiveTexture = -1
+            lastOcclusionTexture = -1
+            lastBaseColorFactor = v4.makef(-1.0)
+            lastEmissiveFactor = v4.makef(-1.0)
+            lastMetalRoughFactor = v4.makef(-1.0)
+            lastTransform = m44.INVALID
+        }
+
+        if lastBaseTexture != primitive.baseTexture.texture {
+            lastBaseTexture = primitive.baseTexture.texture
+    		EffectTryAssignTexture(effect, SAMPLER_COLOR_0, primitive.baseTexture, g_linearWrap) // TODO : use gltf sampler
+        }
+
+        if lastNormalTexture != primitive.normalTexture.texture {
+            lastNormalTexture = primitive.normalTexture.texture
+    		EffectTryAssignTexture(effect, SAMPLER_NORMAL, primitive.normalTexture, g_linearWrap) // TODO : use gltf sampler
+        }
+
+        if lastMetalRoughTexture != primitive.metalRoughTexture.texture {
+            lastMetalRoughTexture = primitive.metalRoughTexture.texture
+            EffectTryAssignTexture(effect, SAMPLER_METAL_ROUGH, primitive.metalRoughTexture, g_linearWrap) // TODO : use gltf sampler
+        }
+
+        if lastEmissiveTexture != primitive.emissiveTexture.texture {
+            lastEmissiveTexture = primitive.emissiveTexture.texture
+            EffectTryAssignTexture(effect, SAMPLER_EMISSIVE, primitive.emissiveTexture, g_linearWrap) // TODO : use gltf sampler
+        }
+
+        if lastOcclusionTexture != primitive.occlusionTexture.texture {
+            lastOcclusionTexture = primitive.occlusionTexture.texture
+    		EffectTryAssignTexture(effect, SAMPLER_OCCLUSION, primitive.occlusionTexture, g_linearWrap) // TODO : use gltf sampler
+        }
+
+        var tmpWorld m44 = world
+        if skinned == false {
+            if worldIsIdentity == false {
+		    	tmpWorld = m44.mulISSUE(transforms[primitive.nodeIndex], world)
+		    } else {
+                tmpWorld = transforms[primitive.nodeIndex]
+            }
+        }
+
+        if m44.equal(tmpWorld, lastTransform) == false {
+            lastTransform = tmpWorld
+    		EffectAssignM44(effect, UNIFORM_WORLD, tmpWorld, false)
+        }
+		//EffectAssignM44(effect, UNIFORM_WORLD_INVERSE, m44.inverse(tmpWorld), false) // TODO : optim inverse sooner in callstack
 
 		var metallicRoughness gltf.MetallicRoughness = primitive.gltfMaterial.pbrMetallicRoughness
 		if EffectIsValidUniformLocation(effect, UNIFORM_COLOR) {
 			var baseColorFactor mat.v4 = metallicRoughness.baseColorFactor
 			baseColorFactor.w = baseColorFactor.w * alpha
-	  		EffectAssignV4(effect, UNIFORM_COLOR, baseColorFactor)
+
+            if  baseColorFactor.x != lastBaseColorFactor.x ||
+                baseColorFactor.y != lastBaseColorFactor.y ||
+                baseColorFactor.z != lastBaseColorFactor.z ||
+                baseColorFactor.w != lastBaseColorFactor.w {
+                lastBaseColorFactor = baseColorFactor
+    	  		EffectAssignV4(effect, UNIFORM_COLOR, baseColorFactor)
+            }
 		}
 
 		if EffectIsValidUniformLocation(effect, UNIFORM_METAL_ROUGH) {
 			var metallicRoughnessFactor mat.v4
 			metallicRoughnessFactor.y = metallicRoughness.roughnessFactor
 			metallicRoughnessFactor.z = metallicRoughness.metallicFactor
-	  		EffectAssignV4(effect, UNIFORM_METAL_ROUGH, metallicRoughnessFactor)
+
+            if  metallicRoughnessFactor.x != lastMetalRoughFactor.x ||
+                metallicRoughnessFactor.y != lastMetalRoughFactor.y ||
+                metallicRoughnessFactor.z != lastMetalRoughFactor.z ||
+                metallicRoughnessFactor.w != lastMetalRoughFactor.w {
+                lastMetalRoughFactor = metallicRoughnessFactor
+	  		    EffectAssignV4(effect, UNIFORM_METAL_ROUGH, metallicRoughnessFactor)
+            }
 		}
 
 		if EffectIsValidUniformLocation(effect, UNIFORM_EMISSIVE) {
-	  		EffectAssignV4(effect, UNIFORM_EMISSIVE, primitive.gltfMaterial.emissiveFactor)
-		}
+            var emissiveFactor mat.v4 = primitive.gltfMaterial.emissiveFactor
 
-		EffectAssignV4(effect, UNIFORM_CAMERA_POSITION, cameraPosition)
-		EffectAssignV4(effect, UNIFORM_DEBUG_0, DEBUG_0)
+            if  emissiveFactor.x != lastEmissiveFactor.x ||
+                emissiveFactor.y != lastEmissiveFactor.y ||
+                emissiveFactor.z != lastEmissiveFactor.z ||
+                emissiveFactor.w != lastEmissiveFactor.w {
+                lastEmissiveFactor = emissiveFactor
+    	  		EffectAssignV4(effect, UNIFORM_EMISSIVE, emissiveFactor)
+            }
+        }
 
 		MeshRender(primitive.mesh)
 	}
