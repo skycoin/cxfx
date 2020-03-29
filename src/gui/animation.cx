@@ -103,7 +103,7 @@ func AnimationCreateFromPath(path str) (out AnimationId) {
 	frameCount, loopCount, width, height = gl.NewGIF(path)
 
 	for i := 0; i < frameCount; i++ {
-		var texture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, -1, false)
+		var texture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, -32, false)
 
 		var delay i32 = 0
 		var disposal i32 = 0

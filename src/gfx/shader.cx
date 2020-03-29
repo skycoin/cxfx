@@ -30,6 +30,7 @@ var USE_PARTICLE      i64 = 1L << 18L
 var USE_MERGE         i64 = 1L << 19L
 var USE_EDGE          i64 = 1L << 20L
 var USE_STENCIL       i64 = 1L << 21L
+var USE_LINEAR_ALBEDO i64 = 1L << 22L
 
 // Globals ...
 var g_shaderPath str
@@ -144,6 +145,7 @@ func shaderInit(dataDir str) {
 	ShaderDefineAdd(USE_MERGE, "#define USE_MERGE\n")
 	ShaderDefineAdd(USE_STENCIL, "#define USE_STENCIL\n")
 	ShaderDefineAdd(USE_EDGE, "#define USE_EDGE\n")
+    ShaderDefineAdd(USE_LINEAR_ALBEDO, "#define USE_LINEAR_ALBEDO\n")
 }
 
 // ShaderKeyClear ...

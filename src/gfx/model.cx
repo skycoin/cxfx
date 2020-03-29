@@ -581,7 +581,7 @@ func loadTexture(asset AssetId, dataDir str, index i32) (out TextureId) {
 		var texture gltf.Texture = gltf.AssetGetTexture(asset, index)
 		var image gltf.Image = gltf.AssetGetImage(asset, texture.source)
 		if image.uri != "" {
-			out = TextureCreate(sprintf("%s%s", dataDir, image.uri), FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
+			out = TextureCreate(sprintf("%s%s", dataDir, image.uri), FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
 		}
 	//}
 }
@@ -1487,7 +1487,7 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
             lastEffect = effect.effect
 
 		    EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearWrap) // TODO : use gltf sampler
-            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linearWrap) // TODO : use gltf sampler
+            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linear0Wrap) // TODO : use gltf sampler
 		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Wrap) // TODO : use gltf sampler
 
             EffectAssignM44(effect, UNIFORM_VIEW, view, false)
@@ -1495,7 +1495,8 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
 
             EffectAssignV4(effect, UNIFORM_CAMERA_POSITION, cameraPosition)
 	    	EffectAssignV4(effect, UNIFORM_DEBUG_0, DEBUG_0)
-
+            //printf("MIPMAP_COUNT %d\n", TextureGetMipmapCount(environmentSpecular))
+            EffectAssignV4(effect, UNIFORM_PBR, v4.makef(i32.f32(TextureGetMipmapCount(environmentSpecular))))
             if primitive.useSkin == 1 {
 	      		EffectAssignM44V(effect, UNIFORM_SKELETON, jointMatrices, false)
 		    }
@@ -1567,6 +1568,7 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
 
 		if EffectIsValidUniformLocation(effect, UNIFORM_METAL_ROUGH) {
 			var metallicRoughnessFactor mat.v4
+            metallicRoughnessFactor.x = primitive.gltfMaterial.normalTexture.scale
 			metallicRoughnessFactor.y = metallicRoughness.roughnessFactor
 			metallicRoughnessFactor.z = metallicRoughness.metallicFactor
 
@@ -1576,7 +1578,13 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
                 metallicRoughnessFactor.w != lastMetalRoughFactor.w {
                 lastMetalRoughFactor = metallicRoughnessFactor
 	  		    EffectAssignV4(effect, UNIFORM_METAL_ROUGH, metallicRoughnessFactor)
-            }
+                /*printf("METAL_ROUGH %f, %f, %f, %f\n",
+                        metallicRoughnessFactor.x,
+                        metallicRoughnessFactor.y,
+                        metallicRoughnessFactor.z,
+                        metallicRoughnessFactor.w)*/
+
+                }
 		}
 
 		if EffectIsValidUniformLocation(effect, UNIFORM_EMISSIVE) {

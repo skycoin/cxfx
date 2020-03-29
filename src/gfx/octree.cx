@@ -35,17 +35,11 @@ func OctreeIsValid(id OctreeId) (out bool) {
 }
 
 // OctreeCreate ...
-func OctreeCreate(min mat.v3, max mat.v3, maxLevel i32)(out OctreeId) {
+func OctreeCreate()(out OctreeId) {
     out.octree = len(g_octrees)
 
     var octree Octree
     octree.debugMesh = MeshCreate(LINES, UNSIGNED_SHORT, 10 * 8192 * 3, g_vertexLayout, 10 * 8192 * 3)
-    octree.size = v3.mulf(v3.sub(max, min), 0.5)
-    octree.center = v3.add(min, octree.size)
-    octree.min = min
-    octree.max = max
-    octree.maxLevel = maxLevel
-
     g_octrees = append(g_octrees, octree)
     g_octreeCells = append(g_octreeCells, v3.make( 1.0,  1.0,  1.0))
     g_octreeCells = append(g_octreeCells, v3.make( 1.0,  1.0, -1.0))
@@ -55,12 +49,18 @@ func OctreeCreate(min mat.v3, max mat.v3, maxLevel i32)(out OctreeId) {
     g_octreeCells = append(g_octreeCells, v3.make(-1.0,  1.0, -1.0))
     g_octreeCells = append(g_octreeCells, v3.make(-1.0, -1.0,  1.0))
     g_octreeCells = append(g_octreeCells, v3.make(-1.0, -1.0, -1.0))
-    //octreeUpdate(out)
 }
 
 // OctreeUpdate ...
-func OctreeUpdate(id OctreeId, frustum FrustumId) {
+func OctreeUpdate(id OctreeId, frustum FrustumId, min mat.v3, max mat.v3, maxLevel i32) {
     panicIfNot(OctreeIsValid(id), "invalid id")
+
+    g_octrees[id.octree].size = v3.mulf(v3.sub(max, min), 0.5)
+    g_octrees[id.octree].center = v3.add(min, g_octrees[id.octree].size)
+    g_octrees[id.octree].min = min
+    g_octrees[id.octree].max = max
+    g_octrees[id.octree].maxLevel = maxLevel
+
     MeshBegin(g_octrees[id.octree].debugMesh)
     octreeUpdateLevel(id, 0, g_octrees[id.octree].center, g_octrees[id.octree].size, frustum, true)
     MeshEnd(g_octrees[id.octree].debugMesh)

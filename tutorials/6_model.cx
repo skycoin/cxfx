@@ -27,8 +27,10 @@ var currentModel i32
 var skyMesh gfx.MeshId = gfx.InvalidMesh()
 var groundMesh gfx.MeshId = gfx.InvalidMesh()
 var texture gfx.TextureId = gfx.InvalidTexture()
-var skyDiffuse gfx.TextureId = gfx.InvalidTexture()
-var skySpecular gfx.TextureId = gfx.InvalidTexture()
+var skyDiffuses []gfx.TextureId
+var skySpeculars []gfx.TextureId
+var currentSky i32
+var currentSkybox i32
 var brdf gfx.TextureId = gfx.InvalidTexture()
 
 var octree gfx.OctreeId = gfx.InvalidOctree()
@@ -87,8 +89,36 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
             } else {
                 snapFrustum = true
             }
+        } else if key == app.KEYCODE_2 && action == app.KEY_PRESS {
+            gfx.DEBUG_0.x = gfx.DEBUG_0.x - 0.1
+            printf("DEBUG %f, %f, %f, %f\n", gfx.DEBUG_0.x, gfx.DEBUG_0.y, gfx.DEBUG_0.z, gfx.DEBUG_0.w)
+        } else if key == app.KEYCODE_3 && action == app.KEY_PRESS {
+            gfx.DEBUG_0.x = gfx.DEBUG_0.x + 0.1
+            printf("DEBUG %f, %f, %f, %f\n", gfx.DEBUG_0.x, gfx.DEBUG_0.y, gfx.DEBUG_0.z, gfx.DEBUG_0.w)
+        } else if key == app.KEYCODE_4 && action == app.KEY_PRESS {
+            gfx.DEBUG_0.y = gfx.DEBUG_0.y - 0.1
+            printf("DEBUG %f, %f, %f, %f\n", gfx.DEBUG_0.x, gfx.DEBUG_0.y, gfx.DEBUG_0.z, gfx.DEBUG_0.w)
+        } else if key == app.KEYCODE_5 && action == app.KEY_PRESS {
+            gfx.DEBUG_0.y = gfx.DEBUG_0.y + 0.1
+            printf("DEBUG %f, %f, %f, %f\n", gfx.DEBUG_0.x, gfx.DEBUG_0.y, gfx.DEBUG_0.z, gfx.DEBUG_0.w)
         }
-	} else if mods == app.MOD_CTRL && action == app.KEY_PRESS {
+	} else if mods == app.MOD_ALT && action == app.KEY_PRESS {
+		if key == app.KEYCODE_LEFT {
+			if currentSky <= 0 {
+				currentSky = len(skyDiffuses)
+			}
+			currentSky = currentSky - 1
+		} else if key == app.KEYCODE_RIGHT {
+			currentSky = (currentSky + 1) % len(skyDiffuses)
+		} else if key == app.KEYCODE_UP {
+            if currentSkybox <= 0 {
+                currentSkybox = 1
+            }
+            currentSkybox = currentSkybox - 1
+        } else if key == app.KEYCODE_DOWN {
+            currentSkybox = (currentSkybox + 1) % 2
+        }
+    } else if mods == app.MOD_CTRL && action == app.KEY_PRESS {
 		if key == app.KEYCODE_LEFT {
 			if currentModel <= 0 {
 				currentModel = len(models)
@@ -164,7 +194,10 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	}
 	gfx.ModelUpdate(model, anim, step, true)
 
-    //gfx.OctreeUpdate(octree, frustum)
+    var octreeModel gfx.ModelId = models[currentModel]
+    var octreeMin mat.v3 = v3.mulf(gfx.ModelGetMin(octreeModel), scales[currentModel])
+    var octreeMax mat.v3 = v3.mulf(gfx.ModelGetMax(octreeModel), scales[currentModel])
+    //gfx.OctreeUpdate(octree, frustum, octreeMin, octreeMax, 3)
 }
 
 //-----------------------------------------------------------------------------
@@ -180,11 +213,17 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 
 	//sky
 	gfx.EffectUse(gfx.g_fxSky)
-	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skySpecular, gfx.g_linearWrap)
+    var skybox gfx.TextureId
+    if currentSkybox == 0 {
+    	skybox = skySpeculars[currentSky]
+    } else {
+    	skybox = skyDiffuses[currentSky]
+    }
+    gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skybox, gfx.g_linear0Wrap)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
-	gfx.MeshRender(skyMesh)
+    gfx.MeshRender(skyMesh)
 
 	// ground
 	gfx.EffectUse(gfx.g_fxTexture3D)
@@ -202,8 +241,8 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.ModelSetWorld(model, world)
 	gfx.ModelSetView(model, view)
 	gfx.ModelSetProjection(model, projection)
-	gfx.ModelSetEnvironmentSpecular(model, skySpecular)
-	gfx.ModelSetEnvironmentDiffuse(model, skyDiffuse)
+	gfx.ModelSetEnvironmentSpecular(model, skySpeculars[currentSky])
+	gfx.ModelSetEnvironmentDiffuse(model, skyDiffuses[currentSky])
 	gfx.ModelSetBRDF(model, brdf)
 	gfx.ModelSetCameraPosition(model, cameraPosition)
 	gfx.ModelRender(model)
@@ -256,15 +295,13 @@ func gameOnStart(window str) {
 	loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
-    //loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
-    //loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
-    //loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
+	loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
+    loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
+    loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
+    loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
     loadModel("skylight/skyminer/high", "scene.gltf", 1.0, 0.0, 1.0)
 
-    var skyminerModel gfx.ModelId = models[len(models) - 1]
-    octree = gfx.OctreeCreate(gfx.ModelGetMin(skyminerModel), gfx.ModelGetMax(skyminerModel), 3)
-    //octree = gfx.OctreeCreate(v3.makef(-100.0), v3.makef(100.0), 3)
+    octree = gfx.OctreeCreate()
     frustum = gfx.FrustumCreate()
 
 
@@ -281,14 +318,25 @@ func gameOnStart(window str) {
 		v4.ONE)
 	gfx.MeshEnd(groundMesh)
 
-	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	skySpecular = gfx.TextureCreateCube(sprintf("%s/textures/skybox/", app.DataDir()), ".jpg",
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	skyDiffuse= gfx.TextureCreateCube(sprintf("%s/textures/irradiance/", app.DataDir()), ".png",
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	brdf = gfx.TextureCreate(sprintf("%s/textures/brdfLUT.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
+	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+
+
+    var skies []str
+    skies = append(skies, "doge2")
+    skies = append(skies, "ennis")
+    skies = append(skies, "field")
+    skies = append(skies, "footprint_court")
+    skies = append(skies, "helipad")
+    skies = append(skies, "papermill")
+    skies = append(skies, "pisa")
+    skies = append(skies, "studio_grey")
+    skies = append(skies, "studio_red_green")
+    for i := 0; i < len(skies); i++ {
+        skySpeculars = append(skySpeculars, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/specular/specular_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 32, false))
+	    skyDiffuses = append(skyDiffuses, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/diffuse/diffuse_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 0, false))
+    }
+
+    brdf = gfx.TextureCreate(sprintf("%s/textures/environments/brdf.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
 
 	camera = gam.CameraCreate()
 	gam.CameraSetProjection(camera, 1.0, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y, true)

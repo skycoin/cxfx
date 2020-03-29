@@ -1321,12 +1321,10 @@ func gameOnStart(window str) {
 
     cxfxAnim = gui.AnimationCreateFromPath(sprintf("%stextures/cxfx.gif", app.DataDir()))
 
-    skylightTexture = gfx.TextureCreate(sprintf("%s/textures/skylight.jpeg", app.DataDir()),
-            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    skylightTexture = gfx.TextureCreate(sprintf("%s/textures/skylight.jpeg", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, true)
     skylightAnim = gui.AnimationCreateFromTexture(skylightTexture)
 
-    charactersTexture = gfx.TextureCreate(sprintf("%s/textures/characters.jpeg", app.DataDir()),
-            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    charactersTexture = gfx.TextureCreate(sprintf("%s/textures/characters.jpeg", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, true)
     charactersAnim = gui.AnimationCreateFromTexture(charactersTexture)
 
 	edgeTarget = gfx.TargetCreate(1, width, height, scale, true)
@@ -1411,20 +1409,12 @@ func gameOnStart(window str) {
 		v3.make(groundRight, 0.0, 0.0), v3.GREEN, v3.make(0.0, 0.0, groundBack),
 		0.0, 1.0, v4.make(0.0, 1.0, 0.0, 0.0), v4.ONE)
 
-	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-
-	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	skySpecular = gfx.TextureCreateCube(sprintf("%s/textures/skybox/", app.DataDir()), ".jpg",
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	skyDiffuse= gfx.TextureCreateCube(sprintf("%s/textures/irradiance/", app.DataDir()), ".png",
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	brdf = gfx.TextureCreate(sprintf("%s/textures/brdfLUT.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
-
-	smokeTexture = gfx.TextureCreate(sprintf("%s/textures/smoke.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
+	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+	skySpecular = gfx.TextureCreateCube(sprintf("%s/textures/skybox/.jpg", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+	skyDiffuse= gfx.TextureCreateCube(sprintf("%s/textures/irradiance/.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
+	brdf = gfx.TextureCreate(sprintf("%s/textures/brd.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
+	smokeTexture = gfx.TextureCreate(sprintf("%s/textures/smoke.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
 
 	camera = gam.CameraCreate()
 	gam.CameraSetProjection(camera, 0.5, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y, true)
@@ -1509,7 +1499,7 @@ func gameOnStart(window str) {
 
 	// cxfxScreen
 	var cxfxScreen gui.ScreenId = gui.ScreenCreate("skycoinScreen")
-	gui.ControlSetSkin(cxfxScreen.base, gui.g_bootSkin)//gui.g_goldBorderSkin)
+	gui.ControlSetSkin(cxfxScreen.base, gui.g_goldBorderSkin)
 	gui.ControlSetDock(cxfxScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(cxfxScreen, 2.0D)
 	gui.ScreenSetOnUpdate(cxfxScreen, "main", "cxfxOnUpdate")

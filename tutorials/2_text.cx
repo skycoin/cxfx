@@ -64,8 +64,7 @@ func gameOnStart(window str) {
 
     var nameLen i32 = len(app.Name())
 	mesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, nameLen * 6, gfx.g_vertexLayout, nameLen * 4)
-	texture = gfx.TextureCreateFont(font, sprintf("%s/fonts/Skycoin-Regular.ttf", app.DataDir()),
-		64, 32, 127, gfx.TEXT_LEFT_TO_RIGHT, -1)
+	texture = gfx.TextureCreateFont(font, sprintf("%s/fonts/Skycoin-Regular.ttf", app.DataDir()), 64, 32, 127, gfx.TEXT_LEFT_TO_RIGHT, -1)
 
 	// gameScreen
 	var gameScreen gui.ScreenId = gui.ScreenCreate("gameScreen")

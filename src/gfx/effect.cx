@@ -40,6 +40,7 @@ var UNIFORM_EMISSIVE i32 = 9
 var UNIFORM_SKELETON i32 = 10
 var UNIFORM_PARTICLE i32 = 11
 var UNIFORM_TARGET_SIZE i32 = 12
+var UNIFORM_PBR i32 = 13
 
 // Globals ...
 var g_templates []Template // TODO : use map
