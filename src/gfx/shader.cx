@@ -250,7 +250,9 @@ func ShaderCreate(shaderType i64, shaderVariant i64, shaderFlags i64, shaderKey 
 		shader.source = ShaderSourceCreate(g_shaderPath, ShaderGetVariant(shaderVariant))
 	}
 
-	shader.glsl = str.concat(shader.defines, g_sources[shader.source].code) // ISSUE : can't use + operator
+    var common i32 = ShaderSourceCreate(g_shaderPath, "common.glsl")
+    shader.glsl = str.concat(shader.defines, g_sources[common].code)
+	shader.glsl = str.concat(shader.glsl, g_sources[shader.source].code) // ISSUE : can't use + operator
 	/*printf("//--------------------------------------------------------------------------------\n")
 	printf("// filename : %s\n", ShaderGetVariant(shaderVariant))
 	printf("// type : %d\n", shaderType)

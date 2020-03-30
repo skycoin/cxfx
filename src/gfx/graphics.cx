@@ -873,6 +873,7 @@ func Init(width i32, height i32, dataDir str, glVersion i32)() {
 	TemplateBindUniform(g_tfxSky, UNIFORM_WORLD, "u_m44World")
 	TemplateBindUniform(g_tfxSky, UNIFORM_VIEW, "u_m44View")
 	TemplateBindUniform(g_tfxSky, UNIFORM_PROJECTION, "u_m44Projection")
+    TemplateBindUniform(g_tfxSky, UNIFORM_PBR, "u_v4PBR")
     g_fxSky = TemplateInstance(g_tfxSky)
 
 	// pbr

@@ -129,6 +129,8 @@ type Model struct {
 	environmentDiffuse TextureId // TODO : remove
 	brdf TextureId // TODO : remove
 
+    exposure f32
+
 	inverseBinds []mat.m44 // TODO : skeleton struct
 	jointMatrices []mat.m44 // TODO : runtime struct
 
@@ -548,6 +550,12 @@ func ModelSetEnvironmentSpecular(id ModelId, environment TextureId) {
 func ModelSetEnvironmentDiffuse(id ModelId, environment TextureId) {
 	panicIfNot(ModelIsValid(id), "invalid model")
 	g_models[id.model].environmentDiffuse = environment
+}
+
+// ModelSetExposure...
+func ModelSetExposure(id ModelId, exposure f32) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	g_models[id.model].exposure = exposure
 }
 
 // ModelSetBRDF ...
@@ -1450,6 +1458,7 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
 	var skinned bool = g_models[modelIndex].skinned
 	var world m44 = g_models[modelIndex].world
     var worldIsIdentity bool = g_models[modelIndex].worldIsIdentity
+    var exposure f32 = g_models[modelIndex].exposure
 
 	var renderableCount i32 = len(renderables)
 
@@ -1496,7 +1505,10 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
             EffectAssignV4(effect, UNIFORM_CAMERA_POSITION, cameraPosition)
 	    	EffectAssignV4(effect, UNIFORM_DEBUG_0, DEBUG_0)
             //printf("MIPMAP_COUNT %d\n", TextureGetMipmapCount(environmentSpecular))
-            EffectAssignV4(effect, UNIFORM_PBR, v4.makef(i32.f32(TextureGetMipmapCount(environmentSpecular))))
+            //printf("DEBUG_0 %f, %f, %f, %f\n", DEBUG_0.x, DEBUG_0.y, DEBUG_0.z, DEBUG_0.w)
+            //printf("EXPOSURE %f\n", exposure)
+            EffectAssignV4(effect, UNIFORM_PBR, v4.make(i32.f32(TextureGetMipmapCount(environmentSpecular)),
+                        exposure, 0.0, 0.0))
             if primitive.useSkin == 1 {
 	      		EffectAssignM44V(effect, UNIFORM_SKELETON, jointMatrices, false)
 		    }

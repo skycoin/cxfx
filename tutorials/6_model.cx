@@ -61,6 +61,8 @@ var CAMERA_FPS i32 = 2
 var CAMERA_COUNT i32 = 3
 var currentCamera i32 = CAMERA_TPS
 
+var DP0 mat.v4
+
 // Synth ...
 type Synth struct {
 	rx f32
@@ -90,17 +92,17 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
                 snapFrustum = true
             }
         } else if key == app.KEYCODE_2 && action == app.KEY_PRESS {
-            gfx.DEBUG_0.x = gfx.DEBUG_0.x - 0.1
-            printf("DEBUG %f, %f, %f, %f\n", gfx.DEBUG_0.x, gfx.DEBUG_0.y, gfx.DEBUG_0.z, gfx.DEBUG_0.w)
+            DP0.x = DP0.x - 0.1
+            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
         } else if key == app.KEYCODE_3 && action == app.KEY_PRESS {
-            gfx.DEBUG_0.x = gfx.DEBUG_0.x + 0.1
-            printf("DEBUG %f, %f, %f, %f\n", gfx.DEBUG_0.x, gfx.DEBUG_0.y, gfx.DEBUG_0.z, gfx.DEBUG_0.w)
+            DP0.x = DP0.x + 0.1
+            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
         } else if key == app.KEYCODE_4 && action == app.KEY_PRESS {
-            gfx.DEBUG_0.y = gfx.DEBUG_0.y - 0.1
-            printf("DEBUG %f, %f, %f, %f\n", gfx.DEBUG_0.x, gfx.DEBUG_0.y, gfx.DEBUG_0.z, gfx.DEBUG_0.w)
+            DP0.y = DP0.y - 0.1
+            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
         } else if key == app.KEYCODE_5 && action == app.KEY_PRESS {
-            gfx.DEBUG_0.y = gfx.DEBUG_0.y + 0.1
-            printf("DEBUG %f, %f, %f, %f\n", gfx.DEBUG_0.x, gfx.DEBUG_0.y, gfx.DEBUG_0.z, gfx.DEBUG_0.w)
+            DP0.y = DP0.y + 0.1
+            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
         }
 	} else if mods == app.MOD_ALT && action == app.KEY_PRESS {
 		if key == app.KEYCODE_LEFT {
@@ -223,6 +225,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
+    gfx.EffectAssignV4(gfx.g_fxSky, gfx.UNIFORM_PBR, DP0)
     gfx.MeshRender(skyMesh)
 
 	// ground
@@ -245,6 +248,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.ModelSetEnvironmentDiffuse(model, skyDiffuses[currentSky])
 	gfx.ModelSetBRDF(model, brdf)
 	gfx.ModelSetCameraPosition(model, cameraPosition)
+    gfx.ModelSetExposure(model, DP0.y)
 	gfx.ModelRender(model)
 
     //gfx.OctreeRender(octree, m44.IDENTITY, view, projection)
@@ -323,14 +327,14 @@ func gameOnStart(window str) {
 
     var skies []str
     skies = append(skies, "doge2")
-    skies = append(skies, "ennis")
+    /*skies = append(skies, "ennis")
     skies = append(skies, "field")
     skies = append(skies, "footprint_court")
     skies = append(skies, "helipad")
     skies = append(skies, "papermill")
     skies = append(skies, "pisa")
     skies = append(skies, "studio_grey")
-    skies = append(skies, "studio_red_green")
+    skies = append(skies, "studio_red_green")*/
     for i := 0; i < len(skies); i++ {
         skySpeculars = append(skySpeculars, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/specular/specular_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 32, false))
 	    skyDiffuses = append(skyDiffuses, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/diffuse/diffuse_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 0, false))
