@@ -42,10 +42,16 @@ define runcx
 	@echo '$(subst $() $(),\n,${RUNCLI})' > $(CX_ASSETS)/run.cli; cd $(CX)/; $(MAKE) build-android; rm -r $(CX_ASSETS)
 endef
 else
+ifeq ($(BUILDCX), true)
 define runcx
 	cd $(CX); $(MAKE) build-full
 	cx $(RUNCLI)
 endef
+else
+define runcx
+	cx $(RUNCLI)
+endef
+endif
 endif
 
 define CXCP
