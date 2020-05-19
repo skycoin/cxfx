@@ -194,5 +194,5 @@ tuto10: $(COPY_TUTORIALS_ASSETS)
 .PHONY:skylight
 skylight: $(COPY_SKYLIGHT_ASSETS)
 	@echo $(STATE) skylight...
-	$(call runcx,$(SKYLIGHT)/skylight.cx)
+	$(call runcx, $(SKYLIGHT)/menu.cx $(SKYLIGHT)/skylight.cx)
 
