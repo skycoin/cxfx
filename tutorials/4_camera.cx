@@ -70,10 +70,10 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func main()() {
-	// init
-	gam.Init("Camera Tutorial", 800, 600, 60, "")
-	mesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 36)
+func gameOnStart(window str) {
+	app.Init()
+
+    mesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 36)
 	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()),
 		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
 
@@ -89,13 +89,16 @@ func main()() {
 	gui.ScreenSetOnEvent(gameScreen, "main", "gameOnEvent")
 	gui.ScreenSetOnUpdate(gameScreen, "main", "gameOnUpdate")
 	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
-
-	// run
 	gui.ScreenShow(gameScreen)
-	gam.Run(2U)
+}
 
-	// destroy
-	gfx.MeshUnlock(mesh)
-	gam.Destroy()
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+	app.SetStartCallback("main", "gameOnStart")
+    if app.Run("Camera Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
+	    gfx.MeshUnlock(mesh)
+	    app.Destroy()
+    }
 }
 

@@ -550,6 +550,59 @@ func controlResize(id ControlId, pixelBounds mat.v2, autoBounds mat.v2) () {
 	}
 }
 
+// ControlUpdate ...
+func ControlUpdate(id ControlId, deltaTime f64) () {
+    panicIfNot(IsValidControl(id), "invalid id")
+
+    var visible i32 = g_controls[id.control].visible
+    if visible > 0 {
+		var count i32 = len(g_controls[id.control].children)
+		for i := 0; i < count; i = i + 1 {
+			var child ControlId = g_controls[id.control].children[i]
+			panicIfNot(IsValidControl(child), "invalid child control")
+			var childVisible i32 = g_controls[child.control].visible
+			if (childVisible > 0) {
+				var guiType i32 = g_controls[child.control].gui_type
+				var guiIndex i32 = g_controls[child.control].gui_index
+
+				if (guiType == GUI_INVALID) {
+					panicIfNot(false, "invalid gui type (GUI_INVALID)")
+				} else if (guiType == GUI_CONTROL) {
+					panicIfNot(child.control == guiIndex, "unexpected error")
+					ControlUpdate(child, deltaTime)
+				} else if (guiType == GUI_SCREEN) {
+					ControlUpdate(child, deltaTime)
+				} else if (guiType == GUI_PICTURE) {
+					PictureUpdate(NewPictureId(child, guiIndex), deltaTime)
+				} else if (guiType == GUI_LABEL) {
+					ControlUpdate(child, deltaTime)
+				} else if (guiType == GUI_KEYBOARD) {
+					ControlUpdate(child, deltaTime)
+				} else if (guiType == GUI_WINDOW) {
+					ControlUpdate(child, deltaTime)
+				} else if (guiType == GUI_GRAPH) {
+					ControlUpdate(child, deltaTime)
+				} else if (guiType == GUI_SPLITTER) {
+					ControlUpdate(child, deltaTime)
+				} else if (guiType == GUI_LIST) {
+					ControlUpdate(child, deltaTime)
+				} else if (guiType == GUI_SCROLLER) {
+					ControlUpdate(child, deltaTime)
+				} else if (guiType == GUI_LIFTER) {
+					ControlUpdate(child, deltaTime)
+				} else if (guiType == GUI_BINDER) {
+					ControlUpdate(child, deltaTime)
+				} else if (guiType == GUI_COMBO) {
+					ControlUpdate(child, deltaTime)
+				} else {
+					printf("GUI TYPE %d\n", guiType)
+					panicIfNot(false, "unknown gui type")
+				}
+			}
+        }
+    }
+}
+
 // ControlResize ...
 func ControlResize(id ControlId) () {
 	panicIfNot(IsValidControl(id), "invalid id")

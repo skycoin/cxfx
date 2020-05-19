@@ -85,7 +85,7 @@ func TexturePrint(message str, id TextureId) {
 	panicIf(GlError(), "gl.GetTexLevelParameteriv")
 	var height i32 = gl.GetTexLevelParameteriv(face, 0, gl.TEXTURE_HEIGHT);
 	panicIf(GlError(), "gl.GetTexLevelParameteriv")
-	printf("%s : path '%s', name %d, width %d, height %d, mipmap %d, target %s, format %s, internal %s, pixel %s, type %s, glWidth %d, glHeight %d\n",
+	printf("%s : path '%s', name %d, width %d, height %d, mipmap %d, target %s, format %s, internal %d, %s, pixel %s, type %s, glWidth %d, glHeight %d\n",
 		message,
 		g_textures[id.texture].path,
 		g_textures[id.texture].name,
@@ -94,6 +94,7 @@ func TexturePrint(message str, id TextureId) {
 		g_textures[id.texture].mipmap,
 		GlString(g_textures[id.texture].target),
 		GfxString(g_textures[id.texture].format),
+        g_textures[id.texture].internalFormat,
 		GlString(g_textures[id.texture].internalFormat),
 		GlString(g_textures[id.texture].pixelFormat),
 		GlString(g_textures[id.texture].pixelType),
@@ -157,25 +158,45 @@ func TextureSetResizable(id TextureId, resizable bool) {
 }*/
 
 func textureCreate0(path str, extension str, target i32, format i32, width i32, height i32, mipmap i32, resizable bool) (out TextureId) {
-	var name i32
+	var name i32 = gl.GenTextures(1, name) // TODO : change gl.GenTextures signature
+	panicIf(GlError(), "gl.GenTextures")
 	if (path == "") {
-		name = gl.GenTextures(1, name) // TODO : change gl.GenTextures signature
-		panicIf(GlError(), "gl.GenTextures")
 	} else {
 		var textureCount i32 = len(g_textures)
 		for t := 0; t < textureCount; t++ {
 			if g_textures[t].path == path &&
-			   g_textures[t].extension == extension &&
-			   g_textures[t].format == format {
+				g_textures[t].extension == extension &&
+				g_textures[t].format == format {
 				out.texture = t
 				return
 			}
 		}
 
+		gl.BindTexture(target, name)
+		panicIf(GlError(), "gl.BindTexture")
+
+		gl.TexParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		panicIf(GlError(), "gl.TexParameteri")
+
+		gl.TexParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		panicIf(GlError(), "gl.TexParameteri")
+
+		gl.TexParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+		panicIf(GlError(), "gl.TexParameteri")
+
+		gl.TexParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+		panicIf(GlError(), "gl.TexParameteri")
+
 		if target == gl.TEXTURE_2D {
-			name = gl.NewTexture(path)
+			gl.UploadImageToTexture(path, target)
 		} else if target == gl.TEXTURE_CUBE_MAP {
-			name = gl.NewTextureCube(path, extension)
+			gl.TexParameteri(target, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE)
+			gl.UploadImageToTexture(sprintf("%sposx%s", path, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_X)
+			gl.UploadImageToTexture(sprintf("%snegx%s", path, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_X)
+			gl.UploadImageToTexture(sprintf("%sposy%s", path, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Y)
+			gl.UploadImageToTexture(sprintf("%snegy%s", path, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Y)
+			gl.UploadImageToTexture(sprintf("%sposz%s", path, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Z)
+			gl.UploadImageToTexture(sprintf("%snegz%s", path, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Z)
 		}
 		panicIf(GlError(), "gl.NewTexture")
 	}
@@ -316,7 +337,7 @@ func getGlFormat(format i32) (internalFormat i32, pixelFormat i32, pixelType i32
 	if format == FORMAT_DEPTH24 {
 		internalFormat = gl.DEPTH_COMPONENT24
 		pixelFormat = gl.DEPTH_COMPONENT
-		pixelType = gl.UNSIGNED_BYTE
+		pixelType = gl.UNSIGNED_INT
 	} else if format == FORMAT_DEPTH24_STENCIL8 {
 		internalFormat = gl.DEPTH24_STENCIL8
 		pixelFormat = gl.DEPTH_STENCIL

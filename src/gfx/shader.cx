@@ -95,7 +95,21 @@ func ShaderDefineGetStr(flag i64) (out str) {
 
 // ShaderDefineGetHeader ...
 func ShaderDefineGetHeader(flags i64) (out str) {
-	out = "#version 130\n"
+    var glVersion i32 = GetGLVersion()
+
+    if glVersion == GL_VERSION_DS_3_2 {
+	    out = "#version 150\n"
+	    out = str.concat(out, "#define texture2D texture\n")
+	    out = str.concat(out, "#define textureCube texture\n")
+	    out = str.concat(out, "#define textureCubeLod textureLod\n")
+    } else if glVersion == GL_VERSION_ES_3_1 {
+        out = "#version 310 es\n"
+        out = str.concat(out, "precision highp float;\n")
+	    out = str.concat(out, "#define texture2D texture\n")
+	    out = str.concat(out, "#define textureCube texture\n")
+	    out = str.concat(out, "#define textureCubeLod textureLod\n")
+    }
+
 	for i := 0; i < 32; i++ {
 		var flag i64 = 1L << i32.i64(i)
 		if (flags & flag) == flag {
@@ -105,8 +119,10 @@ func ShaderDefineGetHeader(flags i64) (out str) {
 }
 
 func shaderInit(dataDir str) {
-	g_shaderPath = sprintf("%s/shaders/", dataDir)
-	ShaderDefineAdd(USE_TRANSFORM, "#define USE_TRANSFORM\n")
+	g_shaderPath = sprintf("%sshaders/", dataDir)
+    printf(">> SHADER_INIT DATADIR %s, SHADER_PATH %s\n", dataDir, g_shaderPath)
+
+    ShaderDefineAdd(USE_TRANSFORM, "#define USE_TRANSFORM\n")
 	ShaderDefineAdd(USE_COLOR_UNI, "#define USE_COLOR_UNI\n")
 	ShaderDefineAdd(USE_COLOR_VTX, "#define USE_COLOR_VTX\n")
 	ShaderDefineAdd(USE_COLOR_MAP, "#define USE_COLOR_MAP\n")
@@ -189,11 +205,12 @@ func ShaderSourceCreate(path str, filename str) (out i32) {
 	source.filename = filename
 
 	var success bool
-	source.code, success = os.ReadAllText(sprintf("%s/%s", path, filename))
+    var shaderPath str = sprintf("%s%s", path, filename)
+	source.code, success = os.ReadAllText(shaderPath)
 	if success {
 		out = len(g_sources)
 		g_sources = append(g_sources, source)
-	}
+    }
 }
 
 // ShaderIsValid ...

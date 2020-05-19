@@ -385,7 +385,7 @@ void main()
 	float depth = texture2D(u_t2Depth, uv).r;
 	float fragDepth = gl_FragCoord.z;
 	float d = fragDepth <  depth ? 1.0 : 0.0;
-	float dd = clamp(pow(max(0.0, depth - fragDepth) * 30.0, 1.0), 0, 1);
+	float dd = clamp(pow(max(0.0, depth - fragDepth) * 30.0, 1.0), 0.0, 1.0);
 
 	float a = min(1.0, v4Base.a) * 8.0 + 0.01;
 	float b = -gl_FragCoord.z * 0.95 + 1.0;

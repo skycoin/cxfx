@@ -15,19 +15,33 @@ cd ~/go/src/github.com/SkycoinProject/
 git clone https://github.com/SkycoinProject/cx
 cd ~/go/src/github.com/SkycoinProject/cx
 git checkout develop
-make install-gfx-deps
-make install
-make build-full
 ```
+
 ##### Install cxfx :
 ```
 mkdir -p ~/go/src/github.com/SkycoinProject/
 cd ~/go/src/github.com/SkycoinProject/
 git clone https://github.com/SkycoinProject/cxfx
-cd ~/go/src/github.com/SkycoinProject/cxfx/games/skylight
-make
-cd ~/go/src/github.com/SkycoinProject/cxfx/tutorials
-make 6_model
+```
+
+##### Run cxfx on desktop :
+```
+cd ~/go/src/github.com/SkycoinProject/cxfx
+make tuto0
+...
+make tuto7
+...
+make skylight
+```
+
+##### Run cxfx on android :
+```
+cd ~/go/src/github.com/SkycoinProject/cxfx
+make tuto0 TARGET=android
+...
+make tuto7 TARGET=android
+...
+make skylight TARGET=android
 ```
 
 ##### Controls in tutorials & skylight :

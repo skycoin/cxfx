@@ -109,7 +109,7 @@ out vec4 v_v4Color;
 out vec2 v_v2Texcoord;
 #endif
 
-#if DEBUG_SKIN
+#ifdef DEBUG_SKIN
 #ifdef USE_WEIGHT
 out vec4 v_v4Weight;
 #endif
@@ -135,7 +135,7 @@ void main()
 {
 
 #ifdef USE_SKIN
-#if DEBUG_SKIN
+#ifdef DEBUG_SKIN
 	v_v4Weight = i_v4Weight;
 	v_v4Joint = i_v4Joint;
 #endif

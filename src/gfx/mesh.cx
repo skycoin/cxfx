@@ -267,12 +267,12 @@ func meshCreate(primitive i32, indexType i32, indexCount i32, indices []ui8, att
 	g_vbos = append(g_vbos, mesh.vbo)
 
 	// vao
-	mesh.vao = gl.GenVertexArrays(1, mesh.vao)
-	panicIf(GlError(), "gl.GenVertexArrays")
+	mesh.vao = gl.GenVertexArraysCore(1, mesh.vao)
+	panicIf(GlError(), "gl.GenVertexArraysCore")
 	g_vaos = append(g_vaos, mesh.vao)
 
-	gl.BindVertexArray(mesh.vao)
-	panicIf(GlError(), "gl.BindVertexArray")
+	gl.BindVertexArrayCore(mesh.vao)
+	panicIf(GlError(), "gl.BindVertexArrayCore")
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, mesh.vbo)
 	panicIf(GlError(), "gl.BindBuffer")
@@ -343,8 +343,8 @@ func MeshEnd(id MeshId) () {
 		panicIfNot((vertexByteCount % vertexByteStride) == 0, "(vertexByteCount % vertexByteStride) == 0")
 		vertexCount = vertexByteCount / vertexByteStride
 
-		gl.BindVertexArray(g_meshes[mesh].vao)
-		panicIf(GlError(), "gl.BindBuffer")
+		gl.BindVertexArrayCore(g_meshes[mesh].vao)
+		panicIf(GlError(), "gl.BindVertexArrayCore")
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, g_meshes[mesh].vbo)
 		panicIf(GlError(), "gl.BindBuffer")
@@ -366,8 +366,8 @@ func MeshEnd(id MeshId) () {
 func MeshRender(id MeshId) {
 	panicIfNot(IsValidMesh(id), "invalid id")
 	var mesh i32 = id.mesh
-	gl.BindVertexArray(g_meshes[mesh].vao)
-	panicIf(GlError(), "gl.BindVertexArray")
+	gl.BindVertexArrayCore(g_meshes[mesh].vao)
+	panicIf(GlError(), "gl.BindVertexArrayCore")
 
 	var null []i32
 	var indexFormat i32 = g_meshes[mesh].indexFormat

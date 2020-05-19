@@ -211,11 +211,10 @@ func loadModel(path str, filename str, s f32, r f32, v f32) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func main()() {
-	// init
-	gam.Init("Menu Tutorial", 1024, 768, 60, "")
+func gameOnStart(window str) {
+    app.Init()
 
-	skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
+    skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
 	gfx.MeshBegin(skyMesh)
 	gfx.MeshAppendBox(skyMesh, false, true,
 		v3.ZERO,
@@ -224,7 +223,7 @@ func main()() {
 	gfx.MeshEnd(skyMesh)
 
 	//loadModel("glTF-Sample-Models/Box/glTF", "Box.gltf", 1.0, 1.0, 1.0)
-	loadModel("glTF-Sample-Models/BoxAnimated/glTF", "BoxAnimated.gltf", 1.0, 1.0, 1.0)
+	//loadModel("glTF-Sample-Models/BoxAnimated/glTF", "BoxAnimated.gltf", 1.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/NormalTangentTest/glTF", "NormalTangentTest.gltf", 3.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/NormalTangentMirrorTest/glTF", "NormalTangentMirrorTest.gltf", 3.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/MetalRoughSpheres/glTF", "MetalRoughSpheres.gltf", 1.0, 0.0, 1.0)
@@ -240,7 +239,7 @@ func main()() {
 	//loadModel("glTF-Sample-Models/BrainStem/glTF", "BrainStem.gltf", 1.0, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/Duck/glTF", "Duck.gltf", 1.0, 1.0, 1.0)
 	loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
-	loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
+	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
 
@@ -320,14 +319,17 @@ func main()() {
 	gui.ControlSetDock(bootScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(bootScreen, 2.0D)
 	gui.ScreenSetOnNext(bootScreen, skycoinScreen)
-
-	// run
 	gui.ScreenShow(bootScreen)
-	gam.Run(2U)
+}
 
-	// destroy
-	gfx.MeshUnlock(skyMesh)
-	gfx.MeshUnlock(groundMesh)
-	//gam.Destroy()//ISSUE : can't call gam.Destroy()()
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+    app.SetStartCallback("main", "gameOnStart")
+	if gam.Run("Menu Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
+	    gfx.MeshUnlock(skyMesh)
+	    gfx.MeshUnlock(groundMesh)
+	    //gam.Destroy()//ISSUE : can't call gam.Destroy()()
+    }
 }
 

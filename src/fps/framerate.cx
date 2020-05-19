@@ -60,6 +60,10 @@ func Init(targetFps ui32) {
 func BeginUpdate(updateStepSecond ui32) {
 	g_framerate.currentTime = time.UnixNano()
 	g_framerate.deltaTime = g_framerate.currentTime - g_framerate.previousTime
+    if NanoToSecond(g_framerate.deltaTime) > 0.5D {
+        g_framerate.deltaTime = SecondToNano(0.5D)
+        printf("Discrading frames %f\n", f64.f32(NanoToSecond(g_framerate.deltaTime)))
+    }
 	g_framerate.deltaSecond = NanoToSecond(g_framerate.deltaTime)
 
 	if g_framerate.deltaTime == g_framerate.currentTime { // TODO : remove ? fixed steps ?

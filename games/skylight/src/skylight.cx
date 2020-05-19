@@ -101,6 +101,7 @@ var prf14 fps.ProfileId = fps.InvalidProfile()
 var prfUpdateAnimations fps.ProfileId = fps.InvalidProfile()
 var prfUpdatePositions fps.ProfileId = fps.InvalidProfile()
 var prfCameraUpdate fps.ProfileId = fps.InvalidProfile()
+var prfPhxEmit fps.ProfileId = fps.InvalidProfile()
 var prfPhxRemove fps.ProfileId = fps.InvalidProfile()
 var prfParticleUpdate fps.ProfileId = fps.InvalidProfile()
 var prfAlphaFull fps.ProfileId = fps.InvalidProfile()
@@ -122,6 +123,12 @@ var alphaTarget gfx.TargetId
 var alphaFullTarget gfx.TargetId
 var mergeTarget gfx.TargetId
 var edgeTarget gfx.TargetId
+
+var cxfxAnim gui.AnimationId = gui.InvalidAnimation()
+var skylightTexture gfx.TextureId = gui.InvalidTexture()
+var skylightAnim gui.AnimationId = gui.InvalidAnimation()
+var charactersTexture gfx.TextureId = gui.InvalidTexture()
+var charactersAnim gui.AnimationId = gui.InvalidAnimation()
 
 var groundMesh gfx.MeshId = gfx.InvalidMesh()
 var texture gfx.TextureId = gfx.InvalidTexture()
@@ -156,7 +163,7 @@ var groundBack f32 = worldSizeZ / groundScale
 var groundWidth i32 = 16
 var groundHeight i32 = 16
 
-var voiceId snd.VoiceId
+//var voiceId snd.VoiceId
 
 var TAG_GROUND i32 = 1
 var TAG_PLAYER i32 = 2
@@ -559,13 +566,14 @@ func updatePlayers(dt f32)() {
 	fps.StopProfile(prfUpdatePlayers)
 }
 
+var fireCount i32
 func updateWeapons(dt f32)() {
 	prfUpdateWeapons = fps.CreateStartProfile(prfUpdateWeapons, "updateWeapons")
 	for i := 0; i < len(players); i++ {
 		if currentPlayer != i && currentCamera != CAMERA_FREE {
 			var cpuFire f32 = players[i].cpuFire
 			//var cpuZdir f32 = players[i].cpuZdir
-			if cpuFire > 2.5 {
+			if cpuFire > 4.0 {
 				cpuFire = 0.0
 				players[i].fireWeapon = 1
 			}
@@ -583,9 +591,10 @@ func updateWeapons(dt f32)() {
 		}
 		players[i].fireAnimLength = gfx.AnimationGetMax(players[i].throw.anim)
 
-		if players[i].fireWeapon > 0 && players[i].fireAnimTime < 0.0 {
+		if players[i].fireWeapon > 0 && players[i].fireAnimTime < 0.0 && fireCount < 15 {
 			players[i].fireAnimTime = 0.0
 			gfx.AnimationSetTime(players[i].throw.anim, 0.0)
+            fireCount = fireCount + 1
 		}
 
 		var nextFireAnimTime f32 = players[i].fireAnimTime + dt * 2.5
@@ -798,12 +807,12 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	//-------------------------------------------------------------------------
 	// PhxRemove
 	//-------------------------------------------------------------------------
-	prfPhxRemove = fps.CreateStartProfile(prfPhxRemove, "PhxRemove")
+    prfPhxEmit = fps.CreateStartProfile(prfPhxEmit, "PhxEmit")
 	phxRemoveList = resize(phxRemoveList, 0)
 
 	var collisions []phx.Collision = phx.GetCollisions()
 	var collisionCount i32 = len(collisions)
-	for colIndex := 0; colIndex < collisionCount; colIndex++ {
+    for colIndex := 0; colIndex < collisionCount; colIndex++ {
 		var col phx.Collision = collisions[colIndex]
 		if col.LeftTag == TAG_MINER && col.RightTag == TAG_MINER {
 			phxRemoveList = append(phxRemoveList, col.LeftIndex)
@@ -836,6 +845,8 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 			emitSmoke(col.Position, col.RightTag2)
 		}
 	}
+	fps.StopProfile(prfPhxEmit)
+	prfPhxRemove = fps.CreateStartProfile(prfPhxRemove, "PhxRemove")
 
 	phxSortedList = resize(phxSortedList, 0)
 	var removeCount i32 = len(phxRemoveList)
@@ -866,12 +877,12 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 					aimCount = aimCount - 1
 				}
 				phx.RemoveObject(toRemove)
+                fireCount = fireCount - 1
 			}
 			previousRemoved = toRemove
 		}
 	}
 	fps.StopProfile(prfPhxRemove)
-
 	//-------------------------------------------------------------------------
 	// ModelUpdate
 	//-------------------------------------------------------------------------
@@ -1078,7 +1089,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.EffectUse(gfx.g_fxEdge)
 	gfx.EffectAssignTexture(gfx.g_fxEdge, gfx.SAMPLER_COLOR_3, gfx.TargetGetDepth(opaqueTarget), gfx.g_nearestClamp)
 	gfx.EffectAssignV4(gfx.g_fxEdge, gfx.UNIFORM_TARGET_SIZE, gfx.TargetGetSize(opaqueTarget))
-	gfx.MeshRender(gui.g_fullscreenQuad)
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 //-------------------------------------------------------------------------
 // AlphaFull
@@ -1154,12 +1165,12 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.StencilState(true, gfx.EQUAL, 1, 1, gfx.KEEP, gfx.KEEP, gfx.KEEP, 0)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaFullTarget, 0), gfx.g_nearestClamp)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaFullTarget, 1), gfx.g_nearestClamp)
-	gfx.MeshRender(gui.g_fullscreenQuad)
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 	gfx.StencilState(true, gfx.EQUAL, 0, 1, gfx.KEEP, gfx.KEEP, gfx.KEEP, 0)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaTarget, 0), gfx.g_nearestClamp)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaTarget, 1), gfx.g_nearestClamp)
-	gfx.MeshRender(gui.g_fullscreenQuad)
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 	fps.StopProfile(prfGameOnRender)
 }
@@ -1172,16 +1183,15 @@ func writeEdges()() {
 
 	gfx.EffectUse(gfx.g_fxStencil)
 	gfx.EffectAssignTexture(gfx.g_fxStencil, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(edgeTarget, 0), gfx.g_nearestClamp)
-	gfx.MeshRender(gui.g_fullscreenQuad)
-
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 }
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func skycoinOnUpdate(controlIndex i32, controlAction i32) {
-	if snd.VoiceState(voiceId) == snd.VOICE_STOPPED {
-		snd.VoicePlay(voiceId)
-	}
+	//if snd.VoiceState(voiceId) == snd.VOICE_STOPPED {
+	//	snd.VoicePlay(voiceId)
+	//}
 }
 
 //-----------------------------------------------------------------------------
@@ -1233,7 +1243,7 @@ func onExitDialogYes(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 func loadModel(path str, filename str, options i32) (out gfx.ModelId) {
 	printf("loading '%s/%s'\n", path, filename)
-	out = gfx.ModelCreateFromFile(sprintf("%s/models/%s/", app.DataDir(), path), filename, options)
+	out = gfx.ModelCreateFromFile(sprintf("%s/models/skylight/%s/", app.DataDir(), path), filename, options)
 }
 
 //-----------------------------------------------------------------------------
@@ -1245,13 +1255,13 @@ func animCreate(name str, options i32) (out Anim) {
 
 func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
 	var player Player
-	player.idle = animCreate(sprintf("%s_idle", pattern), gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
-	player.jump = animCreate(sprintf("%s_jump", pattern), gfx.MODEL_ANIMATION)
-	player.throw = animCreate(sprintf("%s_throw", pattern), gfx.MODEL_ANIMATION)
-	player.forward = animCreate(sprintf("%s_forward", pattern), gfx.MODEL_ANIMATION)
-	player.backward = animCreate(sprintf("%s_backward", pattern), gfx.MODEL_ANIMATION)
-	player.left = animCreate(sprintf("%s_left", pattern), gfx.MODEL_ANIMATION)
-	player.right = animCreate(sprintf("%s_right", pattern), gfx.MODEL_ANIMATION)
+	player.idle = animCreate(sprintf("%s/idle", pattern), gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
+	player.jump = animCreate(sprintf("%s/jump", pattern), gfx.MODEL_ANIMATION)
+	player.throw = animCreate(sprintf("%s/throw", pattern), gfx.MODEL_ANIMATION)
+	player.forward = animCreate(sprintf("%s/forward", pattern), gfx.MODEL_ANIMATION)
+	player.backward = animCreate(sprintf("%s/backward", pattern), gfx.MODEL_ANIMATION)
+	player.left = animCreate(sprintf("%s/left", pattern), gfx.MODEL_ANIMATION)
+	player.right = animCreate(sprintf("%s/right", pattern), gfx.MODEL_ANIMATION)
 	player.cpuFire = f32.rand() * 2.0
 
 	var model gfx.ModelId = player.idle.model
@@ -1295,20 +1305,29 @@ func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func main()() {
+func gameOnStart(window str) {
+    StartCPUProfile("skylight_init", 100)
+    app.Init()
 
-	// init
-	StartCPUProfile("skylight_init", 100)
-	gam.Init("skylight", 1024, 768, 60, "")
 	phx.Init(30U, -9.8 * 0.1)
 
 	var width i32 = app.Width()
 	var height i32 = app.Height()
 
-	var scale i32 = 3
+	var scale i32 = 2
 
 	var halfWidth i32 = width / scale
 	var halfHeight i32 = height / scale
+
+    cxfxAnim = gui.AnimationCreateFromPath(sprintf("%stextures/cxfx.gif", app.DataDir()))
+
+    skylightTexture = gfx.TextureCreate(sprintf("%s/textures/skylight.jpeg", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    skylightAnim = gui.AnimationCreateFromTexture(skylightTexture)
+
+    charactersTexture = gfx.TextureCreate(sprintf("%s/textures/characters.jpeg", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    charactersAnim = gui.AnimationCreateFromTexture(charactersTexture)
 
 	edgeTarget = gfx.TargetCreate(1, width, height, scale, true)
 	var edgeTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_R8, halfWidth, halfHeight, 0, true)
@@ -1361,8 +1380,10 @@ func main()() {
 	playerCreate("synth", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
 	playerCreate("metalic", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
 	playerCreate("bw", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-
-	skyminerModel = loadModel("Skyminer_7_1/", "skyminer_low_test.gltf", gfx.MODEL_GEOMETRY)
+    playerCreate("megafee", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+	playerCreate("bugd", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+	playerCreate("npc", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+	skyminerModel = loadModel("skyminer/low", "skyminer_low_test.gltf", gfx.MODEL_GEOMETRY)
 
 	currentPlayer = 0
 
@@ -1410,8 +1431,8 @@ func main()() {
 	gam.CameraSetPosition(camera, v3.make(0.0, worldPosY + 1.0, 0.0), true)
 	gam.CameraSetYawPitch(camera, 0.0, 0.0, true)
 
-	var audioId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
-	voiceId = snd.VoiceCreate(audioId)
+	//var audioId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
+	//voiceId = snd.VoiceCreate(audioId)
 
    	// exitScreen
 	exitScreen  = gui.ScreenCreate("exitScreen")
@@ -1444,39 +1465,20 @@ func main()() {
 	}
 	// mainScreen
 	var mainScreen gui.ScreenId = gui.ScreenCreate("mainScreen")
-	gui.ControlSetSkin(mainScreen.base, gui.g_blackSkin)
+	gui.ControlSetSkin(mainScreen.base, gui.g_bootSkin)
 	gui.ControlSetDock(mainScreen.base, gui.DOCK_FILL)
 	gui.ControlSetPadding(mainScreen.base, v4.make(200.0, 150.0, 200.0, 150.0))
 	gui.ScreenSetDuration(mainScreen, -1.0D)
 	gui.ScreenSetOnExit(mainScreen, exitScreen)
 	{
-		var playButton gui.LabelId = gui.LabelCreate("playButton")
-		gui.ControlAddChild(mainScreen.base, playButton.base)
-		gui.ControlSetSkin(playButton.base, gui.g_blueSkin)
-		gui.ControlSetDock(playButton.base, gui.DOCK_TOP)
-		gui.ControlSetFocusable(playButton.base, 1)
-		gui.ControlSetPadding(playButton.base, v4.makef(5.0))
-		gui.ControlSetAutosize(playButton.base, gui.AUTOSIZE_Y)
-		gui.LabelSetFont(playButton, gui.g_boldFont)
-		gui.LabelSetText(playButton, "Play")
-		gui.LabelSetOnState(playButton, "main", "onPlayButton")
-		gui.LabelSetSize(playButton, gui.g_fontSizeButton)
-		gui.LabelSetColor(playButton, gui.g_white)
-		gui.LabelSetAlign(playButton, gui.ALIGN_CENTER)
-
-		var exitButton gui.LabelId = gui.LabelCreate("exitButton")
-		gui.ControlAddChild(mainScreen.base, exitButton.base)
-		gui.ControlSetSkin(exitButton.base, gui.g_blueSkin)
-		gui.ControlSetDock(exitButton.base, gui.DOCK_TOP)
-		gui.ControlSetFocusable(exitButton.base, 1)
-		gui.ControlSetPadding(exitButton.base, v4.makef(5.0))
-		gui.ControlSetAutosize(exitButton.base, gui.AUTOSIZE_Y)
-		gui.LabelSetFont(exitButton, gui.g_boldFont)
-		gui.LabelSetText(exitButton, "Exit")
-		gui.LabelSetOnState(exitButton, "main", "onExitButton")
-		gui.LabelSetSize(exitButton, gui.g_fontSizeButton)
-		gui.LabelSetColor(exitButton, gui.g_white)
-		gui.LabelSetAlign(exitButton, gui.ALIGN_CENTER)
+		var charactersPicture PictureId = gui.PictureCreate("charactersPicture")
+		gui.ControlAddChild(mainScreen.base, charactersPicture.base)
+		gui.ControlSetBounds(charactersPicture.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
+		gui.ControlSetAlign(charactersPicture.base, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(charactersPicture.base, gui.AUTOSCALE)
+		gui.PictureSetAlign(charactersPicture, gui.ALIGN_CENTER)
+		gui.PictureSetOnState(charactersPicture, "main", "onPlayButton")
+		gui.PictureSetAnimation(charactersPicture, charactersAnim, false, 30)
 	}
 
 	// gameScreen
@@ -1491,37 +1493,53 @@ func main()() {
 
 	// titleScreen
 	var titleScreen gui.ScreenId = gui.ScreenCreate("titleScreen")
-	gui.ControlSetSkin(titleScreen.base, gui.g_blackSkin)
+	gui.ControlSetSkin(titleScreen.base, gui.g_bootSkin)
 	gui.ControlSetDock(titleScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(titleScreen, 2.0D)
 	gui.ScreenSetOnNext(titleScreen, mainScreen)
+    {
+		var skylightPicture PictureId = gui.PictureCreate("skylightPicture")
+		gui.ControlAddChild(titleScreen.base, skylightPicture.base)
+		gui.ControlSetBounds(skylightPicture.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
+		gui.ControlSetAlign(skylightPicture.base, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(skylightPicture.base, gui.AUTOSCALE)
+		gui.PictureSetAlign(skylightPicture, gui.ALIGN_CENTER)
+		gui.PictureSetAnimation(skylightPicture, skylightAnim, false, 30)
+	}
+
+	// cxfxScreen
+	var cxfxScreen gui.ScreenId = gui.ScreenCreate("skycoinScreen")
+	gui.ControlSetSkin(cxfxScreen.base, gui.g_bootSkin)//gui.g_goldBorderSkin)
+	gui.ControlSetDock(cxfxScreen.base, gui.DOCK_FILL)
+	gui.ScreenSetDuration(cxfxScreen, 2.0D)
+	gui.ScreenSetOnUpdate(cxfxScreen, "main", "cxfxOnUpdate")
+	gui.ScreenSetOnNext(cxfxScreen, titleScreen)
 	{
-		var label gui.LabelId= gui.LabelCreate("titleLabel")
-		gui.ControlAddChild(titleScreen.base, label.base)
-		gui.ControlSetBounds(label.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
-		gui.ControlSetAlign(label.base, gui.ALIGN_CENTER)
-		gui.LabelSetFont(label, gui.g_boldFont)
-		gui.LabelSetText(label, app.Name())
-		gui.LabelSetSize(label, gui.g_fontSizeTitle)
-		gui.LabelSetAlign(label, gui.ALIGN_CENTER)
-		gui.LabelSetColor(label, gui.g_gold)
+		var cxfxPicture PictureId = gui.PictureCreate("cxfxPicture")
+		gui.ControlAddChild(cxfxScreen.base, cxfxPicture.base)
+		gui.ControlSetBounds(cxfxPicture.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
+		gui.ControlSetAlign(cxfxPicture.base, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(cxfxPicture.base, gui.AUTOSCALE)
+		gui.PictureSetAlign(cxfxPicture, gui.ALIGN_CENTER)
+		gui.PictureSetAnimation(cxfxPicture, cxfxAnim, false, 30)
+        gui.ScreenSetDuration(cxfxScreen, gui.PictureGetAnimationDuration(cxfxPicture))
 	}
 
 	// skycoinScreen
-	var skycoinScreen gui.ScreenId = gui.ScreenCreate("skycoinSceen")
+	var skycoinScreen gui.ScreenId = gui.ScreenCreate("skycoinScreen")
 	gui.ControlSetSkin(skycoinScreen.base, gui.g_blackSkin)
 	gui.ControlSetDock(skycoinScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(skycoinScreen, 2.0D)
 	gui.ScreenSetOnUpdate(skycoinScreen, "main", "skycoinOnUpdate")
-	gui.ScreenSetOnNext(skycoinScreen, titleScreen)
+	gui.ScreenSetOnNext(skycoinScreen, cxfxScreen)
 	{
-		var picture PictureId = gui.PictureCreate("skycoinPicture")
-		gui.ControlAddChild(skycoinScreen.base, picture.base)
-		gui.ControlSetBounds(picture.base, v4.make(0.0, 0.0, gfx.gfx_width / 2.0, gfx.gfx_height / 2.0))
-		gui.ControlSetAlign(picture.base, gui.ALIGN_CENTER)
-		gui.ControlSetAutoscale(picture.base, gui.AUTOSCALE)
-		gui.PictureSetAlign(picture, gui.ALIGN_CENTER)
-		gui.PictureSetAnimation(picture, gui.g_skycoinAnim)
+		var skycoinPicture PictureId = gui.PictureCreate("skycoinPicture")
+		gui.ControlAddChild(skycoinScreen.base, skycoinPicture.base)
+		gui.ControlSetBounds(skycoinPicture.base, v4.make(0.0, 0.0, gfx.gfx_width / 2.0, gfx.gfx_height / 2.0))
+		gui.ControlSetAlign(skycoinPicture.base, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(skycoinPicture.base, gui.AUTOSCALE)
+		gui.PictureSetAlign(skycoinPicture, gui.ALIGN_CENTER)
+		gui.PictureSetAnimation(skycoinPicture, gui.g_skycoinAnim, false, 30)
 	}
 
 	// bootScreen
@@ -1530,17 +1548,21 @@ func main()() {
 	gui.ControlSetDock(bootScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(bootScreen, 2.0D)
 	gui.ScreenSetOnNext(bootScreen, skycoinScreen)
-
-	// run
 	gui.ScreenShow(bootScreen)
-	StopCPUProfile("skylight_init")
-	StartCPUProfile("skylight_run", 100)
-	gam.Run(2U)
 
-	// destroy
-	gfx.MeshUnlock(skyMesh)
-	gfx.MeshUnlock(groundMesh)
+    StopCPUProfile("skylight_init")
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+    StartCPUProfile("skylight_run", 100)
+	app.SetStartCallback("main", "gameOnStart")
+	if app.Run("skylight", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
+	    gfx.MeshUnlock(skyMesh)
+	    gfx.MeshUnlock(groundMesh)
+	    //gam.Destroy()//ISSUE : can't call gam.Destroy()
+    }
 	StopCPUProfile("skylight_run")
-	gam.Destroy()//ISSUE : can't call gam.Destroy()
 }
 

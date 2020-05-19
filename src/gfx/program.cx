@@ -15,27 +15,32 @@ func NullProgram()(out Program) {
 	out.name = 0
 }
 
+func compileShader(shaderType i32, source str) (out i32) {
+	out  = gl.CreateShader(shaderType)
+	panicIf(GlError(), "gl.CreateShader")
+
+	gl.ShaderSource(out, 1, source)
+	panicIf(GlError(), "gl.ShaderSource")
+
+	gl.CompileShader(out)
+	panicIf(GlError(), "gl.CompileShader")
+
+    var status i32 = gl.GetShaderiv(out, gl.COMPILE_STATUS)
+	panicIf(GlError(), "gl.GetShaderiv")
+    if status == gl.FALSE {
+        var logLength i32 = gl.GetShaderiv(out, gl.INFO_LOG_LENGTH)
+	    panicIf(GlError(), "gl.GetShaderiv")
+
+        var log str = gl.GetShaderInfoLog(out, logLength)
+	    panicIf(GlError(), "gl.GetShaderInfoLog")
+        printf("Failed to compile: %v\n", log)
+    }
+}
+
 // ProgramCreate ...
 func ProgramCreate(attributes []Location, samplers []Location, uniforms []Location, vertex str, pixel str) (out Program) {
-	// vertex shader
-	var vertexShader i32 = gl.CreateShader(gl.VERTEX_SHADER)
-	panicIf(GlError(), "gl.CreateShader")
-
-	gl.ShaderSource(vertexShader, 1, vertex)
-	panicIf(GlError(), "gl.ShaderSource")
-
-	gl.CompileShader(vertexShader)
-	panicIf(GlError(), "gl.CompileShader")
-
-	// pixel shader
-	var pixelShader i32 = gl.CreateShader(gl.FRAGMENT_SHADER)
-	panicIf(GlError(), "gl.CreateShader")
-
-	gl.ShaderSource(pixelShader, 1, pixel)
-	panicIf(GlError(), "gl.ShaderSource")
-
-	gl.CompileShader(pixelShader)
-	panicIf(GlError(), "gl.CompileShader")
+    var vertexShader i32 = compileShader(gl.VERTEX_SHADER, vertex)
+    var pixelShader i32 = compileShader(gl.FRAGMENT_SHADER, pixel)
 
 	// program
 	out.name = gl.CreateProgram()
@@ -59,7 +64,18 @@ func ProgramCreate(attributes []Location, samplers []Location, uniforms []Locati
 	gl.LinkProgram(out.name)
 	panicIf(GlError(), "gl.LinkProgram")
 
-	gl.DetachShader(out.name, vertexShader)
+    var status i32 = gl.GetProgramiv(out.name, gl.LINK_STATUS)
+	panicIf(GlError(), "gl.GetProgramiv")
+    if status == gl.FALSE {
+        var logLength i32 = gl.GetProgramiv(out.name, gl.INFO_LOG_LENGTH)
+	    panicIf(GlError(), "gl.GetProgramiv")
+
+        var log str = gl.GetProgramInfoLog(out.name, logLength)
+	    panicIf(GlError(), "gl.GetProgramInfoLog")
+        printf("Failed to link: %v\n", log)
+    }
+
+    gl.DetachShader(out.name, vertexShader)
 	panicIf(GlError(), "gl.LinkProgram")
 
 	gl.DetachShader(out.name, pixelShader)

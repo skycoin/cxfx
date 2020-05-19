@@ -129,7 +129,6 @@ func LabelProcessEvent(id LabelId, event *app.Event) (out i32) {
 			if (button == app.BUTTON_LEFT) {
 				var action i32 = (*event).mouse.action
 				if (action == app.MOUSE_PRESS || action == app.MOUSE_RELEASE) {
-					//printf("app.MOUSE_PRESS\n")
 					var hovered i32 = g_controls[id.base.control].hovered
 					if (hovered > 0) {
 						call = true
@@ -151,9 +150,7 @@ func LabelProcessEvent(id LabelId, event *app.Event) (out i32) {
 				var function func_i32_i32_id = g_labels[id.label].onState
 				var functionIndex i32 = function.index
 				if functionIndex >= 0 {
-					//printf("------------------------------------------------------------>>>>> ON_STATE %d\n", functionIndex)
 					call_i32_i32(function, index, callAction)
-					//printf("LabelProcessEvent\n")
 					out = app.EVENT_CONSUMED
 				}
 			}

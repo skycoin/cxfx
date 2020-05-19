@@ -200,8 +200,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func loadModel(path str, filename str, s f32, r f32, v f32) {
-	printf("loading %s/models/%s/%s\n", app.DataDir(), path, filename)
-	var model gfx.ModelId = gfx.ModelCreateFromFile(sprintf("%s/models/%s/", app.DataDir(), path), filename, gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
+	var model gfx.ModelId = gfx.ModelCreateFromFile(sprintf("%smodels/%s/", app.DataDir(), path), filename, gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
 	models = append(models, model)
 
 	scales = append(scales, s)
@@ -211,12 +210,11 @@ func loadModel(path str, filename str, s f32, r f32, v f32) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func main()() {
-	// init
-	//StartCPUProfile("6_model_init", 100)
-	gam.Init("Model Tutorial", 1024, 768, 60, "")
+func gameOnStart(window str) {
+	StartCPUProfile("6_model_init", 100)
+	app.Init()
 
-	skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
+    skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
 	gfx.MeshBegin(skyMesh)
 	gfx.MeshAppendBox(skyMesh, false, true,
 		v3.ZERO,
@@ -240,13 +238,15 @@ func main()() {
 	//loadModel("glTF-Sample-Models/Monster/glTF", "Monster.gltf", 0.05, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/BrainStem/glTF", "BrainStem.gltf", 1.0, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/Duck/glTF", "Duck.gltf", 1.0, 1.0, 1.0)
-	//loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
+	loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
-	loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
-
-
-	groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
+	//loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
+    loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
+    loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
+    loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
+    loadModel("skylight/skyminer/high", "scene.gltf", 10.0, 0.0, 1.0)
+    groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
 	var groundScale f32 = 20.0
 	gfx.MeshBegin(groundMesh)
 	gfx.MeshAppendPlane(groundMesh, false, true,
@@ -280,17 +280,20 @@ func main()() {
 	gui.ScreenSetOnEvent(gameScreen, "main", "gameOnEvent")
 	gui.ScreenSetOnUpdate(gameScreen, "main", "gameOnUpdate")
 	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
-
-	// run
 	gui.ScreenShow(gameScreen)
 	StopCPUProfile("6_model_init")
-	StartCPUProfile("6_model_run", 100)
-	gam.Run(2U)
+}
 
-	// destroy
-	gfx.MeshUnlock(skyMesh)
-	gfx.MeshUnlock(groundMesh)
-	StopCPUProfile("6_model_run")
-	gam.Destroy()//ISSUE : can't call gam.Destroy()
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+	StartCPUProfile("6_model_run", 100)
+    app.SetStartCallback("main", "gameOnStart")
+	if app.Run("Model Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
+	    gfx.MeshUnlock(skyMesh)
+	    gfx.MeshUnlock(groundMesh)
+	    //gam.Destroy()//ISSUE : can't call gam.Destroy()
+	}
+    StopCPUProfile("6_model_run")
 }
 
