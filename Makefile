@@ -51,10 +51,16 @@ define runcx
 	@echo '$(subst $() $(),\n,${RUNCLI})' > $(CX_ASSETS)/run.cli; cd $(CX)/; $(MAKE) build-android; rm -r $(CX_ASSETS)
 endef
 else
+ifeq ($(BUILDCX), true)
 define runcx
 	cd $(CX); $(MAKE) build-full
 	cx $(RUNCLI)
 endef
+else
+define runcx
+	cx $(RUNCLI)
+endef
+endif
 endif
 
 define CXCP
@@ -205,5 +211,5 @@ tuto11: $(COPY_TUTORIALS_ASSETS)
 .PHONY:skylight
 skylight: $(COPY_SKYLIGHT_ASSETS)
 	@echo $(STATE) skylight...
-	$(call runcx,$(SKYLIGHT)/skylight.cx)
+	$(call runcx, $(SKYLIGHT)/menu.cx $(SKYLIGHT)/skylight.cx)
 

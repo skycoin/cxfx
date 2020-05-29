@@ -322,7 +322,7 @@ func gameOnStart(window str) {
 		gui.ControlSetAlign(picture.base, gui.ALIGN_CENTER)
 		gui.ControlSetAutoscale(picture.base, gui.AUTOSCALE)
 		gui.PictureSetAlign(picture, gui.ALIGN_CENTER)
-		gui.PictureSetAnimation(picture, gui.g_skycoinAnim)
+		gui.PictureSetAnimation(picture, gui.g_skycoinAnim, false, 0)
 	}
 
 	// bootScreen
