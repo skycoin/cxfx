@@ -72,6 +72,7 @@ SRC = $(CX_SRC)/lib/args.cx\
 	  $(CXFX_SRC)/src/mat/v4f.cx\
 	  $(CXFX_SRC)/src/mat/q4f.cx\
 	  $(CXFX_SRC)/src/mat/m44f.cx\
+      $(CXFX_SRC)/src/mat/intersect.cx\
 	  $(CXFX_SRC)/src/app/application.cx\
 	  $(CXFX_SRC)/src/app/event.cx\
 	  $(CXFX_SRC)/src/fps/profiler.cx\
@@ -195,6 +196,11 @@ tuto9: $(COPY_TUTORIALS_ASSETS)
 tuto10: $(COPY_TUTORIALS_ASSETS)
 	@echo $(STATE) dialog tutorial...
 	$(call runcx,$(TUTORIALS)/10_dialog.cx)
+
+.PHONY:tuto11
+tuto11: $(COPY_TUTORIALS_ASSETS)
+	@echo $(STATE) octree tutorial...
+	$(call runcx,$(TUTORIALS)/11_octree.cx)
 
 .PHONY:skylight
 skylight: $(COPY_SKYLIGHT_ASSETS)

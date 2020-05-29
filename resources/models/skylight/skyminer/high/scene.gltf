@@ -10948,7 +10948,7 @@
       "source": "https://sketchfab.com/3d-models/skycoin-skyminer-v10-ddc8be9652824a3698ee19654bd94744",
       "title": "Skycoin Skyminer v1.0"
     },
-    "generator": "Sketchfab-8.2.1",
+    "generator": "Sketchfab-8.25.0",
     "version": "2.0"
   },
   "bufferViews": [
@@ -10995,10 +10995,19 @@
       "uri": "textures/texture_steel_baseColor.png"
     },
     {
+      "uri": "textures/texture_steel_metallicRoughness.png"
+    },
+    {
+      "uri": "textures/texture_steel_emissive.png"
+    },
+    {
       "uri": "textures/steel_too_normal.png"
     },
     {
       "uri": "textures/screws_normal.png"
+    },
+    {
+      "uri": "textures/glass_metallicRoughness.png"
     },
     {
       "uri": "textures/lattice_baseColor.png"
@@ -11007,6 +11016,15 @@
   "materials": [
     {
       "doubleSided": false,
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ],
+      "emissiveTexture": {
+        "index": 2,
+        "texCoord": 0
+      },
       "name": "texture_steel",
       "pbrMetallicRoughness": {
         "baseColorFactor": [
@@ -11019,15 +11037,28 @@
           "index": 0,
           "texCoord": 0
         },
-        "metallicFactor": 0.80000000000000004,
-        "roughnessFactor": 0.25
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
       }
     },
     {
       "doubleSided": false,
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ],
+      "emissiveTexture": {
+        "index": 2,
+        "texCoord": 0
+      },
       "name": "steel_too",
       "normalTexture": {
-        "index": 1,
+        "index": 3,
         "scale": 0.02,
         "texCoord": 1
       },
@@ -11042,15 +11073,28 @@
           "index": 0,
           "texCoord": 0
         },
-        "metallicFactor": 0.59999999999999998,
-        "roughnessFactor": 0.27000762195121952
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
       }
     },
     {
       "doubleSided": true,
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ],
+      "emissiveTexture": {
+        "index": 2,
+        "texCoord": 0
+      },
       "name": "screws",
       "normalTexture": {
-        "index": 2,
+        "index": 4,
         "scale": 1,
         "texCoord": 1
       },
@@ -11065,12 +11109,25 @@
           "index": 0,
           "texCoord": 0
         },
-        "metallicFactor": 0.5,
-        "roughnessFactor": 0.5
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
       }
     },
     {
       "doubleSided": false,
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ],
+      "emissiveTexture": {
+        "index": 2,
+        "texCoord": 0
+      },
       "name": "gold",
       "pbrMetallicRoughness": {
         "baseColorFactor": [
@@ -11084,12 +11141,25 @@
           "texCoord": 0
         },
         "metallicFactor": 1,
-        "roughnessFactor": 0.42244664634146339
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
       }
     },
     {
       "alphaMode": "BLEND",
       "doubleSided": false,
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ],
+      "emissiveTexture": {
+        "index": 2,
+        "texCoord": 0
+      },
       "name": "glass",
       "pbrMetallicRoughness": {
         "baseColorFactor": [
@@ -11098,54 +11168,12 @@
           0,
           0.32488567073170732
         ],
-        "metallicFactor": 0,
-        "roughnessFactor": 0
-      }
-    },
-    {
-      "doubleSided": false,
-      "name": "material",
-      "normalTexture": {
-        "index": 1,
-        "scale": 0.10000000000000001,
-        "texCoord": 0
-      },
-      "pbrMetallicRoughness": {
-        "baseColorFactor": [
-          1,
-          1,
-          1,
-          1
-        ],
-        "baseColorTexture": {
-          "index": 0,
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 5,
           "texCoord": 0
         },
-        "metallicFactor": 0.10000000000000001,
-        "roughnessFactor": 0.10000000000000001
-      }
-    },
-    {
-      "doubleSided": false,
-      "name": "psu_pin",
-      "normalTexture": {
-        "index": 1,
-        "scale": 0.10000000000000001,
-        "texCoord": 0
-      },
-      "pbrMetallicRoughness": {
-        "baseColorFactor": [
-          1,
-          1,
-          1,
-          1
-        ],
-        "baseColorTexture": {
-          "index": 0,
-          "texCoord": 0
-        },
-        "metallicFactor": 0,
-        "roughnessFactor": 0.5
+        "roughnessFactor": 1
       }
     },
     {
@@ -11156,7 +11184,79 @@
         1
       ],
       "emissiveTexture": {
-        "index": 0,
+        "index": 2,
+        "texCoord": 0
+      },
+      "name": "material",
+      "normalTexture": {
+        "index": 3,
+        "scale": 0.10000000000000001,
+        "texCoord": 0
+      },
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": {
+          "index": 0,
+          "texCoord": 0
+        },
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
+      }
+    },
+    {
+      "doubleSided": false,
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ],
+      "emissiveTexture": {
+        "index": 2,
+        "texCoord": 0
+      },
+      "name": "psu_pin",
+      "normalTexture": {
+        "index": 3,
+        "scale": 0.10000000000000001,
+        "texCoord": 0
+      },
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": {
+          "index": 0,
+          "texCoord": 0
+        },
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
+      }
+    },
+    {
+      "doubleSided": false,
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ],
+      "emissiveTexture": {
+        "index": 2,
         "texCoord": 0
       },
       "name": "beeps",
@@ -11171,17 +11271,25 @@
           "index": 0,
           "texCoord": 0
         },
-        "metallicFactor": 0,
-        "roughnessFactor": 0.19073932926829268
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
       }
     },
     {
       "doubleSided": false,
       "emissiveFactor": [
-        0,
-        0,
-        0
+        1,
+        1,
+        1
       ],
+      "emissiveTexture": {
+        "index": 2,
+        "texCoord": 0
+      },
       "name": "plastic",
       "pbrMetallicRoughness": {
         "baseColorFactor": [
@@ -11194,15 +11302,28 @@
           "index": 0,
           "texCoord": 0
         },
-        "metallicFactor": 0,
-        "roughnessFactor": 0.77610518292682928
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
       }
     },
     {
       "doubleSided": true,
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ],
+      "emissiveTexture": {
+        "index": 2,
+        "texCoord": 0
+      },
       "name": "texture_pis",
       "normalTexture": {
-        "index": 1,
+        "index": 3,
         "scale": 0.5,
         "texCoord": 1
       },
@@ -11217,16 +11338,29 @@
           "index": 0,
           "texCoord": 0
         },
-        "metallicFactor": 0.0017149390243902439,
-        "roughnessFactor": 0.19683689024390244
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
       }
     },
     {
       "alphaMode": "BLEND",
       "doubleSided": true,
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ],
+      "emissiveTexture": {
+        "index": 2,
+        "texCoord": 0
+      },
       "name": "lattice",
       "normalTexture": {
-        "index": 1,
+        "index": 3,
         "scale": 0.5,
         "texCoord": 0
       },
@@ -11238,18 +11372,31 @@
           1
         ],
         "baseColorTexture": {
-          "index": 3,
+          "index": 6,
           "texCoord": 0
         },
-        "metallicFactor": 0.75,
-        "roughnessFactor": 0.099275914634146339
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
       }
     },
     {
       "doubleSided": false,
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ],
+      "emissiveTexture": {
+        "index": 2,
+        "texCoord": 0
+      },
       "name": "capacitor",
       "normalTexture": {
-        "index": 1,
+        "index": 3,
         "scale": 1,
         "texCoord": 0
       },
@@ -11264,15 +11411,28 @@
           "index": 0,
           "texCoord": 0
         },
-        "metallicFactor": 0.32488567073170732,
-        "roughnessFactor": 0.26391006097560976
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
       }
     },
     {
       "doubleSided": false,
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ],
+      "emissiveTexture": {
+        "index": 2,
+        "texCoord": 0
+      },
       "name": "screws_psu",
       "normalTexture": {
-        "index": 2,
+        "index": 4,
         "scale": 1,
         "texCoord": 0
       },
@@ -11287,8 +11447,12 @@
           "index": 0,
           "texCoord": 0
         },
-        "metallicFactor": 0.5,
-        "roughnessFactor": 0.20000000000000001
+        "metallicFactor": 1,
+        "metallicRoughnessTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "roughnessFactor": 1
       }
     }
   ],
@@ -17056,6 +17220,18 @@
     {
       "sampler": 0,
       "source": 3
+    },
+    {
+      "sampler": 0,
+      "source": 4
+    },
+    {
+      "sampler": 0,
+      "source": 5
+    },
+    {
+      "sampler": 0,
+      "source": 6
     }
   ]
 }

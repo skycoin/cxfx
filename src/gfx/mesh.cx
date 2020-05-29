@@ -69,6 +69,7 @@ type Mesh struct {
 	vertexByteCount i32
 	vertexCount i32
 
+    channels []channelInfo
 	frontFace i32
 	cullFace i32
 
@@ -305,7 +306,7 @@ func MeshInstance(primitive i32, indexFormat i32, indices []ui8, attributes []Ve
 
 // MeshCreate ...
 func MeshCreate(primitive i32, indexFormat i32, indexCount i32, attributes []VertexAttribute, vertexCount i32) (out MeshId) { // TODO: refactor
-	var indices []ui8
+    var indices []ui8
 	var vertices []ui8
 	out = meshCreate(primitive, indexFormat, indexCount, indices, attributes, vertexCount, vertices, gl.STREAM_DRAW)
 }
@@ -341,7 +342,7 @@ func MeshEnd(id MeshId) () {
 		var vertexByteStride i32 = g_meshes[mesh].vertexByteStride
 		panicIfNot(vertexByteStride > 0, "invalid vertex stride")
 		panicIfNot((vertexByteCount % vertexByteStride) == 0, "(vertexByteCount % vertexByteStride) == 0")
-		vertexCount = vertexByteCount / vertexByteStride
+   		vertexCount = vertexByteCount / vertexByteStride
 
 		gl.BindVertexArrayCore(g_meshes[mesh].vao)
 		panicIf(GlError(), "gl.BindVertexArrayCore")
@@ -378,7 +379,7 @@ func MeshRender(id MeshId) {
 		DisableCulling()
 	} else {
 		EnableCulling(g_meshes[mesh].frontFace, cullFace)
-	}
+    }
 
 	gl.DrawElements(g_meshes[mesh].primitive, indexCount, indexFormat, null)
 	panicIf(GlError(), "gl.DrawArrays")

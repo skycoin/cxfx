@@ -1,10 +1,31 @@
 package gfx
 
+import "mat"
+
 // Globals ...
 var g_octrees []Octree
 var g_octreeCells []mat.v3
 
-// Types ...
+// OctreeCell ...
+type OctreeCell struct {
+    index i32
+    level i32
+    center mat.v3
+    min mat.v3
+    max mat.v3
+    size mat.v3
+    transparents []i32
+    opaques []i32
+    transparentPrimitives []i32
+    opaquePrimitives []i32
+    planesOrigin []mat.v3
+    planesNormal []mat.v3
+    points []mat.v3
+    children [8] i32
+}
+
+
+// Octree ...
 type Octree struct {
     debugMesh MeshId
     center mat.v3
@@ -14,9 +35,17 @@ type Octree struct {
     maxLevel i32
     centers []mat.v3
     sizes []mat.v3
+    corners []mat.v3
+    cells []OctreeCell
+    visibles []i32
+    visibleCount i32
+    offsets []i32
     mins []mat.v3
     maxs []mat.v3
-    corners []mat.v3
+    primitives []Primitive
+    visiblePrimitives []i32
+    opaqueBuckets []PrimitiveBucket
+    transparentBuckets []PrimitiveBucket
 }
 
 // OctreeId ...
@@ -35,12 +64,25 @@ func OctreeIsValid(id OctreeId) (out bool) {
 }
 
 // OctreeCreate ...
-func OctreeCreate()(out OctreeId) {
+func OctreeCreate(min mat.v3, max mat.v3, maxLevel i32) (out OctreeId) {
     out.octree = len(g_octrees)
 
     var octree Octree
     octree.debugMesh = MeshCreate(LINES, UNSIGNED_SHORT, 10 * 8192 * 3, g_vertexLayout, 10 * 8192 * 3)
+    octree.size = v3.mulf(v3.sub(max, min), 0.5)
+    octree.center = v3.add(min, octree.size)
+    octree.min = min
+    octree.max = max
+    octree.maxLevel = maxLevel
     g_octrees = append(g_octrees, octree)
+
+    var totalCount i32 = resetOffsets(out)
+    var cells []OctreeCell
+    for i := 0; i <= totalCount; i++ {
+        var cell OctreeCell
+        cells = append(cells, cell)
+    }
+    g_octrees[out.octree].cells = cells
     g_octreeCells = append(g_octreeCells, v3.make( 1.0,  1.0,  1.0))
     g_octreeCells = append(g_octreeCells, v3.make( 1.0,  1.0, -1.0))
     g_octreeCells = append(g_octreeCells, v3.make( 1.0, -1.0,  1.0))
@@ -49,27 +91,254 @@ func OctreeCreate()(out OctreeId) {
     g_octreeCells = append(g_octreeCells, v3.make(-1.0,  1.0, -1.0))
     g_octreeCells = append(g_octreeCells, v3.make(-1.0, -1.0,  1.0))
     g_octreeCells = append(g_octreeCells, v3.make(-1.0, -1.0, -1.0))
+
+    var root i32 = octreeUpdateCells(out, 0, g_octrees[out.octree].center, g_octrees[out.octree].size)
+}
+
+func resetOffsets(id OctreeId) (count i32) {
+    panicIfNot(OctreeIsValid(id), "invalid id")
+    var totalCount i32
+    var layerCount i32 = 1
+    var maxLevel i32 = g_octrees[id.octree].maxLevel
+    var offsets []i32 = g_octrees[id.octree].offsets
+    offsets = resize(offsets, 0)
+    for i := 0; i <= maxLevel; i++ {
+        offsets = append(offsets, totalCount)
+        totalCount = totalCount + layerCount
+        layerCount = layerCount * 8
+    }
+
+    g_octrees[id.octree].offsets = offsets
+    count = totalCount
+
+    g_octrees[id.octree].visibles = resize(g_octrees[id.octree].visibles, 0)
 }
 
 // OctreeUpdate ...
-func OctreeUpdate(id OctreeId, frustum FrustumId, min mat.v3, max mat.v3, maxLevel i32) {
+func OctreeUpdate(id OctreeId, frustum FrustumId) {
     panicIfNot(OctreeIsValid(id), "invalid id")
 
-    g_octrees[id.octree].size = v3.mulf(v3.sub(max, min), 0.5)
-    g_octrees[id.octree].center = v3.add(min, g_octrees[id.octree].size)
-    g_octrees[id.octree].min = min
-    g_octrees[id.octree].max = max
-    g_octrees[id.octree].maxLevel = maxLevel
+    var totalCount i32 = resetOffsets(id)
+    octreeUpdateLevel(id, 0, frustum, true)
 
     MeshBegin(g_octrees[id.octree].debugMesh)
-    octreeUpdateLevel(id, 0, g_octrees[id.octree].center, g_octrees[id.octree].size, frustum, true)
+
+    var cells []OctreeCell = g_octrees[id.octree].cells
+    var visibles []i32 = g_octrees[id.octree].visibles
+    var visibleCount i32 = len(visibles)
+    for i := 0; i < visibleCount; i++ {
+        var offset i32 = visibles[i]
+        var center mat.v3 = cells[offset].center
+        var size mat.v3 = v3.mulf(cells[offset].size, 0.99)
+        MeshAppendBox(g_octrees[id.octree].debugMesh, true, false,
+            center, v3.make(size.x, 0.0, 0.0), v3.make(0.0, size.y, 0.0), v3.make(0.0, 0.0, size.z), v4.RED)
+    }
+/*
+ var min mat.v3
+    var max mat.v3
+
+    var mins []mat.v3 = g_octrees[id.octree].mins
+    var maxs []mat.v3 = g_octrees[id.octree].maxs
+
+    var primitiveCount i32 = len(mins)
+    for i := 0; i < primitiveCount; i++ {
+        var size mat.v3 = v3.mulf(v3.sub(maxs[i], mins[i]), 0.5)
+        var center mat.v3 = v3.add(mins[i], size)
+        MeshAppendBox(g_octrees[id.octree].debugMesh, true, false,
+            center, v3.make(size.x, 0.0, 0.0), v3.make(0.0, size.y, 0.0), v3.make(0.0, 0.0, size.z),
+            v4.PINK)
+    }*/
+
     MeshEnd(g_octrees[id.octree].debugMesh)
 }
 
-// OctreeRender ...
-func OctreeRender(id OctreeId, world mat.m44, view mat.m44, projection mat.m44) {
-    panicIfNot(OctreeIsValid(id), "invalid id")
+/*var P0 fps.ProfileId = fps.InvalidProfile()
+var P1 fps.ProfileId = fps.InvalidProfile()
+var P2 fps.ProfileId = fps.InvalidProfile()
+var P3 fps.ProfileId = fps.InvalidProfile()
+var P4 fps.ProfileId = fps.InvalidProfile()
+var P5 fps.ProfileId = fps.InvalidProfile()
+var P6 fps.ProfileId = fps.InvalidProfile()*/
 
+// OctreeRender ...
+func OctreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, projection mat.m44) {
+    //P0 = fps.CreateStartProfile(P0, "OctreeRender")
+    //P1 = fps.CreateStartProfile(P1, "P1")
+    panicIfNot(OctreeIsValid(id), "invalid id")
+    DisableBlending()
+    DepthState(true, LESS, true)
+
+    var modelIndex i32 = model.model
+	var environmentSpecular TextureId = g_models[modelIndex].environmentSpecular // TODO : renderState
+	var environmentDiffuse TextureId = g_models[modelIndex].environmentDiffuse // TODO : renderState
+	var brdf TextureId = g_models[modelIndex].brdf // TODO : renderState
+	var cameraPosition mat.v4 = g_models[modelIndex].cameraPosition // TODO : renderState
+	var jointMatrices []m44 = g_models[modelIndex].jointMatrices
+	var skinned bool = g_models[modelIndex].skinned
+    var worldIsIdentity bool = true
+    var exposure f32 = g_models[modelIndex].exposure
+
+    var cells []OctreeCell = g_octrees[id.octree].cells
+    var visibles []i32 = g_octrees[id.octree].visibles
+    var visibleCount i32 = len(visibles)
+
+    var lastEffect i32 = -1
+    var lastBaseTexture i32 = -1
+    var lastNormalTexture i32 = -1
+    var lastMetalRoughTexture i32 = -1
+    var lastEmissiveTexture i32 = -1
+    var lastOcclusionTexture i32 = -1
+    var lastBaseColorFactor mat.v4 = v4.makef(-1.0)
+    var lastEmissiveFactor mat.v4 = v4.makef(-1.0)
+    var lastMetalRoughFactor mat.v4 = v4.makef(-1.0)
+    var lastTransform mat.m44 = m44.INVALID
+
+    var octreePrimitives []Primitive = g_octrees[id.octree].primitives
+
+    var visiblePrimitives []i32 = g_octrees[id.octree].visiblePrimitives
+    visiblePrimitives = resize(visiblePrimitives, 0)
+
+    //fps.StopProfile(P1)
+    //P2 = fps.CreateStartProfile(P2, "OctreeRender : sort visibles")
+    for visible := 0; visible < visibleCount; visible++ {
+        var cellIndex i32 = visibles[visible]
+        var cellPrimitives []i32 = cells[cellIndex].opaques
+        var primitiveCount i32 = len(cellPrimitives)
+        for primitive := 0; primitive < primitiveCount; primitive++ {
+            var octreePrimitiveIndex i32 = cellPrimitives[primitive]
+            if octreePrimitiveIndex >= 0 {
+                visiblePrimitives = append(visiblePrimitives, cellPrimitives[primitive])
+            }
+        }
+    }
+
+/*    var sortedPrimitives []i32 = g_octrees[id.octree].sortedPrimitives
+    sortedPrimitives = resize(sortedPrimitives, 0)
+    sortedPrimitives = PrimitiveSort0(octreePrimitives, visiblePrimitives, sortedPrimitives)
+    g_octrees[id.octree].visiblePrimitives = visiblePrimitives
+    g_octrees[id.octree].sortedPrimitives = sortedPrimitives*/
+
+    var opaqueBuckets []PrimitiveBucket = g_octrees[id.octree].opaqueBuckets
+    opaqueBuckets = PrimitiveSort1(octreePrimitives, visiblePrimitives, opaqueBuckets)
+    g_octrees[id.octree].opaqueBuckets = opaqueBuckets
+
+    var stateChange i32
+    //fps.StopProfile(P2)
+    //P3 = fps.CreateStartProfile(P3, "OctreeRender : render")
+    var bucketCount i32 = len(opaqueBuckets)
+    for bucket := 0; bucket < bucketCount; bucket++ {
+        var sortedPrimitives []i32 = opaqueBuckets[bucket].primitives
+        var sortedCount i32 = len(sortedPrimitives)
+	    var effect EffectId = opaqueBuckets[bucket].effect
+        if lastEffect != effect.effect {
+            lastEffect = effect.effect
+
+            EffectUse(effect)
+	        EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearWrap)
+            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linear0Wrap)
+		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Wrap) // TODO : use gltf sampler
+
+            EffectAssignM44(effect, UNIFORM_WORLD, world, false)
+            EffectAssignM44(effect, UNIFORM_VIEW, view, false)
+   	        EffectAssignM44(effect, UNIFORM_PROJECTION, projection, false)
+
+            EffectAssignV4(effect, UNIFORM_CAMERA_POSITION, cameraPosition)
+   	        EffectAssignV4(effect, UNIFORM_DEBUG_0, DEBUG_0)
+            EffectAssignV4(effect, UNIFORM_PBR, v4.make(i32.f32(TextureGetMipmapCount(environmentSpecular)), exposure, 0.0, 0.0))
+
+            lastBaseTexture = -1
+            lastNormalTexture = -1
+            lastMetalRoughTexture = -1
+            lastEmissiveTexture = -1
+            lastOcclusionTexture = -1
+            lastBaseColorFactor = v4.makef(-1.0)
+            lastEmissiveFactor = v4.makef(-1.0)
+            lastMetalRoughFactor = v4.makef(-1.0)
+        }
+
+        var baseTexture TextureId = opaqueBuckets[bucket].baseTexture
+        if lastBaseTexture != baseTexture.texture {
+            lastBaseTexture = baseTexture.texture
+	        EffectTryAssignTexture(effect, SAMPLER_COLOR_0, baseTexture, g_linearWrap)
+        }
+
+        var normalTexture TextureId = opaqueBuckets[bucket].normalTexture
+        if lastNormalTexture != normalTexture.texture {
+            lastNormalTexture = normalTexture.texture
+	        EffectTryAssignTexture(effect, SAMPLER_NORMAL, normalTexture, g_linearWrap)
+        }
+
+        var metalRoughTexture TextureId = opaqueBuckets[bucket].metalRoughTexture
+        if lastMetalRoughTexture != metalRoughTexture.texture {
+            lastMetalRoughTexture = metalRoughTexture.texture
+            EffectTryAssignTexture(effect, SAMPLER_METAL_ROUGH, metalRoughTexture, g_linearWrap)
+        }
+
+        var emissiveTexture TextureId = opaqueBuckets[bucket].emissiveTexture
+        if lastEmissiveTexture != emissiveTexture.texture {
+            lastEmissiveTexture = emissiveTexture.texture
+            EffectTryAssignTexture(effect, SAMPLER_EMISSIVE, emissiveTexture, g_linearWrap)
+        }
+
+        var occlusionTexture TextureId = opaqueBuckets[bucket].occlusionTexture
+        if lastOcclusionTexture != occlusionTexture.texture {
+            lastOcclusionTexture = occlusionTexture.texture
+	        EffectTryAssignTexture(effect, SAMPLER_OCCLUSION, occlusionTexture, g_linearWrap)
+        }
+
+        for sorted := 0; sorted < sortedCount; sorted++ {
+            var primitiveIndex i32 = sortedPrimitives[sorted]
+            var primitive Primitive = octreePrimitives[primitiveIndex]
+            var mesh MeshId = primitive.mesh
+
+	        var metallicRoughness gltf.MetallicRoughness = primitive.gltfMaterial.pbrMetallicRoughness
+	        if EffectIsValidUniformLocation(effect, UNIFORM_COLOR) {
+	        	var baseColorFactor mat.v4 = metallicRoughness.baseColorFactor
+	        	baseColorFactor.w = baseColorFactor.w// * alpha
+
+                if  baseColorFactor.x != lastBaseColorFactor.x ||
+                    baseColorFactor.y != lastBaseColorFactor.y ||
+                    baseColorFactor.z != lastBaseColorFactor.z ||
+                    baseColorFactor.w != lastBaseColorFactor.w {
+                    lastBaseColorFactor = baseColorFactor
+	          		EffectAssignV4(effect, UNIFORM_COLOR, baseColorFactor)
+                }
+	        }
+
+	        if EffectIsValidUniformLocation(effect, UNIFORM_METAL_ROUGH) {
+	        	var metallicRoughnessFactor mat.v4
+                metallicRoughnessFactor.x = primitive.gltfMaterial.normalTexture.scale
+	        	metallicRoughnessFactor.y = metallicRoughness.roughnessFactor
+	        	metallicRoughnessFactor.z = metallicRoughness.metallicFactor
+
+                if  metallicRoughnessFactor.x != lastMetalRoughFactor.x ||
+                    metallicRoughnessFactor.y != lastMetalRoughFactor.y ||
+                    metallicRoughnessFactor.z != lastMetalRoughFactor.z ||
+                    metallicRoughnessFactor.w != lastMetalRoughFactor.w {
+                    lastMetalRoughFactor = metallicRoughnessFactor
+  	        	    EffectAssignV4(effect, UNIFORM_METAL_ROUGH, metallicRoughnessFactor)
+                }
+	        }
+
+	        if EffectIsValidUniformLocation(effect, UNIFORM_EMISSIVE) {
+                var emissiveFactor mat.v4 = primitive.gltfMaterial.emissiveFactor
+                if  emissiveFactor.x != lastEmissiveFactor.x ||
+                    emissiveFactor.y != lastEmissiveFactor.y ||
+                    emissiveFactor.z != lastEmissiveFactor.z ||
+                    emissiveFactor.w != lastEmissiveFactor.w {
+                    lastEmissiveFactor = emissiveFactor
+    	          	EffectAssignV4(effect, UNIFORM_EMISSIVE, emissiveFactor)
+                }
+            }
+
+            //fps.StopProfile(P4)
+            //P5 = fps.CreateStartProfile(P5, "mesh_render")
+	        MeshRender(mesh)
+            //fps.StopProfile(P5)
+        }
+    }
+    //fps.StopProfile(P3)
+    //fps.StopProfile(P0)
     DepthState(true, LESS, false)
 	EffectUse(g_fxVertexColor3D)
 	EffectAssignM44(g_fxVertexColor3D, UNIFORM_WORLD, world, false)
@@ -78,39 +347,1014 @@ func OctreeRender(id OctreeId, world mat.m44, view mat.m44, projection mat.m44) 
 	MeshRender(g_octrees[id.octree].debugMesh)
 }
 
-func octreeUpdateLevel(id OctreeId, level i32, center mat.v3, size mat.v3, frustum FrustumId, debug bool) {
+func addVertexV2(positionAttribute i32, attributeCount i32, channels []channelInfo, index i32, in []ui8, transform mat.m44) (out []ui8) {
+    out = in
+    for c := 0; c < attributeCount; c++ {
+       var dataType i32 = channels[c].dataType
+       var dataLen i32 = channels[c].dataLen
+       var count i32 = channels[c].count
+       var offset i32 = index * count
+       if dataType == gl.FLOAT {
+       	var dataF32 []f32 = channels[c].dataF32
+        if positionAttribute == c {
+            panicIf(count != 3, "invalid position attribute")
+            if count == 3 {
+                var pos mat.v3 = v3.make(dataF32[offset], dataF32[offset +1], dataF32[offset+2])
+                pos = v3.transform_point(pos, transform)
+                out = gl.AppendF32(out, pos.x)
+                out = gl.AppendF32(out, pos.y)
+                out = gl.AppendF32(out, pos.z)
+            }
+        } else {
+       	    for i := 0; i < count; i++ {
+       		    out = gl.AppendF32(out, dataF32[offset + i])
+       	    }
+        }
+       } else if dataType == gl.UNSIGNED_SHORT {
+       	var dataUI16 []ui16 = channels[c].dataUI16
+       	for i := 0; i < count; i++ {
+       		out = gl.AppendUI16(out, dataUI16[offset + i])
+       	}
+       } else if dataType == gl.UNSIGNED_INT {
+       	var dataUI32 []ui32 = channels[c].dataUI32
+       	for i := 0; i < count; i++ {
+       		out = gl.AppendUI32(out, dataUI32[offset + i])
+       	}
+       } else {
+       	panicIf(true, "unhandled dataType")
+       }
+   }
+}
+func addVertex(attributeCount i32, positionAttribute i32, channels []channelInfo, position mat.v3, index i32, in []ui8) (out []ui8) {
+    out = in
+    for c := 0; c < attributeCount; c++ {
+        if c == positionAttribute {
+            out = gl.AppendF32(out, position.x)
+            out = gl.AppendF32(out, position.y)
+            out = gl.AppendF32(out, position.z)
+        } else {
+    	    var dataType i32 = channels[c].dataType
+    	    var dataLen i32 = channels[c].dataLen
+    	    var count i32 = channels[c].count
+    	    var offset i32 = index * count
+    	    if dataType == gl.FLOAT {
+    	    	var dataF32 []f32 = channels[c].dataF32
+    	    	for i := 0; i < count; i++ {
+    	    		out = gl.AppendF32(out, dataF32[offset + i])
+    	    	}
+    	    } else if dataType == gl.UNSIGNED_SHORT {
+    	    	var dataUI16 []ui16 = channels[c].dataUI16
+    	    	for i := 0; i < count; i++ {
+    	    		out = gl.AppendUI16(out, dataUI16[offset + i])
+    	    	}
+    	    } else if dataType == gl.UNSIGNED_INT {
+    	    	var dataUI32 []ui32 = channels[c].dataUI32
+    	    	for i := 0; i < count; i++ {
+    	    		out = gl.AppendUI32(out, dataUI32[offset + i])
+    	    	}
+    	    } else {
+    	    	panicIf(true, "unhandled dataType")
+    	    }
+        }
+    }
+}
+
+func lerpVertex(attributeCount i32, positionAttribute i32, channels []channelInfo, posA mat.v3, iA i32, posB mat.v3, iB i32, time f32, in []ui8) (out []ui8) {
+    out = in
+    for c := 0; c < attributeCount; c++ {
+        if c == positionAttribute {
+            out = gl.AppendF32(out, v1.lerp(posA.x, posB.x, time))
+            out = gl.AppendF32(out, v1.lerp(posA.y, posB.y, time))
+            out = gl.AppendF32(out, v1.lerp(posA.z, posB.z, time))
+        } else {
+    	    var dataType i32 = channels[c].dataType
+    	    var dataLen i32 = channels[c].dataLen
+    	    var count i32 = channels[c].count
+    	    var oA i32 = iA * count
+            var oB i32 = iB * count
+    	    if dataType == gl.FLOAT {
+    	    	var dataF32 []f32 = channels[c].dataF32
+    	    	for i := 0; i < count; i++ {
+    	    		out = gl.AppendF32(out, v1.lerp(dataF32[oA + i], dataF32[oB + i], time))
+    	    	}
+    	    } else if dataType == gl.UNSIGNED_SHORT {
+    	    	var dataUI16 []ui16 = channels[c].dataUI16
+    	    	for i := 0; i < count; i++ {
+    	    		out = gl.AppendUI16(out, dataUI16[oB + i])
+    	    	}
+    	    } else if dataType == gl.UNSIGNED_INT {
+    	    	var dataUI32 []ui32 = channels[c].dataUI32
+    	    	for i := 0; i < count; i++ {
+    	    		out = gl.AppendUI32(out, dataUI32[oB + i])
+    	    	}
+    	    } else {
+    	    	panicIf(true, "unhandled dataType")
+    	    }
+        }
+    }
+
+}
+
+var splitMeshCount i32
+// OctreeSplitModel ...
+func OctreeSplitModel(id OctreeId, model ModelId) {
+    panicIfNot(OctreeIsValid(id), "invalid id")
+    panicIfNot(ModelIsValid(model), "invalid model")
+
+    var cells []OctreeCell  = g_octrees[id.octree].cells
+    var cellCount i32 = resetOffsets(id)
+    for i := 0; i < cellCount; i++ {
+        cells[i].transparentPrimitives = resize(cells[i].transparentPrimitives, 0)
+        cells[i].opaquePrimitives = resize(cells[i].opaquePrimitives, 0)
+    }
+    var primitives [] Primitive = g_models[model.model].primitives
+    var transforms []m44 = g_models[model.model].transforms
+
+    var primitiveCount i32 = len(primitives)
+    splitMeshCount = primitiveCount
+    var mins []mat.v3 = g_octrees[id.octree].mins
+    var maxs []mat.v3 = g_octrees[id.octree].maxs
+
+    mins = resize(mins, 0)
+    maxs = resize(maxs, 0)
+    for i := 0; i < primitiveCount; i++ {
+        var nodeIndex i32 = primitives[i].nodeIndex
+        var transform mat.m44 = transforms[nodeIndex] // ISSUE : can't use transforms[primitives[i].nodeIndex]
+
+        var newMin mat.v3 = primitives[i].min
+        newMin = v3.transform_point(newMin, transform)
+
+        var newMax mat.v3 = primitives[i].max
+        newMax = v3.transform_point(newMax, transform)
+
+        mins = append(mins, newMin)
+        maxs = append(maxs, newMax)
+
+        //mins = append(mins, v3.min(newMin, newMax))
+        //maxs = append(maxs, v3.max(newMin, newMax))
+    }
+
+    g_octrees[id.octree].mins = mins
+    g_octrees[id.octree].maxs = maxs
+
+    octreeSplitModel(id, model, 0, g_models[model.model].opaqueMeshes, g_models[model.model].transparentMeshes)
+
+    var maxLevel i32 = g_octrees[id.octree].maxLevel
+    var asset AssetId = g_models[model.model].asset
+    for i := 0; i < cellCount; i++ {
+        printf("Splitting cell %d/%d...\n", i, cellCount)
+        //if cells[i].level == maxLevel {
+            //printf("MIN %f, %f, %f, MAX %f, %f, %f\n", cellMin.x, cellMin.y, cellMin.y,
+        //            cellMax.x, cellMax.y, cellMax.z)
+            cells[i].opaques = octreeSplitMeshes(id, cells[i].opaquePrimitives,
+                asset, primitives, transforms, cells, i, cells[i].opaques)
+            cells[i].transparents = octreeSplitMeshes(id, cells[i].transparentPrimitives,
+                asset, primitives, transforms, cells, i, cells[i].transparents)
+       // }
+    }
+
+
+    var octreePrimitives []Primitive = g_octrees[id.octree].primitives
+    var octreePrimitiveCount i32 = len(octreePrimitives)
+    for primitiveIndex := 0; primitiveIndex < octreePrimitiveCount; primitiveIndex++ {
+        var hash0 ui64
+        var hash1 ui64
+        hash0, hash1 = PrimitiveComputeHash(octreePrimitives[primitiveIndex])
+        octreePrimitives[primitiveIndex].hash0 = hash0
+        octreePrimitives[primitiveIndex].hash1 = hash1
+    }
+}
+
+func getPrimitiveIndex(octreePrimitives []Primitive,  attributes []VertexAttribute, cellPrimitives []i32, parent Primitive) (out i32) {
+    out = -1
+    var primitiveCount i32 = len(cellPrimitives)
+    var attributeCount i32 = len(attributes)
+
+    for primitiveIndex := 0; primitiveIndex < primitiveCount; primitiveIndex++ {
+        var octreePrimitiveIndex i32 = cellPrimitives[primitiveIndex]
+        var primitive Primitive = octreePrimitives[octreePrimitiveIndex]
+        var primitiveAttributes []VertexAttribute = primitive.attributes
+        if attributeCount == len(primitiveAttributes) {
+            var same bool = true
+            for i := 0; i < attributeCount; i++ {
+                if attributes[i].componentCount != primitiveAttributes[i].componentCount ||
+                   attributes[i].componentType != primitiveAttributes[i].componentType ||
+                   attributes[i].componentByteSize != primitiveAttributes[i].componentByteSize ||
+                   attributes[i].componentOffset != primitiveAttributes[i].componentOffset ||
+                   attributes[i].byteOffset != primitiveAttributes[i].byteOffset ||
+                   attributes[i].binding != primitiveAttributes[i].binding {
+                    same = false
+                    i = attributeCount
+                }
+            }
+
+            if same {
+                if primitive.baseTexture.texture == parent.baseTexture.texture &&
+                   primitive.metalRoughTexture.texture == parent.metalRoughTexture.texture &&
+                   primitive.normalTexture.texture == parent.normalTexture.texture &&
+                   primitive.emissiveTexture.texture == parent.emissiveTexture.texture &&
+                   primitive.occlusionTexture.texture == parent.occlusionTexture.texture &&
+                   v4.equ(primitive.gltfMaterial.pbrMetallicRoughness.baseColorFactor, parent.gltfMaterial.pbrMetallicRoughness.baseColorFactor) &&
+                   primitive.gltfMaterial.pbrMetallicRoughness.metallicFactor == parent.gltfMaterial.pbrMetallicRoughness.metallicFactor &&
+                   primitive.gltfMaterial.pbrMetallicRoughness.roughnessFactor == parent.gltfMaterial.pbrMetallicRoughness.roughnessFactor &&
+                   v4.equ(primitive.gltfMaterial.emissiveFactor, parent.gltfMaterial.emissiveFactor) &&
+                   primitive.gltfMaterial.alphaMode == parent.gltfMaterial.alphaMode &&
+                   primitive.gltfMaterial.doubleSided == parent.gltfMaterial.doubleSided {
+
+                    out = primitiveIndex
+                    return
+                }
+            }
+        }
+    }
+}
+
+func channelLerpVertex(to []channelInfo, from []channelInfo, i0 i32, i1 i32, time f32) (out []channelInfo) {
+    out = to
+    var attributeCount i32 = len(from)
+    for c := 0; c < attributeCount; c++ {
+        var dataType i32 = from[c].dataType
+        var dataLen i32 = from[c].dataLen
+        var count i32 = from[c].count
+        out[c].count = count
+        var offset0 i32 = i0 * count
+        var offset1 i32 = i1 * count;
+        if dataType == gl.FLOAT {
+            var dataOut  []f32 = out[c].dataF32
+        	var dataF32 []f32 = from[c].dataF32
+        	for i := 0; i < count; i++ {
+                var f0 f32 = dataF32[offset0+i]
+                var f1 f32 = dataF32[offset1+i]
+                var fl f32 = v1.lerpsat(f0, f1, time)
+
+        		dataOut = append(dataOut, fl)
+        	    //dataOut = append(dataOut, dataF32[offset0 + i])
+            }
+            out[c].dataF32 = dataOut
+            out[c].dataLen = len(dataOut)
+        } else if dataType == gl.UNSIGNED_SHORT {
+            var dataOut []ui16 = to[c].dataUI16
+        	var dataUI16 []ui16 = from[c].dataUI16
+        	for i := 0; i < count; i++ {
+        		dataOut = append(dataOut, dataUI16[offset0 + i])
+        	}
+            out[c].dataUI16 = dataOut
+            out[c].dataLen = len(dataOut)
+        } else if dataType == gl.UNSIGNED_INT {
+            var dataOut []ui32 = to[c].dataUI32
+        	var dataUI32 []ui32 = from[c].dataUI32
+        	for i := 0; i < count; i++ {
+        		dataOut = append(dataOut, dataUI32[offset0 + i])
+        	}
+            out[c].dataUI32 = dataOut
+            out[c].dataLen = len(dataOut)
+        } else {
+        	panicIf(true, "unhandled dataType")
+        }
+    }
+}
+
+func channelResize(from []channelInfo) (out []channelInfo) {
+    out = from
+    var channelCount i32 = len(from)
+    for i := 0; i < channelCount; i++ {
+        out[i].dataLen = 0
+        out[i].dataF32 = resize(out[i].dataF32, 0)
+        out[i].dataUI16 = resize(out[i].dataUI16, 0)
+        out[i].dataUI32 = resize(out[i].dataUI32, 0)
+    }
+}
+
+func channelGetPosition(from []channelInfo, channelIndex i32, vertexIndex i32) (out mat.v3) {
+    var count i32 = from[channelIndex].count
+    var data []f32 = from[channelIndex].dataF32
+    var offset i32 = vertexIndex * count
+    out.x = data[offset]
+    out.y = data[offset + 1]
+    out.z = data[offset + 2]
+}
+
+func channelAppendVertex(to []channelInfo, from []channelInfo, index i32) (out []channelInfo) {
+    out = to
+    var attributeCount i32 = len(from)
+
+    for c := 0; c < attributeCount; c++ {
+        var dataType i32 = from[c].dataType
+        var dataLen i32 = from[c].dataLen
+        var count i32 = from[c].count
+        var offset i32 = index * count
+        out[c].count = count
+        if dataType == gl.FLOAT {
+            var dataOut  []f32 = out[c].dataF32
+        	var dataF32 []f32 = from[c].dataF32
+        	for i := 0; i < count; i++ {
+        		dataOut = append(dataOut, dataF32[offset + i])
+        	}
+            out[c].dataF32 = dataOut
+            out[c].dataLen = len(dataOut)
+        } else if dataType == gl.UNSIGNED_SHORT {
+            var dataOut []ui16 = to[c].dataUI16
+        	var dataUI16 []ui16 = from[c].dataUI16
+        	for i := 0; i < count; i++ {
+        		dataOut = append(dataOut, dataUI16[offset + i])
+        	}
+            out[c].dataUI16 = dataOut
+            out[c].dataLen = len(dataOut)
+        } else if dataType == gl.UNSIGNED_INT {
+            var dataOut []ui32 = to[c].dataUI32
+        	var dataUI32 []ui32 = from[c].dataUI32
+        	for i := 0; i < count; i++ {
+        		dataOut = append(dataOut, dataUI32[offset + i])
+        	}
+            out[c].dataUI32 = dataOut
+            out[c].dataLen = len(dataOut)
+        } else {
+        	panicIf(true, "unhandled dataType")
+        }
+    }
+}
+
+func octreeSplitMeshes(id OctreeId, meshes []i32, asset AssetId, primitives []Primitive, transforms []m44, cells []OctreeCell, cellIndex i32, cellPrimitives []i32) (out []i32) {
+    var cellMax mat.v3 = cells[cellIndex].max
+    var cellMin mat.v3 = cells[cellIndex].min
+    var cellPlanesNormals []mat.v3 = cells[cellIndex].planesNormal
+    var cellPlanesOrigins []mat.v3 = cells[cellIndex].planesOrigin
+    var cellPoints []mat.v3 = cells[cellIndex].points
+    var vertPos []bool
+    var meshCount i32 = len(meshes)
+    var mode i32
+    var octreePrimitives []Primitive = g_octrees[id.octree].primitives
+    var triangleVertices []mat.v3
+    triangleVertices = append(triangleVertices, v3.ZERO)
+    triangleVertices = append(triangleVertices, v3.ZERO)
+    triangleVertices = append(triangleVertices, v3.ZERO)
+
+    for meshIndex := 0; meshIndex < meshCount; meshIndex++ {
+        var renderable i32 = meshes[meshIndex]
+        var primitive Primitive = primitives[renderable]
+        var transform mat.m44 = transforms[primitive.nodeIndex]
+        var channels []channelInfo = g_meshes[primitive.mesh.mesh].channels
+        mode = g_meshes[primitive.mesh.mesh].primitive
+
+        var attributes []VertexAttribute = g_meshes[primitive.mesh.mesh].attributes
+        var attributeCount i32 = len(attributes)
+        var primitiveIndex i32 = getPrimitiveIndex(octreePrimitives, attributes, cellPrimitives, primitive)
+        if primitiveIndex == -1 {
+            var cellPrimitive Primitive
+            cellPrimitive.attributes = attributes
+            cellPrimitive.mesh = InvalidMesh()
+            cellPrimitive.min = v3.MAX
+            cellPrimitive.max = v3.MIN
+            cellPrimitive.baseTexture = primitive.baseTexture
+            cellPrimitive.metalRoughTexture = primitive.metalRoughTexture
+            cellPrimitive.normalTexture = primitive.normalTexture
+            cellPrimitive.emissiveTexture = primitive.emissiveTexture
+            cellPrimitive.occlusionTexture = primitive.occlusionTexture
+            cellPrimitive.gltfMaterial = primitive.gltfMaterial
+            cellPrimitive.gltfPrimitive = primitive.gltfPrimitive
+            cellPrimitive.useSkin = primitive.useSkin
+            cellPrimitive.effect = primitive.effect
+            cellPrimitive.indexByteStride = g_meshes[primitive.mesh.mesh].indexByteStride
+            cellPrimitive.vertexByteStride = g_meshes[primitive.mesh.mesh].vertexByteStride
+            cellPrimitive.usePosition = g_meshes[primitive.mesh.mesh].usePosition
+            cellPrimitive.useNormal   = g_meshes[primitive.mesh.mesh].useNormal
+            cellPrimitive.useColor    = g_meshes[primitive.mesh.mesh].useColor
+            cellPrimitive.useTexcoord = g_meshes[primitive.mesh.mesh].useTexcoord
+            cellPrimitive.useTangent  = g_meshes[primitive.mesh.mesh].useTangent
+            cellPrimitive.useWeight   = g_meshes[primitive.mesh.mesh].useWeight
+            cellPrimitive.useJoint    = g_meshes[primitive.mesh.mesh].useJoint
+            primitiveIndex = len(cellPrimitives)
+            cellPrimitives = append(cellPrimitives, len(octreePrimitives))
+            octreePrimitives = append(octreePrimitives, cellPrimitive)
+        }
+
+        var octreePrimitiveIndex i32 = cellPrimitives[primitiveIndex]
+
+        // TODO : bake
+        var positionAttribute i32 = -1
+        for attributeIndex := 0; attributeIndex < attributeCount; attributeIndex++ {
+            var binding i32 = attributes[attributeIndex].binding
+            if binding == ATTRIBUTE_POSITION {
+                positionAttribute = attributeIndex
+            }
+        }
+
+        var vertices []ui8 = octreePrimitives[octreePrimitiveIndex].vertices
+        var oldVertexCount i32 = len(vertices)
+
+        var indices []ui8 = octreePrimitives[octreePrimitiveIndex].indices
+        var oldIndexCount i32 = len(indices)
+
+        var posMin mat.v3 = octreePrimitives[octreePrimitiveIndex].min
+        var posMax mat.v3 = octreePrimitives[octreePrimitiveIndex].max
+
+        panicIf(positionAttribute == -1, "invalid position attribute")
+        var positionData []f32 = channels[positionAttribute].dataF32
+        var positionComponentCount i32 = attributes[positionAttribute].componentCount
+        var world mat.m44 = transforms[primitive.nodeIndex]
+        var indicesAccessor gltf.Accessor = gltf.AssetGetAccessor(asset, primitive.gltfPrimitive.indices)
+        var indicesType i32 = indicesAccessor.componentType
+        if indicesAccessor.componentCount == 1 {
+            if indicesAccessor.componentType == gl.UNSIGNED_SHORT {
+                var data []ui16 = indicesAccessor.dataUI16
+                var index ui16 = i32.ui16(len(indices) / 2)
+                var indexCount i32 = len(data)
+                panicIf((indexCount % 3) != 0, "invalid index count")
+                var triangleCount i32 = indexCount / 3
+                for triangle := 0; triangle < triangleCount; triangle++ {
+                    var ui0 ui16 = data[triangle * 3 + 0]
+                    var ui1 ui16 = data[triangle * 3 + 1]
+                    var ui2 ui16 = data[triangle * 3 + 2]
+                    var i0 i32 = ui16.i32(ui0)
+                    var i1 i32 = ui16.i32(ui1)
+                    var i2 i32 = ui16.i32(ui2)
+                    var pi0 i32 = i0 * positionComponentCount
+                    var pi1 i32 = i1 * positionComponentCount
+                    var pi2 i32 = i2 * positionComponentCount
+                    var p0 mat.v3 = v3.transform_point(
+                        v3.make(positionData[pi0], positionData[pi0 + 1], positionData[pi0 + 2]), transform)
+                    var p1 mat.v3 = v3.transform_point(
+                        v3.make(positionData[pi1], positionData[pi1 + 1], positionData[pi1 + 2]), transform)
+                    var p2 mat.v3 = v3.transform_point(
+                        v3.make(positionData[pi2], positionData[pi2 + 1], positionData[pi2 + 2]), transform)
+
+                    triangleVertices[0] = p0
+                    triangleVertices[1] = p1
+                    triangleVertices[2] = p2
+
+                    var x0 f32 = p0.x
+                    var y0 f32 = p0.y
+                    var z0 f32 = p0.z
+                    var x1 f32 = p1.x
+                    var y1 f32 = p1.y
+                    var z1 f32 = p1.z
+                    var x2 f32 = p2.x
+                    var y2 f32 = p2.y
+                    var z2 f32 = p2.z
+                    var add i32
+                    if x0 >= cellMin.x && x0 <= cellMax.x &&
+                       y0 >= cellMin.y && y0 <= cellMax.y &&
+                       z0 >= cellMin.z && z0 <= cellMax.z {
+                        posMin.x = f32.min(posMin.x, x0)
+                        posMin.y = f32.min(posMin.y, y0)
+                        posMin.z = f32.min(posMin.z, z0)
+                        posMax.x = f32.max(posMax.x, x0)
+                        posMax.y = f32.max(posMax.y, y0)
+                        posMax.z = f32.max(posMax.z, z0)
+                        add = add | 1
+                    }
+                    if x1 >= cellMin.x && x1 <= cellMax.x &&
+                       y1 >= cellMin.y && y1 <= cellMax.y &&
+                       z1 >= cellMin.z && z1 <= cellMax.z {
+                        posMin.x = f32.min(posMin.x, x1)
+                        posMin.y = f32.min(posMin.y, y1)
+                        posMin.z = f32.min(posMin.z, z1)
+                        posMax.x = f32.max(posMax.x, x1)
+                        posMax.y = f32.max(posMax.y, y1)
+                        posMax.z = f32.max(posMax.z, z1)
+                        add = add | 2
+                    }
+                    if x2 >= cellMin.x && x2 <= cellMax.x &&
+                       y2 >= cellMin.y && y2 <= cellMax.y &&
+                       z2 >= cellMin.z && z2 <= cellMax.z {
+                        posMin.x = f32.min(posMin.x, x2)
+                        posMin.y = f32.min(posMin.y, y2)
+                        posMin.z = f32.min(posMin.z, z2)
+                        posMax.x = f32.max(posMax.x, x2)
+                        posMax.y = f32.max(posMax.y, y2)
+                        posMax.z = f32.max(posMax.z, z2)
+                        add = add | 4
+                    }
+
+                    if add == 7 {
+                        vertices = addVertex(attributeCount, positionAttribute, channels, p0, i0, vertices)
+                        vertices = addVertex(attributeCount, positionAttribute, channels, p1, i1, vertices)
+                        vertices = addVertex(attributeCount, positionAttribute, channels, p2, i2, vertices)
+                        indices = gl.AppendUI16(indices, index)
+                        index = index + 1UH
+                        indices = gl.AppendUI16(indices, index)
+                        index = index + 1UH
+                        indices = gl.AppendUI16(indices, index)
+                        index = index + 1UH
+                    } else {
+                        if mat.TriangleIntersectsAABB(cellMin, cellMax, cellPoints, triangleVertices) {
+                            var newChannels []channelInfo // TODO : remove alloc
+                            var oldChannels []channelInfo // TODO : remove alloc
+                            for a := 0; a < attributeCount; a++ {
+                                var chan channelInfo
+                                chan.count = channels[a].count
+                                chan.dataType = channels[a].dataType
+                                oldChannels = append(oldChannels, chan)
+                                newChannels = append(newChannels, chan)
+                            }
+
+                            oldChannels = channelAppendVertex(oldChannels, channels, i0)
+                            oldChannels = channelAppendVertex(oldChannels, channels, i1)
+                            oldChannels = channelAppendVertex(oldChannels, channels, i2)
+
+                            for p := 0; p < 6; p++ {
+                                var upFront i32 = -1
+                                var downFront i32 = -1
+                                var planeNormal mat.v3 = cellPlanesNormals[p]
+                                var planeOrigin mat.v3 = cellPlanesOrigins[p]
+                                var step i32 = -1
+                                var vertCount i32 = oldChannels[0].dataLen / oldChannels[0].count
+                                vertPos = resize(vertPos, 0)
+                                var belowCount i32
+                                for v := 0; v < vertCount; v++ {
+                                    var currentPos mat.v3 = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, v), transform)
+                                    var pdp f32 = v3.dot(v3.sub(currentPos, planeOrigin), planeNormal)
+                                    var pointBelowPlane bool
+                                    if pdp < 0.0 {
+                                        pointBelowPlane = true
+                                        belowCount = belowCount + 1
+                                    }
+                                    vertPos = append(vertPos, pointBelowPlane)
+                                }
+
+                                for v := 0; v < vertCount; v++ {
+                                    var nextPos i32 = (v+1)%vertCount
+                                    if vertPos[v] == true && vertPos[nextPos] == false {
+                                        upFront = v
+                                    } else if vertPos[v] == false && vertPos[nextPos] == true {
+                                        downFront = v
+                                    }
+                                }
+
+                                newChannels = channelResize(newChannels)
+                                if upFront >= 0 && downFront >= 0 {
+                                    panicIf(upFront == downFront, "invalid fronts")
+                                    var vup mat.v3 = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, upFront), transform)
+                                    var upNext i32 = (upFront+1)%vertCount
+                                    var vupNext mat.v3 = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, upNext), transform)
+                                    var itup bool
+                                    var tup f32
+                                    itup, tup = mat.RayIntersectsPlane(vup, vupNext, planeOrigin, planeNormal)
+                                    if itup {
+                                        newChannels = channelLerpVertex(newChannels, oldChannels, upFront, upNext, tup)
+                                    } else {
+                                        newChannels = channelAppendVertex(newChannels, oldChannels, upFront)
+                                        newChannels = channelAppendVertex(newChannels, oldChannels, upNext)
+                                    }
+
+                                    var vdown mat.v3 = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, downFront), transform)
+                                    var downNext i32 = (downFront+1)%vertCount
+                                    var vdownNext mat.v3 = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, downNext), transform)
+                                    var itdown bool
+                                    var tdown f32
+                                    itdown, tdown = mat.RayIntersectsPlane(vdown, vdownNext, planeOrigin, planeNormal)
+                                    if itdown {
+                                        newChannels = channelLerpVertex(newChannels, oldChannels, downFront, downNext, tdown)
+                                    } else {
+                                        newChannels = channelAppendVertex(newChannels, oldChannels, downFront)
+                                        newChannels = channelAppendVertex(newChannels, oldChannels, downNext)
+                                    }
+
+                                    var cfront bool = true
+                                    var nv i32 = (downFront + 1) %vertCount
+                                    for cfront == true {
+                                        if nv == upFront {
+                                            cfront = false
+                                        } else {
+                                            newChannels = channelAppendVertex(newChannels, oldChannels, nv)
+                                            nv = (nv + 1) %vertCount
+                                        }
+                                    }
+                                    newChannels = channelAppendVertex(newChannels, oldChannels, nv)
+                                    var tmpChannels []channelInfo = oldChannels
+                                    oldChannels = newChannels
+                                    newChannels = tmpChannels
+                                }
+                            }
+
+                            var vertexCount i32 = oldChannels[0].dataLen / oldChannels[0].count
+                            for v := 0; v < vertexCount - 1; v++ {
+                                triangleVertices[0] = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, 0), transform)
+                                triangleVertices[1] = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, v), transform)
+                                triangleVertices[2] = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, v + 1), transform)
+
+                                if mat.TriangleIntersectsAABB(cellMin, cellMax, cellPoints, triangleVertices) {
+                                    vertices = addVertexV2(positionAttribute, attributeCount, oldChannels, 0, vertices, transform)
+                                    vertices = addVertexV2(positionAttribute, attributeCount, oldChannels, v, vertices, transform)
+                                    vertices = addVertexV2(positionAttribute, attributeCount, oldChannels, v + 1, vertices, transform)
+                                    indices = gl.AppendUI16(indices, index)
+                                    index = index + 1UH
+                                    indices = gl.AppendUI16(indices, index)
+                                    index = index + 1UH
+                                    indices = gl.AppendUI16(indices, index)
+                                    index = index + 1UH
+                                } else {
+                                }
+                            }
+                        }
+                    }
+                    octreePrimitives[octreePrimitiveIndex].indices = indices
+                    octreePrimitives[octreePrimitiveIndex].vertices = vertices
+                    octreePrimitives[octreePrimitiveIndex].min = posMin
+                    octreePrimitives[octreePrimitiveIndex].max = posMax
+                }
+            } else if indicesAccessor.componentType == gl.UNSIGNED_INT {
+                var data []ui32 = indicesAccessor.dataUI32
+                var index ui32 = i32.ui32(len(indices) / 4)
+                var indexCount i32 = len(data)
+                panicIf((indexCount % 3) != 0, "invalid index count")
+                var triangleCount i32 = indexCount / 3
+                for triangle := 0; triangle < triangleCount; triangle++ {
+                    var ui0 ui32 = data[triangle * 3 + 0]
+                    var ui1 ui32 = data[triangle * 3 + 1]
+                    var ui2 ui32 = data[triangle * 3 + 2]
+                    var i0 i32 = ui32.i32(ui0)
+                    var i1 i32 = ui32.i32(ui1)
+                    var i2 i32 = ui32.i32(ui2)
+                    
+                    var pi0 i32 = i0 * positionComponentCount
+                    var pi1 i32 = i1 * positionComponentCount
+                    var pi2 i32 = i2 * positionComponentCount
+                    var p0 mat.v3 = v3.transform_point(
+                        v3.make(positionData[pi0], positionData[pi0 + 1], positionData[pi0 + 2]), transform)
+                    var p1 mat.v3 = v3.transform_point(
+                        v3.make(positionData[pi1], positionData[pi1 + 1], positionData[pi1 + 2]), transform)
+                    var p2 mat.v3 = v3.transform_point(
+                        v3.make(positionData[pi2], positionData[pi2 + 1], positionData[pi2 + 2]), transform)
+
+                    triangleVertices[0] = p0
+                    triangleVertices[1] = p1
+                    triangleVertices[2] = p2
+
+                    var x0 f32 = p0.x
+                    var y0 f32 = p0.y
+                    var z0 f32 = p0.z
+                    var x1 f32 = p1.x
+                    var y1 f32 = p1.y
+                    var z1 f32 = p1.z
+                    var x2 f32 = p2.x
+                    var y2 f32 = p2.y
+                    var z2 f32 = p2.z
+                    var add i32
+                    if x0 >= cellMin.x && x0 <= cellMax.x &&
+                       y0 >= cellMin.y && y0 <= cellMax.y &&
+                       z0 >= cellMin.z && z0 <= cellMax.z {
+                        posMin.x = f32.min(posMin.x, x0)
+                        posMin.y = f32.min(posMin.y, y0)
+                        posMin.z = f32.min(posMin.z, z0)
+                        posMax.x = f32.max(posMax.x, x0)
+                        posMax.y = f32.max(posMax.y, y0)
+                        posMax.z = f32.max(posMax.z, z0)
+                        add = add | 1
+                    }
+                    if x1 >= cellMin.x && x1 <= cellMax.x &&
+                       y1 >= cellMin.y && y1 <= cellMax.y &&
+                       z1 >= cellMin.z && z1 <= cellMax.z {
+                        posMin.x = f32.min(posMin.x, x1)
+                        posMin.y = f32.min(posMin.y, y1)
+                        posMin.z = f32.min(posMin.z, z1)
+                        posMax.x = f32.max(posMax.x, x1)
+                        posMax.y = f32.max(posMax.y, y1)
+                        posMax.z = f32.max(posMax.z, z1)
+                        add = add | 2
+                    }
+                    if x2 >= cellMin.x && x2 <= cellMax.x &&
+                       y2 >= cellMin.y && y2 <= cellMax.y &&
+                       z2 >= cellMin.z && z2 <= cellMax.z {
+                        posMin.x = f32.min(posMin.x, x2)
+                        posMin.y = f32.min(posMin.y, y2)
+                        posMin.z = f32.min(posMin.z, z2)
+                        posMax.x = f32.max(posMax.x, x2)
+                        posMax.y = f32.max(posMax.y, y2)
+                        posMax.z = f32.max(posMax.z, z2)
+                        add = add | 4
+                    }
+
+                    if add == 7 {
+                        vertices = addVertex(attributeCount, positionAttribute, channels, p0, i0, vertices)
+                        vertices = addVertex(attributeCount, positionAttribute, channels, p1, i1, vertices)
+                        vertices = addVertex(attributeCount, positionAttribute, channels, p2, i2, vertices)
+                        indices = gl.AppendUI32(indices, index)
+                        index = index + 1U
+                        indices = gl.AppendUI32(indices, index)
+                        index = index + 1U
+                        indices = gl.AppendUI32(indices, index)
+                        index = index + 1U
+                    } else {
+                        if mat.TriangleIntersectsAABB(cellMin, cellMax, cellPoints, triangleVertices) {
+                            var newChannels []channelInfo // TODO : remove alloc
+                            var oldChannels []channelInfo // TODO : remove alloc
+                            for a := 0; a < attributeCount; a++ {
+                                var chan channelInfo
+                                chan.count = channels[a].count
+                                chan.dataType = channels[a].dataType
+                                oldChannels = append(oldChannels, chan)
+                                newChannels = append(newChannels, chan)
+                            }
+
+                            oldChannels = channelAppendVertex(oldChannels, channels, i0)
+                            oldChannels = channelAppendVertex(oldChannels, channels, i1)
+                            oldChannels = channelAppendVertex(oldChannels, channels, i2)
+
+                            for p := 0; p < 6; p++ {
+                                var upFront i32 = -1
+                                var downFront i32 = -1
+                                var planeNormal mat.v3 = cellPlanesNormals[p]
+                                var planeOrigin mat.v3 = cellPlanesOrigins[p]
+                                var step i32 = -1
+                                var vertCount i32 = oldChannels[0].dataLen / oldChannels[0].count
+                                vertPos = resize(vertPos, 0)
+                                var belowCount i32
+                                for v := 0; v < vertCount; v++ {
+                                    var currentPos mat.v3 = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, v), transform)
+                                    var pdp f32 = v3.dot(v3.sub(currentPos, planeOrigin), planeNormal)
+                                    var pointBelowPlane bool
+                                    if pdp < 0.0 {
+                                        pointBelowPlane = true
+                                        belowCount = belowCount + 1
+                                    }
+                                    vertPos = append(vertPos, pointBelowPlane)
+                                }
+
+                                for v := 0; v < vertCount; v++ {
+                                    var nextPos i32 = (v+1)%vertCount
+                                    if vertPos[v] == true && vertPos[nextPos] == false {
+                                        upFront = v
+                                    } else if vertPos[v] == false && vertPos[nextPos] == true {
+                                        downFront = v
+                                    }
+                                }
+
+                                newChannels = channelResize(newChannels)
+                                if upFront >= 0 && downFront >= 0 {
+                                    panicIf(upFront == downFront, "invalid fronts")
+                                    var vup mat.v3 = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, upFront), transform)
+                                    var upNext i32 = (upFront+1)%vertCount
+                                    var vupNext mat.v3 = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, upNext), transform)
+                                    var itup bool
+                                    var tup f32
+                                    itup, tup = mat.RayIntersectsPlane(vup, vupNext, planeOrigin, planeNormal)
+                                    if itup {
+                                        newChannels = channelLerpVertex(newChannels, oldChannels, upFront, upNext, tup)
+                                    } else {
+                                        newChannels = channelAppendVertex(newChannels, oldChannels, upFront)
+                                        newChannels = channelAppendVertex(newChannels, oldChannels, upNext)
+                                    }
+
+                                    var vdown mat.v3 = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, downFront), transform)
+                                    var downNext i32 = (downFront+1)%vertCount
+                                    var vdownNext mat.v3 = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, downNext), transform)
+                                    var itdown bool
+                                    var tdown f32
+                                    itdown, tdown = mat.RayIntersectsPlane(vdown, vdownNext, planeOrigin, planeNormal)
+                                    if itdown {
+                                        newChannels = channelLerpVertex(newChannels, oldChannels, downFront, downNext, tdown)
+                                    } else {
+                                        newChannels = channelAppendVertex(newChannels, oldChannels, downFront)
+                                        newChannels = channelAppendVertex(newChannels, oldChannels, downNext)
+                                    }
+
+                                    var cfront bool = true
+                                    var nv i32 = (downFront + 1) %vertCount
+                                    for cfront == true {
+                                        if nv == upFront {
+                                            cfront = false
+                                        } else {
+                                            newChannels = channelAppendVertex(newChannels, oldChannels, nv)
+                                            nv = (nv + 1) %vertCount
+                                        }
+                                    }
+                                    newChannels = channelAppendVertex(newChannels, oldChannels, nv)
+                                    var tmpChannels []channelInfo = oldChannels
+                                    oldChannels = newChannels
+                                    newChannels = tmpChannels
+                                }
+                            }
+
+                            var vertexCount i32 = oldChannels[0].dataLen / oldChannels[0].count
+                            for v := 0; v < vertexCount - 1; v++ {
+                                triangleVertices[0] = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, 0), transform)
+                                triangleVertices[1] = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, v), transform)
+                                triangleVertices[2] = v3.transform_point(channelGetPosition(oldChannels, positionAttribute, v + 1), transform)
+
+                                if mat.TriangleIntersectsAABB(cellMin, cellMax, cellPoints, triangleVertices) {
+                                    vertices = addVertexV2(positionAttribute, attributeCount, oldChannels, 0, vertices, transform)
+                                    vertices = addVertexV2(positionAttribute, attributeCount, oldChannels, v, vertices, transform)
+                                    vertices = addVertexV2(positionAttribute, attributeCount, oldChannels, v + 1, vertices, transform)
+                                    indices = gl.AppendUI32(indices, index)
+                                    index = index + 1U
+                                    indices = gl.AppendUI32(indices, index)
+                                    index = index + 1U
+                                    indices = gl.AppendUI32(indices, index)
+                                    index = index + 1U
+                                } else {
+                                }
+                            }
+                        }
+                    }
+                    octreePrimitives[octreePrimitiveIndex].indices = indices
+                    octreePrimitives[octreePrimitiveIndex].vertices = vertices
+                    octreePrimitives[octreePrimitiveIndex].min = posMin
+                    octreePrimitives[octreePrimitiveIndex].max = posMax
+                }
+            }
+        }
+        if len(indices) == oldIndexCount || len(vertices) == oldVertexCount {
+            //printf("MESH NOT DISPATCHED IDX %d, %d, VTX %d, %d\n",
+              //      oldIndexCount, len(indices), oldVertexCount, len(vertices))
+        }
+    }
+
+    g_octrees[id.octree].primitives = octreePrimitives
+
+    var primitiveCount i32 = len(cellPrimitives)
+    for primitiveIndex := 0; primitiveIndex < primitiveCount; primitiveIndex++ {
+        var octreePrimitiveIndex i32 = cellPrimitives[primitiveIndex]
+        var cellPrimitive Primitive = octreePrimitives[octreePrimitiveIndex]
+        if len(cellPrimitive.vertices) > 0 && len(cellPrimitive.indices) > 0 {
+            var attributes []VertexAttribute = cellPrimitive.attributes
+            var mesh MeshId = MeshCreate(mode, indicesType,
+                len(cellPrimitive.indices) / cellPrimitive.indexByteStride,
+                attributes, len(cellPrimitive.vertices) / cellPrimitive.vertexByteStride)
+
+            MeshBegin(mesh)
+            g_meshes[mesh.mesh].vertices = cellPrimitive.vertices
+            g_meshes[mesh.mesh].indices = cellPrimitive.indices
+            g_meshes[mesh.mesh].usePosition = cellPrimitive.usePosition
+            g_meshes[mesh.mesh].useNormal = cellPrimitive.useNormal
+            g_meshes[mesh.mesh].useColor = cellPrimitive.useColor
+            g_meshes[mesh.mesh].useTexcoord = cellPrimitive.useTexcoord
+            g_meshes[mesh.mesh].useTangent = cellPrimitive.useTangent
+            g_meshes[mesh.mesh].useWeight = cellPrimitive.useWeight
+            g_meshes[mesh.mesh].useJoint = cellPrimitive.useJoint
+            g_meshes[mesh.mesh].min = cellPrimitive.min
+            g_meshes[mesh.mesh].max = cellPrimitive.max
+            MeshEnd(mesh)
+
+
+            octreePrimitives[octreePrimitiveIndex].mesh = mesh
+        } else {
+            //printf("Empty primitive... looks doubious\n")
+                cellPrimitives[primitiveIndex] = -1
+        }
+    }
+    out = cellPrimitives
+}
+
+
+
+func cellDispatchPrimitives(id OctreeId, level i32, cellMin mat.v3, cellMax mat.v3, parents []i32, children []i32) (out []i32) {
+   
+    out = children
+    var mins []mat.v3 = g_octrees[id.octree].mins
+    var maxs []mat.v3 = g_octrees[id.octree].maxs
+    var parentCount i32 = len(parents)
+
+    for parentIndex := 0; parentIndex < parentCount; parentIndex++ {
+        var primitiveIndex i32 = parents[parentIndex]
+        var primMin mat.v3 = mins[primitiveIndex]
+        var primMax mat.v3 = maxs[primitiveIndex]
+
+        if  primMin.x <= cellMax.x && primMax.x >= cellMin.x &&
+            primMin.y <= cellMax.y && primMax.y >= cellMin.y &&
+            primMin.z <= cellMax.z && primMax.z >= cellMin.z {
+            out = append(out, primitiveIndex)
+        }
+    }
+}
+
+
+
+func octreeSplitModel(id OctreeId, model ModelId, level i32, opaques []i32, transparents []i32) {
+    var maxLevel i32 = g_octrees[id.octree].maxLevel
+    if level <= maxLevel {//&& ((len(opaques) > 0) || (len(transparents) > 0)) {
+        var offset i32 = g_octrees[id.octree].offsets[level]
+        g_octrees[id.octree].offsets[level] = offset + 1
+        var cells []OctreeCell = g_octrees[id.octree].cells
+        var cellMin mat.v3 = cells[offset].min
+        var cellMax mat.v3 = cells[offset].max
+        cells[offset].opaquePrimitives = cellDispatchPrimitives(
+            id, level, cellMin, cellMax, opaques, cells[offset].opaquePrimitives)
+        cells[offset].transparentPrimitives = cellDispatchPrimitives(
+            id, level, cellMin, cellMax, transparents, cells[offset].transparentPrimitives)
+
+        if level < maxLevel {
+            var childLevel i32 = level + 1
+            for i := 0; i < 8; i++ {
+                octreeSplitModel(id, model, childLevel, cells[offset].opaquePrimitives, cells[offset].transparentPrimitives)
+            }
+        }
+    }
+}
+
+
+func octreeUpdateCells(id OctreeId, level i32, center mat.v3, size mat.v3) (out i32) {
+    out = -1
     var maxLevel i32 = g_octrees[id.octree].maxLevel
     if level <= maxLevel {
         var min mat.v3 = v3.sub(center, size)
         var max mat.v3 = v3.add(center, size)
-        var inter i32 = BoxIntersectsFrustumVolume(min, max, frustum)
-        var render bool
-        var recurse bool
 
-        if inter == 0 {
-            if level == maxLevel {
-                render = true
-            } else {
-                recurse = true
-            }
-        } else if inter == -1 {
-            render = true
-        } else if inter == 1 {
-        }
-    }
 
-    if render && debug {
-        MeshAppendBox(g_octrees[id.octree].debugMesh, true, false,
-            center, v3.make(size.x, 0.0, 0.0), v3.make(0.0, size.y, 0.0), v3.make(0.0, 0.0, size.z),
-            v4.GREEN)
-    }
+        var offset i32 = g_octrees[id.octree].offsets[level]
+        out = offset
+        var cells []OctreeCell = g_octrees[id.octree].cells
 
-    if recurse {
+        cells[offset].index = offset
+        cells[offset].level = level
+        cells[offset].center = center
+        cells[offset].size = size
+        cells[offset].min = min
+        cells[offset].max = max
+
+        var points []mat.v3
+        var p0 mat.v3 = min
+        var p1 mat.v3 = v3.make(max.x, min.y, min.z)
+        var p2 mat.v3 = v3.make(min.x, max.y, min.z)
+        var p3 mat.v3 = v3.make(max.x, max.y, min.z)
+        var p4 mat.v3 = v3.make(min.x, min.y, max.z)
+        var p5 mat.v3 = v3.make(max.x, min.y, max.z)
+        var p6 mat.v3 = v3.make(min.x, max.y, max.z)
+        var p7 mat.v3 = v3.make(max.x, max.y, max.z)
+
+        points = append(points, p0)
+        points = append(points, p1)
+        points = append(points, p2)
+        points = append(points, p3)
+        points = append(points, p4)
+        points = append(points, p5)
+        points = append(points, p6)
+        points = append(points, p7)
+
+        var origins []mat.v3
+        var normals []mat.v3
+
+        var p40 mat.v3 = v3.normalize(v3.sub(p4, p0))
+        var p10 mat.v3 = v3.normalize(v3.sub(p1, p0))
+        var p20 mat.v3 = v3.normalize(v3.sub(p2, p0))
+        var p31 mat.v3 = v3.normalize(v3.sub(p3, p1))
+        var p51 mat.v3 = v3.normalize(v3.sub(p5, p1))
+        var p32 mat.v3 = v3.normalize(v3.sub(p3, p2))
+        var p62 mat.v3 = v3.normalize(v3.sub(p6, p2))
+        var p64 mat.v3 = v3.normalize(v3.sub(p6, p4))
+        var p54 mat.v3 = v3.normalize(v3.sub(p5, p4))
+
+        normals = append(normals, v3.normalize(v3.cross(p40, p20)))
+        normals = append(normals, v3.normalize(v3.cross(p31, p51)))
+        normals = append(normals, v3.normalize(v3.cross(p10, p40)))
+        normals = append(normals, v3.normalize(v3.cross(p62, p32)))
+        normals = append(normals, v3.normalize(v3.cross(p20, p10)))
+        normals = append(normals, v3.normalize(v3.cross(p54, p64)))
+
+        origins = append(origins, p0)
+        origins = append(origins, p1)
+        origins = append(origins, p0)
+        origins = append(origins, p2)
+        origins = append(origins, p0)
+        origins = append(origins, p4)
+
+        cells[offset].planesNormal = normals
+        cells[offset].planesOrigin = origins
+        cells[offset].points = points
+
+        g_octrees[id.octree].offsets[level] = offset + 1
+
         var childLevel i32 = level + 1
         var childSize mat.v3 = v3.mulf(size, 0.5)
         for i := 0; i < 8; i++ {
-            octreeUpdateLevel(id, level + 1, v3.add(center, v3.mul(g_octreeCells[i], childSize)),
-                childSize, frustum, debug)
+            cells[offset].children[i] = octreeUpdateCells(id, childLevel, v3.add(center, v3.mul(g_octreeCells[i], childSize)), childSize)
+        }
+    }
+}
+
+func octreeUpdateLevel(id OctreeId, level i32, frustum FrustumId, debug bool) {
+    var maxLevel i32 = g_octrees[id.octree].maxLevel
+    if level <= maxLevel {
+        var offsets []i32 = g_octrees[id.octree].offsets
+        var offset i32 = offsets[level]
+        offsets[level] = offset + 1
+
+        var cells  []OctreeCell = g_octrees[id.octree].cells
+
+        var inter i32 = FrustumIntersectsAABB(frustum, cells[offset].min, cells[offset].max)
+
+        var childLevel i32 = level + 1
+        var recurse bool
+        if inter == 0 {
+            if level == maxLevel {
+                g_octrees[id.octree].visibles = append(g_octrees[id.octree].visibles, offset)
+            } else {
+                recurse = true
+                for i := 0; i < 8; i++ {
+                    octreeUpdateLevel(id, childLevel, frustum, debug)
+                }
+            }
+        } else if inter == -1 {
+            g_octrees[id.octree].visibles = append(g_octrees[id.octree].visibles, offset)
+        } else if inter == 1 {
+        }
+
+        if recurse == false {
+            var layerCount i32 = 8
+            for i := childLevel; i <= maxLevel; i++ {
+                offsets[i] = offsets[i] + layerCount
+                layerCount = layerCount * 8
+            }
         }
     }
 }

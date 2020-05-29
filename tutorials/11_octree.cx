@@ -9,6 +9,7 @@ import "m44"
 import "mat"
 import "v3"
 import "v4"
+import "time"
 
 // Globals ...
 var gameScreen gui.ScreenId
@@ -33,6 +34,7 @@ var currentSky i32
 var currentSkybox i32
 var brdf gfx.TextureId = gfx.InvalidTexture()
 
+var octree gfx.OctreeId = gfx.InvalidOctree()
 var frustum gfx.FrustumId = gfx.InvalidFrustum()
 
 var world mat.m44
@@ -194,6 +196,8 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 		gfx.AnimationUpdate(anim, step, true, -1.0)
 	}
 	gfx.ModelUpdate(model, anim, step, true)
+
+    gfx.OctreeUpdate(octree, frustum)
 }
 
 //-----------------------------------------------------------------------------
@@ -243,9 +247,10 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.ModelSetBRDF(model, brdf)
 	gfx.ModelSetCameraPosition(model, cameraPosition)
     gfx.ModelSetExposure(model, DP0.y)
-	gfx.ModelRender(model)
+	//gfx.ModelRender(model)
 
-    //gfx.FrustumRender(frustum, m44.IDENTITY, view, projection)
+    gfx.OctreeRender(octree, models[currentModel], m44.IDENTITY, view, projection)
+    gfx.FrustumRender(frustum, m44.IDENTITY, view, projection)
 }
 
 //-----------------------------------------------------------------------------
@@ -289,14 +294,26 @@ func gameOnStart(window str) {
 	//loadModel("glTF-Sample-Models/Monster/glTF", "Monster.gltf", 0.05, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/BrainStem/glTF", "BrainStem.gltf", 1.0, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/Duck/glTF", "Duck.gltf", 1.0, 1.0, 1.0)
-	loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
+	//loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
-	loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
-    loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
-    loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
-    loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
+	//loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 1.0, 0.0, 1.0)
+    //loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
+    //loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
+    //loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
     loadModel("skylight/skyminer/high", "scene.gltf", 1.0, 0.0, 1.0)
+
+    var skyminerIndex i32 = len(models) - 1
+    currentModel = skyminerIndex
+    var octreeModel gfx.ModelId = models[skyminerIndex]
+    var octreeMin mat.v3 = v3.mulf(gfx.ModelGetMin(octreeModel), scales[skyminerIndex])
+    var octreeMax mat.v3 = v3.mulf(gfx.ModelGetMax(octreeModel), scales[skyminerIndex])
+    octree = gfx.OctreeCreate(octreeMin, octreeMax, 2)
+	gfx.ModelUpdate(octreeModel, gfx.AnimationInvalid(), 0.0, true)
+
+    var t0 i64 = time.UnixNano()
+    gfx.OctreeSplitModel(octree, octreeModel)
+    printf("Octree model split in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
 
     frustum = gfx.FrustumCreate()
 

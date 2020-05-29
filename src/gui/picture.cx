@@ -66,6 +66,12 @@ func PictureSetAnimation(id PictureId, animation AnimationId, loop bool, rate i3
     g_pictures[id.picture].animTrack = AnimationTrackCreate(loop, AnimationFrameCount(animation), rate)
 }
 
+// PictureSetAlpha ...
+func PictureSetAlpha(id PictureId, alpha bool) {
+	panicIfNot(IsValidPicture(id), "invalid id")
+    g_pictures[id.picture].alpha = alpha
+}
+
 // PictureSetAlign ...
 func PictureSetAlign(id PictureId, align i32) {
 	panicIfNot(IsValidPicture(id), "invalid id")
