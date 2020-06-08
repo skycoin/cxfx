@@ -162,11 +162,65 @@ var P6 fps.ProfileId = fps.InvalidProfile()*/
 
 // OctreeRender ...
 func OctreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, projection mat.m44) {
+    DisableBlending()
+    DepthState(true, LESS, true)
+    g_octrees[id.octree].opaqueBuckets = sortBuckets(id, g_octrees[id.octree].opaqueBuckets, true)
+    octreeRender(id, model, world, view, projection, g_octrees[id.octree].opaqueBuckets)
+
+    EnableBlending(SRC_ALPHA, ONE_MINUS_SRC_ALPHA)
+    DepthState(true, LESS, false)
+    g_octrees[id.octree].transparentBuckets = sortBuckets(id, g_octrees[id.octree].transparentBuckets, false)
+    octreeRender(id, model, world, view, projection, g_octrees[id.octree].transparentBuckets)
+
+    DepthState(true, LESS, false)
+	EffectUse(g_fxVertexColor3D)
+	EffectAssignM44(g_fxVertexColor3D, UNIFORM_WORLD, world, false)
+	EffectAssignM44(g_fxVertexColor3D, UNIFORM_VIEW, view, false)
+	EffectAssignM44(g_fxVertexColor3D, UNIFORM_PROJECTION, projection, false)
+	MeshRender(g_octrees[id.octree].debugMesh)
+}
+
+
+func sortBuckets(id OctreeId, in []PrimitiveBucket, opaque bool) (out []PrimitiveBucket) {
+    out = in
+
+    var cells []OctreeCell = g_octrees[id.octree].cells
+
+    var visibles []i32 = g_octrees[id.octree].visibles
+    var visibleCount i32 = len(visibles)
+
+    var octreePrimitives []Primitive = g_octrees[id.octree].primitives
+
+    var visiblePrimitives []i32 = g_octrees[id.octree].visiblePrimitives
+    visiblePrimitives = resize(visiblePrimitives, 0)
+
+    //P2 = fps.CreateStartProfile(P2, "OctreeRender : sort visibles")
+    for visible := 0; visible < visibleCount; visible++ {
+        var cellIndex i32 = visibles[visible]
+        var cellPrimitives []i32
+        if opaque {
+            cellPrimitives = cells[cellIndex].opaques
+        } else {
+            cellPrimitives = cells[cellIndex].transparents
+        }
+        var primitiveCount i32 = len(cellPrimitives)
+        for primitive := 0; primitive < primitiveCount; primitive++ {
+            var octreePrimitiveIndex i32 = cellPrimitives[primitive]
+            if octreePrimitiveIndex >= 0 {
+                visiblePrimitives = append(visiblePrimitives, cellPrimitives[primitive])
+            }
+        }
+    }
+
+    out = PrimitiveSort1(octreePrimitives, visiblePrimitives, out)
+
+    //fps.StopProfile(P2)
+}
+
+func octreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, projection mat.m44, buckets []PrimitiveBucket) {
     //P0 = fps.CreateStartProfile(P0, "OctreeRender")
     //P1 = fps.CreateStartProfile(P1, "P1")
     panicIfNot(OctreeIsValid(id), "invalid id")
-    DisableBlending()
-    DepthState(true, LESS, true)
 
     var modelIndex i32 = model.model
 	var environmentSpecular TextureId = g_models[modelIndex].environmentSpecular // TODO : renderState
@@ -177,10 +231,6 @@ func OctreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, proje
 	var skinned bool = g_models[modelIndex].skinned
     var worldIsIdentity bool = true
     var exposure f32 = g_models[modelIndex].exposure
-
-    var cells []OctreeCell = g_octrees[id.octree].cells
-    var visibles []i32 = g_octrees[id.octree].visibles
-    var visibleCount i32 = len(visibles)
 
     var lastEffect i32 = -1
     var lastBaseTexture i32 = -1
@@ -194,42 +244,13 @@ func OctreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, proje
     var lastTransform mat.m44 = m44.INVALID
 
     var octreePrimitives []Primitive = g_octrees[id.octree].primitives
-
-    var visiblePrimitives []i32 = g_octrees[id.octree].visiblePrimitives
-    visiblePrimitives = resize(visiblePrimitives, 0)
-
     //fps.StopProfile(P1)
-    //P2 = fps.CreateStartProfile(P2, "OctreeRender : sort visibles")
-    for visible := 0; visible < visibleCount; visible++ {
-        var cellIndex i32 = visibles[visible]
-        var cellPrimitives []i32 = cells[cellIndex].opaques
-        var primitiveCount i32 = len(cellPrimitives)
-        for primitive := 0; primitive < primitiveCount; primitive++ {
-            var octreePrimitiveIndex i32 = cellPrimitives[primitive]
-            if octreePrimitiveIndex >= 0 {
-                visiblePrimitives = append(visiblePrimitives, cellPrimitives[primitive])
-            }
-        }
-    }
-
-/*    var sortedPrimitives []i32 = g_octrees[id.octree].sortedPrimitives
-    sortedPrimitives = resize(sortedPrimitives, 0)
-    sortedPrimitives = PrimitiveSort0(octreePrimitives, visiblePrimitives, sortedPrimitives)
-    g_octrees[id.octree].visiblePrimitives = visiblePrimitives
-    g_octrees[id.octree].sortedPrimitives = sortedPrimitives*/
-
-    var opaqueBuckets []PrimitiveBucket = g_octrees[id.octree].opaqueBuckets
-    opaqueBuckets = PrimitiveSort1(octreePrimitives, visiblePrimitives, opaqueBuckets)
-    g_octrees[id.octree].opaqueBuckets = opaqueBuckets
-
-    var stateChange i32
-    //fps.StopProfile(P2)
     //P3 = fps.CreateStartProfile(P3, "OctreeRender : render")
-    var bucketCount i32 = len(opaqueBuckets)
+    var bucketCount i32 = len(buckets)
     for bucket := 0; bucket < bucketCount; bucket++ {
-        var sortedPrimitives []i32 = opaqueBuckets[bucket].primitives
+        var sortedPrimitives []i32 = buckets[bucket].primitives
         var sortedCount i32 = len(sortedPrimitives)
-	    var effect EffectId = opaqueBuckets[bucket].effect
+	    var effect EffectId = buckets[bucket].effect
         if lastEffect != effect.effect {
             lastEffect = effect.effect
 
@@ -256,31 +277,31 @@ func OctreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, proje
             lastMetalRoughFactor = v4.makef(-1.0)
         }
 
-        var baseTexture TextureId = opaqueBuckets[bucket].baseTexture
+        var baseTexture TextureId = buckets[bucket].baseTexture
         if lastBaseTexture != baseTexture.texture {
             lastBaseTexture = baseTexture.texture
 	        EffectTryAssignTexture(effect, SAMPLER_COLOR_0, baseTexture, g_linearWrap)
         }
 
-        var normalTexture TextureId = opaqueBuckets[bucket].normalTexture
+        var normalTexture TextureId = buckets[bucket].normalTexture
         if lastNormalTexture != normalTexture.texture {
             lastNormalTexture = normalTexture.texture
 	        EffectTryAssignTexture(effect, SAMPLER_NORMAL, normalTexture, g_linearWrap)
         }
 
-        var metalRoughTexture TextureId = opaqueBuckets[bucket].metalRoughTexture
+        var metalRoughTexture TextureId = buckets[bucket].metalRoughTexture
         if lastMetalRoughTexture != metalRoughTexture.texture {
             lastMetalRoughTexture = metalRoughTexture.texture
             EffectTryAssignTexture(effect, SAMPLER_METAL_ROUGH, metalRoughTexture, g_linearWrap)
         }
 
-        var emissiveTexture TextureId = opaqueBuckets[bucket].emissiveTexture
+        var emissiveTexture TextureId = buckets[bucket].emissiveTexture
         if lastEmissiveTexture != emissiveTexture.texture {
             lastEmissiveTexture = emissiveTexture.texture
             EffectTryAssignTexture(effect, SAMPLER_EMISSIVE, emissiveTexture, g_linearWrap)
         }
 
-        var occlusionTexture TextureId = opaqueBuckets[bucket].occlusionTexture
+        var occlusionTexture TextureId = buckets[bucket].occlusionTexture
         if lastOcclusionTexture != occlusionTexture.texture {
             lastOcclusionTexture = occlusionTexture.texture
 	        EffectTryAssignTexture(effect, SAMPLER_OCCLUSION, occlusionTexture, g_linearWrap)
@@ -339,12 +360,6 @@ func OctreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, proje
     }
     //fps.StopProfile(P3)
     //fps.StopProfile(P0)
-    DepthState(true, LESS, false)
-	EffectUse(g_fxVertexColor3D)
-	EffectAssignM44(g_fxVertexColor3D, UNIFORM_WORLD, world, false)
-	EffectAssignM44(g_fxVertexColor3D, UNIFORM_VIEW, view, false)
-	EffectAssignM44(g_fxVertexColor3D, UNIFORM_PROJECTION, projection, false)
-	MeshRender(g_octrees[id.octree].debugMesh)
 }
 
 func addVertexV2(positionAttribute i32, attributeCount i32, channels []channelInfo, index i32, in []ui8, transform mat.m44) (out []ui8) {
