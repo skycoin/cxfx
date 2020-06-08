@@ -33,12 +33,10 @@ var currentSky i32
 var currentSkybox i32
 var brdf gfx.TextureId = gfx.InvalidTexture()
 
-var frustum gfx.FrustumId = gfx.InvalidFrustum()
 
 var world mat.m44
 
 var camera gam.CameraId
-var snapFrustum bool = true
 
 var worldPosY f32 = -10.0
 
@@ -59,8 +57,6 @@ var CAMERA_FREE i32 = 1
 var CAMERA_FPS i32 = 2
 var CAMERA_COUNT i32 = 3
 var currentCamera i32 = CAMERA_TPS
-
-var DP0 mat.v4
 
 // Synth ...
 type Synth struct {
@@ -84,24 +80,6 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 	if mods == app.MOD_NONE {
 		if key == app.KEYCODE_ESCAPE && action == app.KEY_PRESS {
 			app.Exit()
-		} else if key == app.KEYCODE_1 && action == app.KEY_PRESS {
-            if snapFrustum {
-                snapFrustum = false
-            } else {
-                snapFrustum = true
-            }
-        } else if key == app.KEYCODE_2 && action == app.KEY_PRESS {
-            DP0.x = DP0.x - 0.1
-            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
-        } else if key == app.KEYCODE_3 && action == app.KEY_PRESS {
-            DP0.x = DP0.x + 0.1
-            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
-        } else if key == app.KEYCODE_4 && action == app.KEY_PRESS {
-            DP0.y = DP0.y - 0.1
-            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
-        } else if key == app.KEYCODE_5 && action == app.KEY_PRESS {
-            DP0.y = DP0.y + 0.1
-            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
         }
 	} else if mods == app.MOD_ALT && action == app.KEY_PRESS {
 		if key == app.KEYCODE_LEFT {
@@ -112,14 +90,14 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 		} else if key == app.KEYCODE_RIGHT {
 			currentSky = (currentSky + 1) % len(skyDiffuses)
 		} else if key == app.KEYCODE_UP {
-            if currentSkybox <= 0 {
-                currentSkybox = 1
-            }
-            currentSkybox = currentSkybox - 1
-        } else if key == app.KEYCODE_DOWN {
-            currentSkybox = (currentSkybox + 1) % 2
-        }
-    } else if mods == app.MOD_CTRL && action == app.KEY_PRESS {
+            		if currentSkybox <= 0 {
+                		currentSkybox = 1
+            		}
+            		currentSkybox = currentSkybox - 1
+        	} else if key == app.KEYCODE_DOWN {
+            		currentSkybox = (currentSkybox + 1) % 2
+        	}
+    	} else if mods == app.MOD_CTRL && action == app.KEY_PRESS {
 		if key == app.KEYCODE_LEFT {
 			if currentModel <= 0 {
 				currentModel = len(models)
@@ -169,9 +147,7 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 func gameOnUpdate(controlIndex i32, controlAction i32) {
 	gam.FreeCameraUpdate(camera, fps.DeltaSecond())
-    if snapFrustum {
-        gfx.FrustumUpdate(frustum, gam.CameraGetInvViewProj(camera))
-    }
+	
 	var dts f64 = fps.DeltaSecond()
 	var dt f32 = f64.f32(dts)
 
@@ -219,7 +195,6 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
-    gfx.EffectAssignV4(gfx.g_fxSky, gfx.UNIFORM_PBR, DP0)
     gfx.MeshRender(skyMesh)
 
 	// ground
@@ -242,10 +217,8 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.ModelSetEnvironmentDiffuse(model, skyDiffuses[currentSky])
 	gfx.ModelSetBRDF(model, brdf)
 	gfx.ModelSetCameraPosition(model, cameraPosition)
-    gfx.ModelSetExposure(model, DP0.y)
+    gfx.ModelSetExposure(model, 1.0)
 	gfx.ModelRender(model)
-
-    //gfx.FrustumRender(frustum, m44.IDENTITY, view, projection)
 }
 
 //-----------------------------------------------------------------------------
@@ -293,12 +266,11 @@ func gameOnStart(window str) {
 	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
 	loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
-    loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
-    loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
-    loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
+    //loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
+    //loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
+    //loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
     loadModel("skylight/skyminer/high", "scene.gltf", 1.0, 0.0, 1.0)
 
-    frustum = gfx.FrustumCreate()
 
 
     groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)

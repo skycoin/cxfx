@@ -383,6 +383,9 @@ void main()
 	o_v4Color = vec4(tmp.rgb, tmp.a);
 	o_v4Color1 = vec4(tmp.a, 0.0, 0.0, 0.0);
  #else
+ #ifdef USE_PBR
+    color *= u_v4PBR.y;
+ #endif
 	o_v4Color = vec4(invgamma(tonemap(color)), v4Base.a);
 #endif
 }

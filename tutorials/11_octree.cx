@@ -7,12 +7,17 @@ import "gfx"
 import "gui"
 import "m44"
 import "mat"
+import "snd"
+import "time"
 import "v3"
 import "v4"
-import "time"
+
+// TODO : can't navigate with keyboard at startup
+// TODO : dialog disapear if exit button is pushed with keyboard
 
 // Globals ...
 var gameScreen gui.ScreenId
+var exitScreen gui.ScreenId
 
 var ry f32 = 0.0
 
@@ -56,13 +61,13 @@ var groundBack f32 = worldSizeZ / groundScale
 var groundWidth i32 = 16
 var groundHeight i32 = 16
 
+var voiceId snd.VoiceId
+
 var CAMERA_TPS i32 = 0
 var CAMERA_FREE i32 = 1
 var CAMERA_FPS i32 = 2
 var CAMERA_COUNT i32 = 3
 var currentCamera i32 = CAMERA_TPS
-
-var DP0 mat.v4
 
 // Synth ...
 type Synth struct {
@@ -92,18 +97,6 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
             } else {
                 snapFrustum = true
             }
-        } else if key == app.KEYCODE_2 && action == app.KEY_PRESS {
-            DP0.x = DP0.x - 0.1
-            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
-        } else if key == app.KEYCODE_3 && action == app.KEY_PRESS {
-            DP0.x = DP0.x + 0.1
-            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
-        } else if key == app.KEYCODE_4 && action == app.KEY_PRESS {
-            DP0.y = DP0.y - 0.1
-            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
-        } else if key == app.KEYCODE_5 && action == app.KEY_PRESS {
-            DP0.y = DP0.y + 0.1
-            printf("DEBUG %f, %f, %f, %f\n", DP0.x, DP0.y, DP0.z, DP0.w)
         }
 	} else if mods == app.MOD_ALT && action == app.KEY_PRESS {
 		if key == app.KEYCODE_LEFT {
@@ -223,8 +216,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
-    gfx.EffectAssignV4(gfx.g_fxSky, gfx.UNIFORM_PBR, DP0)
-    gfx.MeshRender(skyMesh)
+	gfx.MeshRender(skyMesh)
 
 	// ground
 	gfx.EffectUse(gfx.g_fxTexture3D)
@@ -246,11 +238,70 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.ModelSetEnvironmentDiffuse(model, skyDiffuses[currentSky])
 	gfx.ModelSetBRDF(model, brdf)
 	gfx.ModelSetCameraPosition(model, cameraPosition)
-    gfx.ModelSetExposure(model, DP0.y)
-	//gfx.ModelRender(model)
-
+    gfx.ModelSetExposure(model, 1.0)
     gfx.OctreeRender(octree, models[currentModel], m44.IDENTITY, view, projection)
     gfx.FrustumRender(frustum, m44.IDENTITY, view, projection)
+
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func skycoinOnUpdate(controlIndex i32, controlAction i32) {
+	if snd.VoiceState(voiceId) == snd.VOICE_STOPPED {
+		snd.VoicePlay(voiceId)
+	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func onPlayButton(controlIndex i32, controlAction i32) {
+	if controlAction == app.KEY_PRESS {
+		gui.ScreenShow(gameScreen)
+	} else if controlAction != app.KEY_RELEASE && controlAction != app.KEY_REPEAT {
+		panicIfNot(false, "invalid action")
+	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func onExitButton(controlIndex i32, controlAction i32) {
+	if controlAction == app.KEY_PRESS {
+		gui.ScreenShow(exitScreen)
+	} else if controlAction != app.KEY_RELEASE && controlAction != app.KEY_REPEAT {
+		panicIfNot(false, "invalid action")
+	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func onExitDialogNo(controlIndex i32, controlAction i32) {
+	if (controlAction == app.KEY_PRESS) {
+		printf("NO PRESSED\n")
+	} else if (controlAction == app.KEY_RELEASE) {
+		printf("NO RELEASED\n")
+		gui.ScreenHideModal(exitScreen)
+		printf("HERE\n")
+	} else if (controlAction == app.KEY_REPEAT) {
+		printf("NO REPEAT\n")
+	} else {
+		panicIfNot(false, "invalid controlAction")
+	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func onExitDialogYes(controlIndex i32, controlAction i32) {
+	if (controlAction == app.KEY_PRESS) {
+		printf("YES PRESSED\n")
+	} else if (controlAction == app.KEY_RELEASE) {
+		printf("YES RELEASED\n")
+		gui.ScreenHideModal(exitScreen)
+		app.Exit()
+	} else if (controlAction == app.KEY_REPEAT) {
+		printf("YES REPEAT\n")
+	} else {
+		panicIfNot(false, "invalid action")
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -356,16 +407,126 @@ func gameOnStart(window str) {
 	gam.CameraSetPosition(camera, v3.ZERO, true)
 	gam.CameraSetYawPitch(camera, 0.0, 0.0, true)
 
+	var audioId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
+	voiceId = snd.VoiceCreate(audioId)
+
+   	// exitScreen
+	exitScreen  = gui.ScreenCreate("exitScreen")
+	gui.ControlSetSkin(exitScreen.base, gui.g_modalSkin)
+	gui.ControlSetDock(exitScreen.base, gui.DOCK_FILL)
+	gui.ScreenSetDuration(exitScreen, -2.0D)
+	gui.ScreenSetModal(exitScreen, true)
+
+	{
+		var exitWindow gui.WindowId = gui.WindowCreate("exitWindow")
+		gui.ControlAddChild(exitScreen.base, exitWindow.base)
+		gui.ControlSetSkin(exitWindow.base, gui.g_windowSkin)
+		gui.ControlSetAutosize(exitWindow.base, gui.AUTOSIZE)
+		gui.ControlSetAlign(exitWindow.base, gui.ALIGN_CENTER)
+		gui.WindowSetCaption(exitWindow, "cxfx")
+		gui.WindowAddButton(exitWindow, "no", "No", "main", "onExitDialogNo")
+		gui.WindowAddButton(exitWindow, "yes", "Yes", "main", "onExitDialogYes")
+
+		{
+			var exitLabel gui.LabelId = gui.LabelCreate("exitLabel")
+			gui.WindowSetContainee(exitWindow, exitLabel.base)
+			gui.ControlSetDock(exitLabel.base, gui.DOCK_FILL)
+			gui.ControlSetAutosize(exitLabel.base, gui.AUTOSIZE)
+			gui.LabelSetFont(exitLabel, gui.g_regularFont)
+			gui.LabelSetText(exitLabel, "Do you want to quit ?")
+			gui.LabelSetSize(exitLabel, gui.g_fontSizeText)
+			gui.LabelSetColor(exitLabel, gui.g_white)
+			gui.LabelSetAlign(exitLabel, gui.ALIGN_CENTER)
+		}
+	}
+	// mainScreen
+	var mainScreen gui.ScreenId = gui.ScreenCreate("mainScreen")
+	gui.ControlSetSkin(mainScreen.base, gui.g_blackSkin)
+	gui.ControlSetDock(mainScreen.base, gui.DOCK_FILL)
+	gui.ControlSetPadding(mainScreen.base, v4.make(200.0, 150.0, 200.0, 150.0))
+	gui.ScreenSetDuration(mainScreen, -1.0D)
+	gui.ScreenSetOnExit(mainScreen, exitScreen)
+	{
+		var playButton gui.LabelId = gui.LabelCreate("playButton")
+		gui.ControlAddChild(mainScreen.base, playButton.base)
+		gui.ControlSetSkin(playButton.base, gui.g_blueSkin)
+		gui.ControlSetDock(playButton.base, gui.DOCK_TOP)
+		gui.ControlSetFocusable(playButton.base, 1)
+		gui.ControlSetPadding(playButton.base, v4.makef(5.0))
+		gui.ControlSetAutosize(playButton.base, gui.AUTOSIZE_Y)
+		gui.LabelSetFont(playButton, gui.g_boldFont)
+		gui.LabelSetText(playButton, "Play")
+		gui.LabelSetOnState(playButton, "main", "onPlayButton")
+		gui.LabelSetSize(playButton, gui.g_fontSizeButton)
+		gui.LabelSetColor(playButton, gui.g_white)
+		gui.LabelSetAlign(playButton, gui.ALIGN_CENTER)
+
+		var exitButton gui.LabelId = gui.LabelCreate("exitButton")
+		gui.ControlAddChild(mainScreen.base, exitButton.base)
+		gui.ControlSetSkin(exitButton.base, gui.g_blueSkin)
+		gui.ControlSetDock(exitButton.base, gui.DOCK_TOP)
+		gui.ControlSetFocusable(exitButton.base, 1)
+		gui.ControlSetPadding(exitButton.base, v4.makef(5.0))
+		gui.ControlSetAutosize(exitButton.base, gui.AUTOSIZE_Y)
+		gui.LabelSetFont(exitButton, gui.g_boldFont)
+		gui.LabelSetText(exitButton, "Exit")
+		gui.LabelSetOnState(exitButton, "main", "onExitButton")
+		gui.LabelSetSize(exitButton, gui.g_fontSizeButton)
+		gui.LabelSetColor(exitButton, gui.g_white)
+		gui.LabelSetAlign(exitButton, gui.ALIGN_CENTER)
+	}
+
 	// gameScreen
 	gameScreen = gui.ScreenCreate("gameScreen")
 	gui.ControlSetDock(gameScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(gameScreen, -1.0D)
+	gui.ScreenSetOnExit(gameScreen, mainScreen)
 	gui.ScreenSetOnEvent(gameScreen, "main", "gameOnEvent")
 	gui.ScreenSetOnUpdate(gameScreen, "main", "gameOnUpdate")
 	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
-	gui.ScreenShow(gameScreen)
-	StopCPUProfile("6_model_init")
-	StartCPUProfile("6_model_run", 100)
+
+	// titleScreen
+	var titleScreen gui.ScreenId = gui.ScreenCreate("titleScreen")
+	gui.ControlSetSkin(titleScreen.base, gui.g_blackSkin)
+	gui.ControlSetDock(titleScreen.base, gui.DOCK_FILL)
+	gui.ScreenSetDuration(titleScreen, 2.0D)
+	gui.ScreenSetOnNext(titleScreen, mainScreen)
+	{
+		var label gui.LabelId= gui.LabelCreate("titleLabel")
+		gui.ControlAddChild(titleScreen.base, label.base)
+		gui.ControlSetBounds(label.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
+		gui.ControlSetAlign(label.base, gui.ALIGN_CENTER)
+		gui.LabelSetFont(label, gui.g_boldFont)
+		gui.LabelSetText(label, app.Name())
+		gui.LabelSetSize(label, gui.g_fontSizeTitle)
+		gui.LabelSetAlign(label, gui.ALIGN_CENTER)
+		gui.LabelSetColor(label, gui.g_gold)
+	}
+
+	// skycoinScreen
+	var skycoinScreen gui.ScreenId = gui.ScreenCreate("skycoinSceen")
+	gui.ControlSetSkin(skycoinScreen.base, gui.g_blackSkin)
+	gui.ControlSetDock(skycoinScreen.base, gui.DOCK_FILL)
+	gui.ScreenSetDuration(skycoinScreen, 2.0D)
+	gui.ScreenSetOnUpdate(skycoinScreen, "main", "skycoinOnUpdate")
+	gui.ScreenSetOnNext(skycoinScreen, titleScreen)
+	{
+		var picture PictureId = gui.PictureCreate("skycoinPicture")
+		gui.ControlAddChild(skycoinScreen.base, picture.base)
+		gui.ControlSetBounds(picture.base, v4.make(0.0, 0.0, gfx.gfx_width / 2.0, gfx.gfx_height / 2.0))
+		gui.ControlSetAlign(picture.base, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(picture.base, gui.AUTOSCALE)
+		gui.PictureSetAlign(picture, gui.ALIGN_CENTER)
+		gui.PictureSetAnimation(picture, gui.g_skycoinAnim, false, 0)
+	}
+
+	// bootScreen
+	var bootScreen gui.ScreenId = gui.ScreenCreate("bootScreen")
+	gui.ControlSetSkin(bootScreen.base, gui.g_bootSkin)
+	gui.ControlSetDock(bootScreen.base, gui.DOCK_FILL)
+	gui.ScreenSetDuration(bootScreen, 2.0D)
+	gui.ScreenSetOnNext(bootScreen, skycoinScreen)
+	gui.ScreenShow(bootScreen)
 }
 
 //-----------------------------------------------------------------------------
