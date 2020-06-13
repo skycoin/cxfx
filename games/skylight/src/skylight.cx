@@ -138,8 +138,10 @@ var smokeTexture gfx.TextureId = gfx.InvalidTexture()
 var dollarMesh gfx.MeshId = gfx.InvalidMesh()
 
 var skyMesh gfx.MeshId = gfx.InvalidMesh()
-var skyDiffuse gfx.TextureId = gfx.InvalidTexture()
-var skySpecular gfx.TextureId = gfx.InvalidTexture()
+var skyDiffuses []gfx.TextureId
+var skySpeculars []gfx.TextureId
+var currentSky i32
+var currentSkybox i32
 var brdf gfx.TextureId = gfx.InvalidTexture()
 
 var world m44
@@ -935,7 +937,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	prfRenderSky = fps.CreateStartProfile(prfRenderSky, "sky")
 	gfx.DepthState(false, gfx.LESS, false)
 	gfx.EffectUse(gfx.g_fxSky)
-	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skySpecular, gfx.g_linearWrap)
+	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skySpeculars[currentSky], gfx.g_linearWrap)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
@@ -975,11 +977,12 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 		var currentModel gfx.ModelId = player.idle.model
 		gfx.ModelSetView(currentModel, view)
 		gfx.ModelSetProjection(currentModel, projection)
-		gfx.ModelSetEnvironmentSpecular(currentModel, skySpecular)
-		gfx.ModelSetEnvironmentDiffuse(currentModel, skyDiffuse)
+		gfx.ModelSetEnvironmentSpecular(currentModel, skySpeculars[currentSky])
+		gfx.ModelSetEnvironmentDiffuse(currentModel, skyDiffuses[currentSky])
 		gfx.ModelSetBRDF(currentModel, brdf)
 		gfx.ModelSetCameraPosition(currentModel, cameraPosition)
 		gfx.ModelSetWorld(currentModel, player.world)
+        gfx.ModelSetExposure(currentModel, 1.0)
 		gfx.ModelRender(currentModel)
 	}
 	fps.StopProfile(prfRenderPlayers)
@@ -990,10 +993,11 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	prfRenderWeapons = fps.CreateStartProfile(prfRenderWeapons, "RenderWeapons")
    	gfx.ModelSetView(skyminerModel, view)
 	gfx.ModelSetProjection(skyminerModel, projection)
-	gfx.ModelSetEnvironmentSpecular(skyminerModel, skySpecular)
-	gfx.ModelSetEnvironmentDiffuse(skyminerModel, skyDiffuse)
+	gfx.ModelSetEnvironmentSpecular(skyminerModel, skySpeculars[currentSky])
+	gfx.ModelSetEnvironmentDiffuse(skyminerModel, skyDiffuses[currentSky])
 	gfx.ModelSetBRDF(skyminerModel, brdf)
 	gfx.ModelSetCameraPosition(skyminerModel, cameraPosition)
+    gfx.ModelSetExposure(skyminerModel, 1.0)
 	for i := 0; i < len(players); i++ {
 		gfx.ModelSetWorld(skyminerModel, players[i].handTransform)
 		if players[i].fireAnimTime >= 0.0 {
@@ -1063,8 +1067,8 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 
 	gfx.EffectUse(effect)
 	gfx.EffectAssignTexture(effect, gfx.SAMPLER_COLOR_0, dollar, gfx.g_linear0Wrap)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_SPECULAR, skySpecular, gfx.g_linearWrap)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_DIFFUSE, skyDiffuse, gfx.g_linearWrap)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_SPECULAR, skySpeculars[currentSky], gfx.g_linearWrap)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_DIFFUSE, skyDiffuses[currentSky], gfx.g_linearWrap)
 	gfx.EffectAssignTexture(effect, gfx.SAMPLER_BRDF, brdf, gfx.g_linear0Wrap)
 
 	gfx.EffectAssignV4(effect, gfx.UNIFORM_COLOR, v4.ONE)
@@ -1350,10 +1354,24 @@ func gameOnStart(window str) {
 
 	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
 	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
-	skySpecular = gfx.TextureCreateCube(sprintf("%s/textures/skybox/.jpg", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
-	skyDiffuse= gfx.TextureCreateCube(sprintf("%s/textures/irradiance/.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
-	brdf = gfx.TextureCreate(sprintf("%s/textures/brd.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
-	smokeTexture = gfx.TextureCreate(sprintf("%s/textures/smoke.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+
+
+    var skies []str
+    skies = append(skies, "doge2")
+    /*skies = append(skies, "ennis")
+    skies = append(skies, "field")
+    skies = append(skies, "footprint_court")
+    skies = append(skies, "helipad")
+    skies = append(skies, "papermill")
+    skies = append(skies, "pisa")
+    skies = append(skies, "studio_grey")
+    skies = append(skies, "studio_red_green")*/
+    for i := 0; i < len(skies); i++ {
+        skySpeculars = append(skySpeculars, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/specular/specular_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 32, false))
+	    skyDiffuses = append(skyDiffuses, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/diffuse/diffuse_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 0, false))
+    }
+
+    brdf = gfx.TextureCreate(sprintf("%s/textures/environments/brdf.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
 
 	camera = gam.CameraCreate()
 	gam.CameraSetProjection(camera, 0.5, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y, true)
