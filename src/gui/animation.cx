@@ -25,13 +25,52 @@ type Animation struct {
 	height i32
 }
 
+// AnimationTrack ...
+type AnimationTrack struct {
+    loop bool
+    time f32
+    duration f32
+    index i32
+    count i32
+    rate i32
+}
+
+// AnimationTrackReset ...
+func AnimationTrackCreate(loop bool, count i32, rate i32)(out AnimationTrack) {
+    out.loop = loop
+    out.time = 0.0
+    out.index = 0
+    out.count = count
+    out.rate = rate
+    out.duration = i32.f32(count) / i32.f32(rate)
+}
+
+// AnimationTrackUpdate ...
+func (track *AnimationTrack) Update(dt f32)() {
+    if track.count > 1 {
+        track.time = track.time + dt
+        if track.loop {
+            for track.time > track.duration {
+                track.time = track.time - track.duration
+            }
+        } else {
+            if track.time > track.duration {
+                track.time = track.duration
+            }
+        }
+        track.index = f32.i32(track.time * i32.f32(track.count - 1) / track.duration)
+    } else {
+        track.index = 0
+    }
+}
+
 // IsValidAnimation ...
 func IsValidAnimation(id AnimationId) (out bool) {
 	out = id.index >= 0 && id.index < len(g_animations)
 }
 
 // InvalidAnimation ...
-func invalid_animation() (out AnimationId) {
+func InvalidAnimation() (out AnimationId) {
 	out.index = -1
 }
 
@@ -64,7 +103,7 @@ func AnimationCreateFromPath(path str) (out AnimationId) {
 	frameCount, loopCount, width, height = gl.NewGIF(path)
 
 	for i := 0; i < frameCount; i++ {
-		var texture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, -1, false)
+		var texture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, -32, false)
 
 		var delay i32 = 0
 		var disposal i32 = 0

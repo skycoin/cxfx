@@ -15,19 +15,33 @@ cd ~/go/src/github.com/SkycoinProject/
 git clone https://github.com/SkycoinProject/cx
 cd ~/go/src/github.com/SkycoinProject/cx
 git checkout develop
-make install-gfx-deps
-make install
-make build-full
 ```
+
 ##### Install cxfx :
 ```
 mkdir -p ~/go/src/github.com/SkycoinProject/
 cd ~/go/src/github.com/SkycoinProject/
 git clone https://github.com/SkycoinProject/cxfx
-cd ~/go/src/github.com/SkycoinProject/cxfx/games/skylight
-make
-cd ~/go/src/github.com/SkycoinProject/cxfx/tutorials
-make 6_model
+```
+
+##### Run cxfx on desktop :
+```
+cd ~/go/src/github.com/SkycoinProject/cxfx
+make tuto0
+...
+make tuto7
+...
+make skylight
+```
+
+##### Run cxfx on android :
+```
+cd ~/go/src/github.com/SkycoinProject/cxfx
+make tuto0 TARGET=android
+...
+make tuto7 TARGET=android
+...
+make skylight TARGET=android
 ```
 
 ##### Controls in tutorials & skylight :
@@ -45,6 +59,8 @@ make 6_model
 
 ##### WIP :
 
+<img style="max-width:100%" src="screenshots/cxfx_76.png">
+<img style="max-width:100%" src="screenshots/cxfx_70.png">
 <img style="max-width:100%" src="games/skylight/screenshots/skylight_71.png">
 <img style="max-width:100%" src="games/skylight/screenshots/skylight_64.png">
 <img style="max-width:100%" src="screenshots/cxfx_44.png">
@@ -87,9 +103,9 @@ make 6_model
     - [ ] physically based renderer
       - [x] kronos implementation
         - [ ] debug
-      - [ ] diffuse irradiance
-      - [ ] specular irradiance
-      - [ ] hdr maps
+      - [x] diffuse irradiance
+      - [x] specular irradiance
+      - [x] hdr maps
       - [ ] custom brdf
       - [ ] realtime cubemap
     - [x] normal map
@@ -148,7 +164,7 @@ make 6_model
   - [ ] mobile:
     - [ ] virtual keyboard
     - [ ] ios
-    - [ ] android
+    - [x] android
 - [ ] skycoin:
   - [ ] cxo
   - [ ] cxchain
@@ -168,68 +184,74 @@ make 6_model
 #### Tutorials :
 
 ```
-make 0_colored_quad
+make tuto0
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_0.png">
 
 
 ```
-make 1_textured_quad
+make tuto1
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_1.png">
 
 
 ```
-make 2_text
+make tuto2
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_2.png">
 
 
 ```
-make 3_perspective
+make tuto3
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_5.png">
 
 
 ```
-make 4_camera
+make tuto4
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_7.png">
 
 
 ```
-make 5_batch
+make tuto5
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_9.png">
 
 
 ```
-make 6_model
+make tuto6
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_35.png">
 
 
 ```
-make 7_menu
+make tuto7
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_52.png">
 
 
 ```
-make 8_sound
+make tuto8
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_53.png">
 
 
 ```
-make 9_button
+make tuto9
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_3.png">
 
 
 ```
-make 10_dialog
+make tuto10
 ```
 <img width="100%" height="100%" src="screenshots/cxfx_4.png">
+
+```
+make tuto11
+```
+<img width="100%" height="100%" src="screenshots/cxfx_81.png">
+
 
 

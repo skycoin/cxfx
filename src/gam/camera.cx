@@ -134,11 +134,16 @@ func CameraGetInvViewProj(id CameraId) (out m44) {
     out = g_cameras[id.camera].invViewProj
 }
 
-// CameraGetAt ...
-func CameraGetAt(id CameraId) (out mat.v3) {
+// CameraGetNear ...
+func CameraGetNear(id CameraId) (out f32) {
     panicIfNot(CameraIsValid(id), "")
-    var view m44 = g_cameras[id.camera].view
-    out = v3.make(view.v02, view.v12, view.v22)
+    out = g_cameras[id.camera].current.near
+}
+
+// CameraGetFar ...
+func CameraGetFar(id CameraId) (out f32) {
+    panicIfNot(CameraIsValid(id), "")
+    out = g_cameras[id.camera].current.far
 }
 
 // CameraGetRight ...
@@ -146,6 +151,20 @@ func CameraGetRight(id CameraId) (out mat.v3) {
     panicIfNot(CameraIsValid(id), "")
     var view m44 = g_cameras[id.camera].view
     out = v3.make(view.v00, view.v10, view.v20)
+}
+
+// CameraGetUp ...
+func CameraGetUp(id CameraId) (out mat.v3) {
+    panicIfNot(CameraIsValid(id), "")
+    var view m44 = g_cameras[id.camera].view
+    out = v3.make(view.v01, view.v11, view.v21)
+}
+
+// CameraGetAt ...
+func CameraGetAt(id CameraId) (out mat.v3) {
+    panicIfNot(CameraIsValid(id), "")
+    var view m44 = g_cameras[id.camera].view
+    out = v3.make(view.v02, view.v12, view.v22)
 }
 
 // CameraGetProjection ...
@@ -546,22 +565,25 @@ func cameraProcessMouse(id CameraId, event *app.Event)() {
     var leftDrag f32 = g_cameras[cameraIndex].leftDrag
     var leftDragVelocity f32 = g_cameras[cameraIndex].leftDragVelocity
     var dragDelta mat.v2
-    var dragPosition mat.v2 = g_cameras[cameraIndex].dragPosition
 
     if mods <= 0 {
-        if button == app.BUTTON_LEFT {
-            if state == app.MOUSE_PRESS {
+        if state == app.MOUSE_PRESS {
+            if button == app.BUTTON_LEFT {
                 leftDrag = 1.0
                 leftDragVelocity = 1.0
-            } else if state == app.MOUSE_RELEASE {
+                g_cameras[cameraIndex].dragPosition = gui.CurrentEvent.mouse.position
+            }
+        } else if state == app.MOUSE_RELEASE {
+            if button == app.BUTTON_LEFT {
                 leftDrag = 0.0
             }
-        }
-
-        if state == app.MOUSE_MOVE {
-            dragDelta = v2.sub(gui.CurrentEvent.mouse.position, dragPosition)
-            g_cameras[cameraIndex].dragPosition = gui.CurrentEvent.mouse.position
-            leftDragVelocity = 1.0
+        } else if state == app.MOUSE_MOVE {
+            if leftDrag > 0.0 {
+                var dragPosition mat.v2 = g_cameras[cameraIndex].dragPosition
+                dragDelta = v2.sub(gui.CurrentEvent.mouse.position, dragPosition)
+                g_cameras[cameraIndex].dragPosition = gui.CurrentEvent.mouse.position
+                leftDragVelocity = 1.0
+            }
         }
     }
 

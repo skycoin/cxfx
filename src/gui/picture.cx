@@ -14,12 +14,13 @@ type PictureId struct {
 // Picture ...
 type Picture struct {
 	id PictureId
-	frame i32
 	animation AnimationId
+    animTrack AnimationTrack
 	batch gfx.BatchId
 	pictureAlign i32
 	picturePosition mat.v2
 	alpha bool
+	onState func_i32_i32_id
 }
 
 // NewPictureId ...
@@ -41,20 +42,34 @@ func PictureCreate(name str) (out PictureId) {
 
 	var picture Picture
 	picture.id = out
-	picture.animation = invalid_animation()
+	picture.animation = InvalidAnimation()
 	picture.batch = gfx.InvalidBatch()
 	picture.pictureAlign = ALIGN_NONE
 	picture.picturePosition = v2.ZERO
 	picture.alpha = false
+    picture.onState = invalid_func_i32_i32()
 
 	g_pictures = append(g_pictures, picture)
 	panicIfNot(IsValidPicture(out), "invalid id")
 }
 
+// PictureGetAnimationDuration ...
+func PictureGetAnimationDuration(id PictureId)(out f64) {
+	panicIfNot(IsValidPicture(id), "invalid id")
+    out = f32.f64(g_pictures[id.picture].animTrack.duration)
+}
+
 // PictureSetAnimation ...
-func PictureSetAnimation(id PictureId, animation AnimationId) {
+func PictureSetAnimation(id PictureId, animation AnimationId, loop bool, rate i32) {
 	panicIfNot(IsValidPicture(id), "invalid id")
 	g_pictures[id.picture].animation = animation
+    g_pictures[id.picture].animTrack = AnimationTrackCreate(loop, AnimationFrameCount(animation), rate)
+}
+
+// PictureSetAlpha ...
+func PictureSetAlpha(id PictureId, alpha bool) {
+	panicIfNot(IsValidPicture(id), "invalid id")
+    g_pictures[id.picture].alpha = alpha
 }
 
 // PictureSetAlign ...
@@ -63,10 +78,59 @@ func PictureSetAlign(id PictureId, align i32) {
 	g_pictures[id.picture].pictureAlign = align
 }
 
+// PictureSetOnState ...
+func PictureSetOnState(i_id PictureId, packageName str, functionName str) {
+	panicIfNot(IsValidPicture(i_id), "invalid id")
+	g_pictures[i_id.picture].onState = func_i32_i32(packageName, functionName)
+	var onState func_i32_i32_id = g_pictures[i_id.picture].onState
+	panicIfNot(onState.index >= 0, "invalid function")
+}
+
 // PictureProcessEvent ...
 func PictureProcessEvent(id PictureId, event *app.Event) (out i32) {
 	panicIfNot(IsValidPicture(id), "invalid id")
 	out = ControlProcessEvent(id.base, event)
+
+    if (out == app.EVENT_UNUSED) {
+		var index i32 = id.base.control
+		var focused i32 = g_controls[index].focused
+		var mods i32 = ((*event).keyboard).mods
+
+		if (mods == app.MOD_NONE) {
+
+			var callAction i32 = 0
+			var call bool = false
+			var button i32 = (*event).mouse.button
+			if (button == app.BUTTON_LEFT) {
+				var action i32 = (*event).mouse.action
+				if (action == app.MOUSE_PRESS || action == app.MOUSE_RELEASE) {
+					var hovered i32 = g_controls[id.base.control].hovered
+					if (hovered > 0) {
+						call = true
+						callAction = action
+					}
+				}
+			} else if (focused > 0) {
+				var key i32 = (*event).keyboard.key
+				if (key == app.KEYCODE_ENTER || key == app.KEYCODE_SPACE) {
+					var action i32 = ((*event).keyboard).action
+					if (action == app.KEY_PRESS || action == app.KEY_RELEASE) {
+						call = true
+						callAction = action
+					}
+				}
+			}
+
+			if (call == true) {
+				var function func_i32_i32_id = g_pictures[id.picture].onState
+				var functionIndex i32 = function.index
+				if functionIndex >= 0 {
+					call_i32_i32(function, index, callAction)
+					out = app.EVENT_CONSUMED
+				}
+			}
+		}
+	}
 }
 
 // PictureMeasure ...
@@ -90,6 +154,16 @@ func PictureMeasure(id PictureId) (width f32, height f32) { // ##1 factorize wit
 	if ((autoscale & AUTOSCALE_Y) == AUTOSCALE_Y) {
 		height = g_controls[id.base.control].size.y// + padding.y + padding.w
 	}
+}
+
+// PictureUpdate ...
+func PictureUpdate(id PictureId, deltaTime f64) () {
+	panicIfNot(IsValidPicture(id), "invalid id")
+
+    var animTrack AnimationTrack = g_pictures[id.picture].animTrack
+    animTrack.Update(f64.f32(deltaTime))
+    g_pictures[id.picture].animTrack = animTrack
+    ControlUpdate(id.base, deltaTime)
 }
 
 // PictureResize ...
@@ -119,7 +193,7 @@ func PictureResize(id PictureId) () {
 	//printf("PICTURE_POSITION %f, %f\n", position.x, position.y)
 	g_pictures[id.picture].picturePosition = position
 
-	var frame i32 = g_pictures[id.picture].frame
+	var frame i32 = g_pictures[id.picture].animTrack.index
 	var texture gfx.TextureId = g_animations[animation.index].textures[frame]
 	g_pictures[id.picture].batch = gfx.GetBatch(gfx.g_fxTexture2D, texture, 0, gfx.g_linearWrap, g_pictures[id.picture].alpha, 128)
 	//ControlPrint("PictureResize : AFTER", id.base, false)
@@ -150,19 +224,8 @@ func PictureRender(id PictureId, clip mat.v4, stack i32) () {
 	var i32Width i32 = g_animations[animation.index].width
 	var i32Height i32 = g_animations[animation.index].height
 
-	var frameCount i32 = g_animations[animation.index].frameCount
-
-	var frame i32 = g_pictures[id.picture].frame
+    var frame i32 = g_pictures[id.picture].animTrack.index
 	var texture gfx.TextureId = g_animations[animation.index].textures[frame]
-	var frameDelta i32 = frameCount / 8
-	if (frameDelta <= 0) {
-		frameDelta = 1
-	}
-	frame = frame + frameDelta
-	if (frame >= frameCount) {
-		frame = 0
-	}
-	g_pictures[id.picture].frame = frame
 
 	if gfx.TextureName(texture) > 0 {
 		//printf("RENDER_BOUNDS %f, %f, %f, %f\n",

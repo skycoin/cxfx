@@ -118,10 +118,11 @@ func Init(bufferCount i32, sourceCount i32)() { // TODO : ui32
 // Update ...
 func Update()() {
 	var i i32
-	for i < len(g_used) {
-		var used VoiceId = g_used[i]
+    var usedCount i32 = VoiceGetUsedCount()
+	for i < usedCount {
+		var used VoiceId = VoiceGetUsed(i)
 
-		var source i32 = g_voices[used.voice].source
+		var source i32 = VoiceGetSource(used)
 		panicIf(source < 0, "invalid source")
 
 		var alState i32 = al.SourceState(source)

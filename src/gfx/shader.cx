@@ -30,6 +30,7 @@ var USE_PARTICLE      i64 = 1L << 18L
 var USE_MERGE         i64 = 1L << 19L
 var USE_EDGE          i64 = 1L << 20L
 var USE_STENCIL       i64 = 1L << 21L
+var USE_LINEAR_ALBEDO i64 = 1L << 22L
 
 // Globals ...
 var g_shaderPath str
@@ -95,7 +96,21 @@ func ShaderDefineGetStr(flag i64) (out str) {
 
 // ShaderDefineGetHeader ...
 func ShaderDefineGetHeader(flags i64) (out str) {
-	out = "#version 130\n"
+    var glVersion i32 = GetGLVersion()
+
+    if glVersion == GL_VERSION_DS_3_2 {
+	    out = "#version 150\n"
+	    out = str.concat(out, "#define texture2D texture\n")
+	    out = str.concat(out, "#define textureCube texture\n")
+	    out = str.concat(out, "#define textureCubeLod textureLod\n")
+    } else if glVersion == GL_VERSION_ES_3_1 {
+        out = "#version 310 es\n"
+        out = str.concat(out, "precision highp float;\n")
+	    out = str.concat(out, "#define texture2D texture\n")
+	    out = str.concat(out, "#define textureCube texture\n")
+	    out = str.concat(out, "#define textureCubeLod textureLod\n")
+    }
+
 	for i := 0; i < 32; i++ {
 		var flag i64 = 1L << i32.i64(i)
 		if (flags & flag) == flag {
@@ -105,8 +120,10 @@ func ShaderDefineGetHeader(flags i64) (out str) {
 }
 
 func shaderInit(dataDir str) {
-	g_shaderPath = sprintf("%s/shaders/", dataDir)
-	ShaderDefineAdd(USE_TRANSFORM, "#define USE_TRANSFORM\n")
+	g_shaderPath = sprintf("%sshaders/", dataDir)
+    printf(">> SHADER_INIT DATADIR %s, SHADER_PATH %s\n", dataDir, g_shaderPath)
+
+    ShaderDefineAdd(USE_TRANSFORM, "#define USE_TRANSFORM\n")
 	ShaderDefineAdd(USE_COLOR_UNI, "#define USE_COLOR_UNI\n")
 	ShaderDefineAdd(USE_COLOR_VTX, "#define USE_COLOR_VTX\n")
 	ShaderDefineAdd(USE_COLOR_MAP, "#define USE_COLOR_MAP\n")
@@ -128,6 +145,7 @@ func shaderInit(dataDir str) {
 	ShaderDefineAdd(USE_MERGE, "#define USE_MERGE\n")
 	ShaderDefineAdd(USE_STENCIL, "#define USE_STENCIL\n")
 	ShaderDefineAdd(USE_EDGE, "#define USE_EDGE\n")
+    ShaderDefineAdd(USE_LINEAR_ALBEDO, "#define USE_LINEAR_ALBEDO\n")
 }
 
 // ShaderKeyClear ...
@@ -189,11 +207,12 @@ func ShaderSourceCreate(path str, filename str) (out i32) {
 	source.filename = filename
 
 	var success bool
-	source.code, success = os.ReadAllText(sprintf("%s/%s", path, filename))
+    var shaderPath str = sprintf("%s%s", path, filename)
+	source.code, success = os.ReadAllText(shaderPath)
 	if success {
 		out = len(g_sources)
 		g_sources = append(g_sources, source)
-	}
+    }
 }
 
 // ShaderIsValid ...
@@ -231,7 +250,9 @@ func ShaderCreate(shaderType i64, shaderVariant i64, shaderFlags i64, shaderKey 
 		shader.source = ShaderSourceCreate(g_shaderPath, ShaderGetVariant(shaderVariant))
 	}
 
-	shader.glsl = str.concat(shader.defines, g_sources[shader.source].code) // ISSUE : can't use + operator
+    var common i32 = ShaderSourceCreate(g_shaderPath, "common.glsl")
+    shader.glsl = str.concat(shader.defines, g_sources[common].code)
+	shader.glsl = str.concat(shader.glsl, g_sources[shader.source].code) // ISSUE : can't use + operator
 	/*printf("//--------------------------------------------------------------------------------\n")
 	printf("// filename : %s\n", ShaderGetVariant(shaderVariant))
 	printf("// type : %d\n", shaderType)

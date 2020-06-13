@@ -101,6 +101,7 @@ var prf14 fps.ProfileId = fps.InvalidProfile()
 var prfUpdateAnimations fps.ProfileId = fps.InvalidProfile()
 var prfUpdatePositions fps.ProfileId = fps.InvalidProfile()
 var prfCameraUpdate fps.ProfileId = fps.InvalidProfile()
+var prfPhxEmit fps.ProfileId = fps.InvalidProfile()
 var prfPhxRemove fps.ProfileId = fps.InvalidProfile()
 var prfParticleUpdate fps.ProfileId = fps.InvalidProfile()
 var prfAlphaFull fps.ProfileId = fps.InvalidProfile()
@@ -123,6 +124,12 @@ var alphaFullTarget gfx.TargetId
 var mergeTarget gfx.TargetId
 var edgeTarget gfx.TargetId
 
+var cxfxAnim gui.AnimationId = gui.InvalidAnimation()
+var skylightTexture gfx.TextureId = gui.InvalidTexture()
+var skylightAnim gui.AnimationId = gui.InvalidAnimation()
+var charactersTexture gfx.TextureId = gui.InvalidTexture()
+var charactersAnim gui.AnimationId = gui.InvalidAnimation()
+
 var groundMesh gfx.MeshId = gfx.InvalidMesh()
 var texture gfx.TextureId = gfx.InvalidTexture()
 var dollar gfx.TextureId = gfx.InvalidTexture()
@@ -131,8 +138,10 @@ var smokeTexture gfx.TextureId = gfx.InvalidTexture()
 var dollarMesh gfx.MeshId = gfx.InvalidMesh()
 
 var skyMesh gfx.MeshId = gfx.InvalidMesh()
-var skyDiffuse gfx.TextureId = gfx.InvalidTexture()
-var skySpecular gfx.TextureId = gfx.InvalidTexture()
+var skyDiffuses []gfx.TextureId
+var skySpeculars []gfx.TextureId
+var currentSky i32
+var currentSkybox i32
 var brdf gfx.TextureId = gfx.InvalidTexture()
 
 var world m44
@@ -156,7 +165,7 @@ var groundBack f32 = worldSizeZ / groundScale
 var groundWidth i32 = 16
 var groundHeight i32 = 16
 
-var voiceId snd.VoiceId
+//var voiceId snd.VoiceId
 
 var TAG_GROUND i32 = 1
 var TAG_PLAYER i32 = 2
@@ -559,13 +568,14 @@ func updatePlayers(dt f32)() {
 	fps.StopProfile(prfUpdatePlayers)
 }
 
+var fireCount i32
 func updateWeapons(dt f32)() {
 	prfUpdateWeapons = fps.CreateStartProfile(prfUpdateWeapons, "updateWeapons")
 	for i := 0; i < len(players); i++ {
 		if currentPlayer != i && currentCamera != CAMERA_FREE {
 			var cpuFire f32 = players[i].cpuFire
 			//var cpuZdir f32 = players[i].cpuZdir
-			if cpuFire > 2.5 {
+			if cpuFire > 4.0 {
 				cpuFire = 0.0
 				players[i].fireWeapon = 1
 			}
@@ -583,9 +593,10 @@ func updateWeapons(dt f32)() {
 		}
 		players[i].fireAnimLength = gfx.AnimationGetMax(players[i].throw.anim)
 
-		if players[i].fireWeapon > 0 && players[i].fireAnimTime < 0.0 {
+		if players[i].fireWeapon > 0 && players[i].fireAnimTime < 0.0 && fireCount < 15 {
 			players[i].fireAnimTime = 0.0
 			gfx.AnimationSetTime(players[i].throw.anim, 0.0)
+            fireCount = fireCount + 1
 		}
 
 		var nextFireAnimTime f32 = players[i].fireAnimTime + dt * 2.5
@@ -798,12 +809,12 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	//-------------------------------------------------------------------------
 	// PhxRemove
 	//-------------------------------------------------------------------------
-	prfPhxRemove = fps.CreateStartProfile(prfPhxRemove, "PhxRemove")
+    prfPhxEmit = fps.CreateStartProfile(prfPhxEmit, "PhxEmit")
 	phxRemoveList = resize(phxRemoveList, 0)
 
 	var collisions []phx.Collision = phx.GetCollisions()
 	var collisionCount i32 = len(collisions)
-	for colIndex := 0; colIndex < collisionCount; colIndex++ {
+    for colIndex := 0; colIndex < collisionCount; colIndex++ {
 		var col phx.Collision = collisions[colIndex]
 		if col.LeftTag == TAG_MINER && col.RightTag == TAG_MINER {
 			phxRemoveList = append(phxRemoveList, col.LeftIndex)
@@ -836,6 +847,8 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 			emitSmoke(col.Position, col.RightTag2)
 		}
 	}
+	fps.StopProfile(prfPhxEmit)
+	prfPhxRemove = fps.CreateStartProfile(prfPhxRemove, "PhxRemove")
 
 	phxSortedList = resize(phxSortedList, 0)
 	var removeCount i32 = len(phxRemoveList)
@@ -866,12 +879,12 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 					aimCount = aimCount - 1
 				}
 				phx.RemoveObject(toRemove)
+                fireCount = fireCount - 1
 			}
 			previousRemoved = toRemove
 		}
 	}
 	fps.StopProfile(prfPhxRemove)
-
 	//-------------------------------------------------------------------------
 	// ModelUpdate
 	//-------------------------------------------------------------------------
@@ -924,7 +937,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	prfRenderSky = fps.CreateStartProfile(prfRenderSky, "sky")
 	gfx.DepthState(false, gfx.LESS, false)
 	gfx.EffectUse(gfx.g_fxSky)
-	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skySpecular, gfx.g_linearWrap)
+	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skySpeculars[currentSky], gfx.g_linearWrap)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
@@ -964,11 +977,12 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 		var currentModel gfx.ModelId = player.idle.model
 		gfx.ModelSetView(currentModel, view)
 		gfx.ModelSetProjection(currentModel, projection)
-		gfx.ModelSetEnvironmentSpecular(currentModel, skySpecular)
-		gfx.ModelSetEnvironmentDiffuse(currentModel, skyDiffuse)
+		gfx.ModelSetEnvironmentSpecular(currentModel, skySpeculars[currentSky])
+		gfx.ModelSetEnvironmentDiffuse(currentModel, skyDiffuses[currentSky])
 		gfx.ModelSetBRDF(currentModel, brdf)
 		gfx.ModelSetCameraPosition(currentModel, cameraPosition)
 		gfx.ModelSetWorld(currentModel, player.world)
+        gfx.ModelSetExposure(currentModel, 1.0)
 		gfx.ModelRender(currentModel)
 	}
 	fps.StopProfile(prfRenderPlayers)
@@ -979,10 +993,11 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	prfRenderWeapons = fps.CreateStartProfile(prfRenderWeapons, "RenderWeapons")
    	gfx.ModelSetView(skyminerModel, view)
 	gfx.ModelSetProjection(skyminerModel, projection)
-	gfx.ModelSetEnvironmentSpecular(skyminerModel, skySpecular)
-	gfx.ModelSetEnvironmentDiffuse(skyminerModel, skyDiffuse)
+	gfx.ModelSetEnvironmentSpecular(skyminerModel, skySpeculars[currentSky])
+	gfx.ModelSetEnvironmentDiffuse(skyminerModel, skyDiffuses[currentSky])
 	gfx.ModelSetBRDF(skyminerModel, brdf)
 	gfx.ModelSetCameraPosition(skyminerModel, cameraPosition)
+    gfx.ModelSetExposure(skyminerModel, 1.0)
 	for i := 0; i < len(players); i++ {
 		gfx.ModelSetWorld(skyminerModel, players[i].handTransform)
 		if players[i].fireAnimTime >= 0.0 {
@@ -1052,8 +1067,8 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 
 	gfx.EffectUse(effect)
 	gfx.EffectAssignTexture(effect, gfx.SAMPLER_COLOR_0, dollar, gfx.g_linear0Wrap)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_SPECULAR, skySpecular, gfx.g_linearWrap)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_DIFFUSE, skyDiffuse, gfx.g_linearWrap)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_SPECULAR, skySpeculars[currentSky], gfx.g_linearWrap)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_DIFFUSE, skyDiffuses[currentSky], gfx.g_linearWrap)
 	gfx.EffectAssignTexture(effect, gfx.SAMPLER_BRDF, brdf, gfx.g_linear0Wrap)
 
 	gfx.EffectAssignV4(effect, gfx.UNIFORM_COLOR, v4.ONE)
@@ -1078,7 +1093,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.EffectUse(gfx.g_fxEdge)
 	gfx.EffectAssignTexture(gfx.g_fxEdge, gfx.SAMPLER_COLOR_3, gfx.TargetGetDepth(opaqueTarget), gfx.g_nearestClamp)
 	gfx.EffectAssignV4(gfx.g_fxEdge, gfx.UNIFORM_TARGET_SIZE, gfx.TargetGetSize(opaqueTarget))
-	gfx.MeshRender(gui.g_fullscreenQuad)
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 //-------------------------------------------------------------------------
 // AlphaFull
@@ -1154,12 +1169,12 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.StencilState(true, gfx.EQUAL, 1, 1, gfx.KEEP, gfx.KEEP, gfx.KEEP, 0)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaFullTarget, 0), gfx.g_nearestClamp)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaFullTarget, 1), gfx.g_nearestClamp)
-	gfx.MeshRender(gui.g_fullscreenQuad)
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 	gfx.StencilState(true, gfx.EQUAL, 0, 1, gfx.KEEP, gfx.KEEP, gfx.KEEP, 0)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaTarget, 0), gfx.g_nearestClamp)
 	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaTarget, 1), gfx.g_nearestClamp)
-	gfx.MeshRender(gui.g_fullscreenQuad)
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 	fps.StopProfile(prfGameOnRender)
 }
@@ -1172,68 +1187,14 @@ func writeEdges()() {
 
 	gfx.EffectUse(gfx.g_fxStencil)
 	gfx.EffectAssignTexture(gfx.g_fxStencil, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(edgeTarget, 0), gfx.g_nearestClamp)
-	gfx.MeshRender(gui.g_fullscreenQuad)
-
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-func skycoinOnUpdate(controlIndex i32, controlAction i32) {
-	if snd.VoiceState(voiceId) == snd.VOICE_STOPPED {
-		snd.VoicePlay(voiceId)
-	}
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-func onPlayButton(controlIndex i32, controlAction i32) {
-	if controlAction == app.KEY_PRESS {
-		gui.ScreenShow(gameScreen)
-	} else if controlAction != app.KEY_RELEASE && controlAction != app.KEY_REPEAT {
-		panicIfNot(false, "invalid action")
-	}
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-func onExitButton(controlIndex i32, controlAction i32) {
-	if controlAction == app.KEY_PRESS {
-		gui.ScreenShow(exitScreen)
-	} else if controlAction != app.KEY_RELEASE && controlAction != app.KEY_REPEAT {
-		panicIfNot(false, "invalid action")
-	}
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-func onExitDialogNo(controlIndex i32, controlAction i32) {
-	if (controlAction == app.KEY_PRESS) {
-	} else if (controlAction == app.KEY_RELEASE) {
-		gui.ScreenHideModal(exitScreen)
-	} else if (controlAction == app.KEY_REPEAT) {
-	} else {
-		panicIfNot(false, "invalid controlAction")
-	}
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-func onExitDialogYes(controlIndex i32, controlAction i32) {
-	if (controlAction == app.KEY_PRESS) {
-	} else if (controlAction == app.KEY_RELEASE) {
-		gui.ScreenHideModal(exitScreen)
-		app.Exit()
-	} else if (controlAction == app.KEY_REPEAT) {
-	} else {
-		panicIfNot(false, "invalid action")
-	}
+	gfx.MeshRender(gfx.g_fullscreenQuad)
 }
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func loadModel(path str, filename str, options i32) (out gfx.ModelId) {
 	printf("loading '%s/%s'\n", path, filename)
-	out = gfx.ModelCreateFromFile(sprintf("%s/models/%s/", app.DataDir(), path), filename, options)
+	out = gfx.ModelCreateFromFile(sprintf("%s/models/skylight/%s/", app.DataDir(), path), filename, options)
 }
 
 //-----------------------------------------------------------------------------
@@ -1245,13 +1206,13 @@ func animCreate(name str, options i32) (out Anim) {
 
 func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
 	var player Player
-	player.idle = animCreate(sprintf("%s_idle", pattern), gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
-	player.jump = animCreate(sprintf("%s_jump", pattern), gfx.MODEL_ANIMATION)
-	player.throw = animCreate(sprintf("%s_throw", pattern), gfx.MODEL_ANIMATION)
-	player.forward = animCreate(sprintf("%s_forward", pattern), gfx.MODEL_ANIMATION)
-	player.backward = animCreate(sprintf("%s_backward", pattern), gfx.MODEL_ANIMATION)
-	player.left = animCreate(sprintf("%s_left", pattern), gfx.MODEL_ANIMATION)
-	player.right = animCreate(sprintf("%s_right", pattern), gfx.MODEL_ANIMATION)
+	player.idle = animCreate(sprintf("%s/idle", pattern), gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
+	player.jump = animCreate(sprintf("%s/jump", pattern), gfx.MODEL_ANIMATION)
+	player.throw = animCreate(sprintf("%s/throw", pattern), gfx.MODEL_ANIMATION)
+	player.forward = animCreate(sprintf("%s/forward", pattern), gfx.MODEL_ANIMATION)
+	player.backward = animCreate(sprintf("%s/backward", pattern), gfx.MODEL_ANIMATION)
+	player.left = animCreate(sprintf("%s/left", pattern), gfx.MODEL_ANIMATION)
+	player.right = animCreate(sprintf("%s/right", pattern), gfx.MODEL_ANIMATION)
 	player.cpuFire = f32.rand() * 2.0
 
 	var model gfx.ModelId = player.idle.model
@@ -1295,17 +1256,16 @@ func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func main()() {
+func gameOnStart(window str) {
+    StartCPUProfile("skylight_init", 100)
+    app.Init()
 
-	// init
-	StartCPUProfile("skylight_init", 100)
-	gam.Init("skylight", 1024, 768, 60, "")
 	phx.Init(30U, -9.8 * 0.1)
 
 	var width i32 = app.Width()
 	var height i32 = app.Height()
 
-	var scale i32 = 3
+	var scale i32 = 2
 
 	var halfWidth i32 = width / scale
 	var halfHeight i32 = height / scale
@@ -1361,8 +1321,10 @@ func main()() {
 	playerCreate("synth", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
 	playerCreate("metalic", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
 	playerCreate("bw", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-
-	skyminerModel = loadModel("Skyminer_7_1/", "skyminer_low_test.gltf", gfx.MODEL_GEOMETRY)
+    playerCreate("megafee", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+	playerCreate("bugd", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+	playerCreate("npc", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+	skyminerModel = loadModel("skyminer/low", "skyminer_low_test.gltf", gfx.MODEL_GEOMETRY)
 
 	currentPlayer = 0
 
@@ -1390,157 +1352,50 @@ func main()() {
 		v3.make(groundRight, 0.0, 0.0), v3.GREEN, v3.make(0.0, 0.0, groundBack),
 		0.0, 1.0, v4.make(0.0, 1.0, 0.0, 0.0), v4.ONE)
 
-	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
+	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
 
-	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	skySpecular = gfx.TextureCreateCube(sprintf("%s/textures/skybox/", app.DataDir()), ".jpg",
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	skyDiffuse= gfx.TextureCreateCube(sprintf("%s/textures/irradiance/", app.DataDir()), ".png",
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	brdf = gfx.TextureCreate(sprintf("%s/textures/brdfLUT.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
 
-	smokeTexture = gfx.TextureCreate(sprintf("%s/textures/smoke.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
+    var skies []str
+    skies = append(skies, "doge2")
+    /*skies = append(skies, "ennis")
+    skies = append(skies, "field")
+    skies = append(skies, "footprint_court")
+    skies = append(skies, "helipad")
+    skies = append(skies, "papermill")
+    skies = append(skies, "pisa")
+    skies = append(skies, "studio_grey")
+    skies = append(skies, "studio_red_green")*/
+    for i := 0; i < len(skies); i++ {
+        skySpeculars = append(skySpeculars, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/specular/specular_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 32, false))
+	    skyDiffuses = append(skyDiffuses, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/diffuse/diffuse_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 0, false))
+    }
+
+    brdf = gfx.TextureCreate(sprintf("%s/textures/environments/brdf.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
 
 	camera = gam.CameraCreate()
 	gam.CameraSetProjection(camera, 0.5, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y, true)
 	gam.CameraSetPosition(camera, v3.make(0.0, worldPosY + 1.0, 0.0), true)
 	gam.CameraSetYawPitch(camera, 0.0, 0.0, true)
 
-	var audioId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
-	voiceId = snd.VoiceCreate(audioId)
+	//var audioId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
+	//voiceId = snd.VoiceCreate(audioId)
 
-   	// exitScreen
-	exitScreen  = gui.ScreenCreate("exitScreen")
-	gui.ControlSetSkin(exitScreen.base, gui.g_modalSkin)
-	gui.ControlSetDock(exitScreen.base, gui.DOCK_FILL)
-	gui.ScreenSetDuration(exitScreen, -2.0D)
-	gui.ScreenSetModal(exitScreen, true)
+    loadMenu()
 
-	{
-		var exitWindow gui.WindowId = gui.WindowCreate("exitWindow")
-		gui.ControlAddChild(exitScreen.base, exitWindow.base)
-		gui.ControlSetSkin(exitWindow.base, gui.g_windowSkin)
-		gui.ControlSetAutosize(exitWindow.base, gui.AUTOSIZE)
-		gui.ControlSetAlign(exitWindow.base, gui.ALIGN_CENTER)
-		gui.WindowSetCaption(exitWindow, "cxfx")
-		gui.WindowAddButton(exitWindow, "no", "No", "main", "onExitDialogNo")
-		gui.WindowAddButton(exitWindow, "yes", "Yes", "main", "onExitDialogYes")
+    StopCPUProfile("skylight_init")
+}
 
-		{
-			var exitLabel gui.LabelId = gui.LabelCreate("exitLabel")
-			gui.WindowSetContainee(exitWindow, exitLabel.base)
-			gui.ControlSetDock(exitLabel.base, gui.DOCK_FILL)
-			gui.ControlSetAutosize(exitLabel.base, gui.AUTOSIZE)
-			gui.LabelSetFont(exitLabel, gui.g_regularFont)
-			gui.LabelSetText(exitLabel, "Do you want to quit ?")
-			gui.LabelSetSize(exitLabel, gui.g_fontSizeText)
-			gui.LabelSetColor(exitLabel, gui.g_white)
-			gui.LabelSetAlign(exitLabel, gui.ALIGN_CENTER)
-		}
-	}
-	// mainScreen
-	var mainScreen gui.ScreenId = gui.ScreenCreate("mainScreen")
-	gui.ControlSetSkin(mainScreen.base, gui.g_blackSkin)
-	gui.ControlSetDock(mainScreen.base, gui.DOCK_FILL)
-	gui.ControlSetPadding(mainScreen.base, v4.make(200.0, 150.0, 200.0, 150.0))
-	gui.ScreenSetDuration(mainScreen, -1.0D)
-	gui.ScreenSetOnExit(mainScreen, exitScreen)
-	{
-		var playButton gui.LabelId = gui.LabelCreate("playButton")
-		gui.ControlAddChild(mainScreen.base, playButton.base)
-		gui.ControlSetSkin(playButton.base, gui.g_blueSkin)
-		gui.ControlSetDock(playButton.base, gui.DOCK_TOP)
-		gui.ControlSetFocusable(playButton.base, 1)
-		gui.ControlSetPadding(playButton.base, v4.makef(5.0))
-		gui.ControlSetAutosize(playButton.base, gui.AUTOSIZE_Y)
-		gui.LabelSetFont(playButton, gui.g_boldFont)
-		gui.LabelSetText(playButton, "Play")
-		gui.LabelSetOnState(playButton, "main", "onPlayButton")
-		gui.LabelSetSize(playButton, gui.g_fontSizeButton)
-		gui.LabelSetColor(playButton, gui.g_white)
-		gui.LabelSetAlign(playButton, gui.ALIGN_CENTER)
-
-		var exitButton gui.LabelId = gui.LabelCreate("exitButton")
-		gui.ControlAddChild(mainScreen.base, exitButton.base)
-		gui.ControlSetSkin(exitButton.base, gui.g_blueSkin)
-		gui.ControlSetDock(exitButton.base, gui.DOCK_TOP)
-		gui.ControlSetFocusable(exitButton.base, 1)
-		gui.ControlSetPadding(exitButton.base, v4.makef(5.0))
-		gui.ControlSetAutosize(exitButton.base, gui.AUTOSIZE_Y)
-		gui.LabelSetFont(exitButton, gui.g_boldFont)
-		gui.LabelSetText(exitButton, "Exit")
-		gui.LabelSetOnState(exitButton, "main", "onExitButton")
-		gui.LabelSetSize(exitButton, gui.g_fontSizeButton)
-		gui.LabelSetColor(exitButton, gui.g_white)
-		gui.LabelSetAlign(exitButton, gui.ALIGN_CENTER)
-	}
-
-	// gameScreen
-	gameScreen = gui.ScreenCreate("gameScreen")
-	gui.ControlSetDock(gameScreen.base, gui.DOCK_FILL)
-	gui.ScreenSetDuration(gameScreen, -1.0D)
-	gui.ScreenSetOnExit(gameScreen, mainScreen)
-	gui.ScreenSetOnEvent(gameScreen, "main", "gameOnEvent")
-	gui.ScreenSetOnUpdate(gameScreen, "main", "gameOnUpdate")
-	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
-	gui.ScreenSetRenderEx(gameScreen, true)
-
-	// titleScreen
-	var titleScreen gui.ScreenId = gui.ScreenCreate("titleScreen")
-	gui.ControlSetSkin(titleScreen.base, gui.g_blackSkin)
-	gui.ControlSetDock(titleScreen.base, gui.DOCK_FILL)
-	gui.ScreenSetDuration(titleScreen, 2.0D)
-	gui.ScreenSetOnNext(titleScreen, mainScreen)
-	{
-		var label gui.LabelId= gui.LabelCreate("titleLabel")
-		gui.ControlAddChild(titleScreen.base, label.base)
-		gui.ControlSetBounds(label.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
-		gui.ControlSetAlign(label.base, gui.ALIGN_CENTER)
-		gui.LabelSetFont(label, gui.g_boldFont)
-		gui.LabelSetText(label, app.Name())
-		gui.LabelSetSize(label, gui.g_fontSizeTitle)
-		gui.LabelSetAlign(label, gui.ALIGN_CENTER)
-		gui.LabelSetColor(label, gui.g_gold)
-	}
-
-	// skycoinScreen
-	var skycoinScreen gui.ScreenId = gui.ScreenCreate("skycoinSceen")
-	gui.ControlSetSkin(skycoinScreen.base, gui.g_blackSkin)
-	gui.ControlSetDock(skycoinScreen.base, gui.DOCK_FILL)
-	gui.ScreenSetDuration(skycoinScreen, 2.0D)
-	gui.ScreenSetOnUpdate(skycoinScreen, "main", "skycoinOnUpdate")
-	gui.ScreenSetOnNext(skycoinScreen, titleScreen)
-	{
-		var picture PictureId = gui.PictureCreate("skycoinPicture")
-		gui.ControlAddChild(skycoinScreen.base, picture.base)
-		gui.ControlSetBounds(picture.base, v4.make(0.0, 0.0, gfx.gfx_width / 2.0, gfx.gfx_height / 2.0))
-		gui.ControlSetAlign(picture.base, gui.ALIGN_CENTER)
-		gui.ControlSetAutoscale(picture.base, gui.AUTOSCALE)
-		gui.PictureSetAlign(picture, gui.ALIGN_CENTER)
-		gui.PictureSetAnimation(picture, gui.g_skycoinAnim)
-	}
-
-	// bootScreen
-	var bootScreen gui.ScreenId = gui.ScreenCreate("bootScreen")
-	gui.ControlSetSkin(bootScreen.base, gui.g_bootSkin)
-	gui.ControlSetDock(bootScreen.base, gui.DOCK_FILL)
-	gui.ScreenSetDuration(bootScreen, 2.0D)
-	gui.ScreenSetOnNext(bootScreen, skycoinScreen)
-
-	// run
-	gui.ScreenShow(bootScreen)
-	StopCPUProfile("skylight_init")
-	StartCPUProfile("skylight_run", 100)
-	gam.Run(2U)
-
-	// destroy
-	gfx.MeshUnlock(skyMesh)
-	gfx.MeshUnlock(groundMesh)
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+    StartCPUProfile("skylight_run", 100)
+	app.SetStartCallback("main", "gameOnStart")
+	if app.Run("skylight", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
+	    gfx.MeshUnlock(skyMesh)
+	    gfx.MeshUnlock(groundMesh)
+	    //gam.Destroy()//ISSUE : can't call gam.Destroy()
+    }
 	StopCPUProfile("skylight_run")
-	gam.Destroy()//ISSUE : can't call gam.Destroy()
 }
 

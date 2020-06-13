@@ -30,8 +30,10 @@ var currentModel i32
 var skyMesh gfx.MeshId = gfx.InvalidMesh()
 var groundMesh gfx.MeshId = gfx.InvalidMesh()
 var texture gfx.TextureId = gfx.InvalidTexture()
-var skyDiffuse gfx.TextureId = gfx.InvalidTexture()
-var skySpecular gfx.TextureId = gfx.InvalidTexture()
+var skyDiffuses []gfx.TextureId
+var skySpeculars []gfx.TextureId
+var currentSky i32
+var currentSkybox i32
 var brdf gfx.TextureId = gfx.InvalidTexture()
 
 
@@ -84,8 +86,24 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 	if mods == app.MOD_NONE {
 		if key == app.KEYCODE_ESCAPE && action == app.KEY_PRESS {
 			app.Exit()
-		}
-	} else if mods == app.MOD_CTRL && action == app.KEY_PRESS {
+        }
+	} else if mods == app.MOD_ALT && action == app.KEY_PRESS {
+		if key == app.KEYCODE_LEFT {
+			if currentSky <= 0 {
+				currentSky = len(skyDiffuses)
+			}
+			currentSky = currentSky - 1
+		} else if key == app.KEYCODE_RIGHT {
+			currentSky = (currentSky + 1) % len(skyDiffuses)
+		} else if key == app.KEYCODE_UP {
+            		if currentSkybox <= 0 {
+                		currentSkybox = 1
+            		}
+            		currentSkybox = currentSkybox - 1
+        	} else if key == app.KEYCODE_DOWN {
+            		currentSkybox = (currentSkybox + 1) % 2
+        	}
+    	} else if mods == app.MOD_CTRL && action == app.KEY_PRESS {
 		if key == app.KEYCODE_LEFT {
 			if currentModel <= 0 {
 				currentModel = len(models)
@@ -173,7 +191,13 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 
 	//sky
 	gfx.EffectUse(gfx.g_fxSky)
-	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skySpecular, gfx.g_linearWrap)
+    var skybox gfx.TextureId
+    if currentSkybox == 0 {
+    	skybox = skySpeculars[currentSky]
+    } else {
+    	skybox = skyDiffuses[currentSky]
+    }
+    gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skybox, gfx.g_linear0Wrap)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
@@ -195,10 +219,11 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.ModelSetWorld(model, world)
 	gfx.ModelSetView(model, view)
 	gfx.ModelSetProjection(model, projection)
-	gfx.ModelSetEnvironmentSpecular(model, skySpecular)
-	gfx.ModelSetEnvironmentDiffuse(model, skyDiffuse)
+	gfx.ModelSetEnvironmentSpecular(model, skySpeculars[currentSky])
+	gfx.ModelSetEnvironmentDiffuse(model, skyDiffuses[currentSky])
 	gfx.ModelSetBRDF(model, brdf)
 	gfx.ModelSetCameraPosition(model, cameraPosition)
+    gfx.ModelSetExposure(model, 1.0)
 	gfx.ModelRender(model)
 
 }
@@ -234,8 +259,7 @@ func onExitButton(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func loadModel(path str, filename str, s f32, r f32, v f32) {
-	printf("loading %s/models/%s/%s\n", app.DataDir(), path, filename)
-	var model gfx.ModelId = gfx.ModelCreateFromFile(sprintf("%s/models/%s/", app.DataDir(), path), filename, gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
+	var model gfx.ModelId = gfx.ModelCreateFromFile(sprintf("%smodels/%s/", app.DataDir(), path), filename, gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
 	models = append(models, model)
 
 	scales = append(scales, s)
@@ -245,9 +269,8 @@ func loadModel(path str, filename str, s f32, r f32, v f32) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func main()() {
-	// init
-	gam.Init("Button Tutorial", 1024, 768, 60, "")
+func gameOnStart(window str) {
+    app.Init()
 
 	skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
 	gfx.MeshBegin(skyMesh)
@@ -258,7 +281,7 @@ func main()() {
 	gfx.MeshEnd(skyMesh)
 
 	//loadModel("glTF-Sample-Models/Box/glTF", "Box.gltf", 1.0, 1.0, 1.0)
-	loadModel("glTF-Sample-Models/BoxAnimated/glTF", "BoxAnimated.gltf", 1.0, 1.0, 1.0)
+	//loadModel("glTF-Sample-Models/BoxAnimated/glTF", "BoxAnimated.gltf", 1.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/NormalTangentTest/glTF", "NormalTangentTest.gltf", 3.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/NormalTangentMirrorTest/glTF", "NormalTangentMirrorTest.gltf", 3.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/MetalRoughSpheres/glTF", "MetalRoughSpheres.gltf", 1.0, 0.0, 1.0)
@@ -274,9 +297,14 @@ func main()() {
 	//loadModel("glTF-Sample-Models/BrainStem/glTF", "BrainStem.gltf", 1.0, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/Duck/glTF", "Duck.gltf", 1.0, 1.0, 1.0)
 	loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
-	loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
+	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
+	loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
+    //loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
+    //loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
+    //loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
+    loadModel("skylight/skyminer/high", "scene.gltf", 1.0, 0.0, 1.0)
+
 
 
 	groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
@@ -292,14 +320,25 @@ func main()() {
 		v4.ONE)
 	gfx.MeshEnd(groundMesh)
 
-	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	skySpecular = gfx.TextureCreateCube(sprintf("%s/textures/skybox/", app.DataDir()), ".jpg",
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	skyDiffuse= gfx.TextureCreateCube(sprintf("%s/textures/irradiance/", app.DataDir()), ".png",
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false)
-	brdf = gfx.TextureCreate(sprintf("%s/textures/brdfLUT.png", app.DataDir()),
-		gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
+	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+
+
+    var skies []str
+    skies = append(skies, "doge2")
+    /*skies = append(skies, "ennis")
+    skies = append(skies, "field")
+    skies = append(skies, "footprint_court")
+    skies = append(skies, "helipad")
+    skies = append(skies, "papermill")
+    skies = append(skies, "pisa")
+    skies = append(skies, "studio_grey")
+    skies = append(skies, "studio_red_green")*/
+    for i := 0; i < len(skies); i++ {
+        skySpeculars = append(skySpeculars, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/specular/specular_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 32, false))
+	    skyDiffuses = append(skyDiffuses, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/diffuse/diffuse_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 0, false))
+    }
+
+    brdf = gfx.TextureCreate(sprintf("%s/textures/environments/brdf.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
 
 	camera = gam.CameraCreate()
 	gam.CameraSetProjection(camera, 1.0, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y, true)
@@ -386,7 +425,7 @@ func main()() {
 		gui.ControlSetAlign(picture.base, gui.ALIGN_CENTER)
 		gui.ControlSetAutoscale(picture.base, gui.AUTOSCALE)
 		gui.PictureSetAlign(picture, gui.ALIGN_CENTER)
-		gui.PictureSetAnimation(picture, gui.g_skycoinAnim)
+		gui.PictureSetAnimation(picture, gui.g_skycoinAnim, false, 0)
 	}
 
 	// bootScreen
@@ -395,14 +434,17 @@ func main()() {
 	gui.ControlSetDock(bootScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(bootScreen, 2.0D)
 	gui.ScreenSetOnNext(bootScreen, skycoinScreen)
-
-	// run
 	gui.ScreenShow(bootScreen)
-	gam.Run(2U)
+}
 
-	// destroy
-	gfx.MeshUnlock(skyMesh)
-	gfx.MeshUnlock(groundMesh)
-	//gam.Destroy()//ISSUE : can't call gam.Destroy()()
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func main()() {
+    app.SetStartCallback("main", "gameOnStart")
+	if app.Run("Button Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
+	    gfx.MeshUnlock(skyMesh)
+	    gfx.MeshUnlock(groundMesh)
+	    //gam.Destroy()//ISSUE : can't call gam.Destroy()()
+    }
 }
 

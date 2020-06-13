@@ -69,6 +69,7 @@ type Mesh struct {
 	vertexByteCount i32
 	vertexCount i32
 
+    channels []channelInfo
 	frontFace i32
 	cullFace i32
 
@@ -267,12 +268,12 @@ func meshCreate(primitive i32, indexType i32, indexCount i32, indices []ui8, att
 	g_vbos = append(g_vbos, mesh.vbo)
 
 	// vao
-	mesh.vao = gl.GenVertexArrays(1, mesh.vao)
-	panicIf(GlError(), "gl.GenVertexArrays")
+	mesh.vao = gl.GenVertexArraysCore(1, mesh.vao)
+	panicIf(GlError(), "gl.GenVertexArraysCore")
 	g_vaos = append(g_vaos, mesh.vao)
 
-	gl.BindVertexArray(mesh.vao)
-	panicIf(GlError(), "gl.BindVertexArray")
+	gl.BindVertexArrayCore(mesh.vao)
+	panicIf(GlError(), "gl.BindVertexArrayCore")
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, mesh.vbo)
 	panicIf(GlError(), "gl.BindBuffer")
@@ -305,7 +306,7 @@ func MeshInstance(primitive i32, indexFormat i32, indices []ui8, attributes []Ve
 
 // MeshCreate ...
 func MeshCreate(primitive i32, indexFormat i32, indexCount i32, attributes []VertexAttribute, vertexCount i32) (out MeshId) { // TODO: refactor
-	var indices []ui8
+    var indices []ui8
 	var vertices []ui8
 	out = meshCreate(primitive, indexFormat, indexCount, indices, attributes, vertexCount, vertices, gl.STREAM_DRAW)
 }
@@ -341,10 +342,10 @@ func MeshEnd(id MeshId) () {
 		var vertexByteStride i32 = g_meshes[mesh].vertexByteStride
 		panicIfNot(vertexByteStride > 0, "invalid vertex stride")
 		panicIfNot((vertexByteCount % vertexByteStride) == 0, "(vertexByteCount % vertexByteStride) == 0")
-		vertexCount = vertexByteCount / vertexByteStride
+   		vertexCount = vertexByteCount / vertexByteStride
 
-		gl.BindVertexArray(g_meshes[mesh].vao)
-		panicIf(GlError(), "gl.BindBuffer")
+		gl.BindVertexArrayCore(g_meshes[mesh].vao)
+		panicIf(GlError(), "gl.BindVertexArrayCore")
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, g_meshes[mesh].vbo)
 		panicIf(GlError(), "gl.BindBuffer")
@@ -366,8 +367,8 @@ func MeshEnd(id MeshId) () {
 func MeshRender(id MeshId) {
 	panicIfNot(IsValidMesh(id), "invalid id")
 	var mesh i32 = id.mesh
-	gl.BindVertexArray(g_meshes[mesh].vao)
-	panicIf(GlError(), "gl.BindVertexArray")
+	gl.BindVertexArrayCore(g_meshes[mesh].vao)
+	panicIf(GlError(), "gl.BindVertexArrayCore")
 
 	var null []i32
 	var indexFormat i32 = g_meshes[mesh].indexFormat
@@ -378,7 +379,7 @@ func MeshRender(id MeshId) {
 		DisableCulling()
 	} else {
 		EnableCulling(g_meshes[mesh].frontFace, cullFace)
-	}
+    }
 
 	gl.DrawElements(g_meshes[mesh].primitive, indexCount, indexFormat, null)
 	panicIf(GlError(), "gl.DrawArrays")
@@ -1099,6 +1100,57 @@ func MeshAppendEllipseGizmoUI16(id MeshId, transform m44, position mat.v3, radiu
 
 	g_meshes[id.mesh].vertices = vertices
 	g_meshes[id.mesh].indices = indices
+}
+
+// MeshAppendLine ...
+// TODO remove short indices branching
+// TODO remove debug colors branching
+// TODO support arbitrary vertex layout
+// TODO strips
+func MeshAppendLine(id MeshId, pa mat.v3, pb mat.v3, color mat.v4) { // TODO : use line strip
+	panicIfNot(IsValidMesh(id), "invalid id")
+
+	var mesh i32 = id.mesh
+
+	var primitive i32 = g_meshes[mesh].primitive
+	panicIfNot(primitive == gl.LINES, "invalid primitive")
+
+	var indices []ui8 = g_meshes[mesh].indices
+	var vertices []ui8 = g_meshes[mesh].vertices
+	var offset i32 = len(vertices) / g_meshes[mesh].vertexByteStride
+	var indexFormat i32 = g_meshes[mesh].indexFormat
+	panicIf(indexFormat != gl.UNSIGNED_SHORT && indexFormat != gl.UNSIGNED_INT, "invalid index format")
+
+	if indexFormat == gl.UNSIGNED_SHORT {
+		indices = gl.AppendUI16(indices, i32.ui16(offset + 0))
+		indices = gl.AppendUI16(indices, i32.ui16(offset + 1))
+	} else {
+		indices = gl.AppendUI32(indices, i32.ui32(offset + 0))
+		indices = gl.AppendUI32(indices, i32.ui32(offset + 1))
+	}
+
+	vertices = gl.AppendF32(vertices, pa.x)
+	vertices = gl.AppendF32(vertices, pa.y)
+	vertices = gl.AppendF32(vertices, pa.z)
+	vertices = gl.AppendF32(vertices, color.x)
+	vertices = gl.AppendF32(vertices, color.y)
+	vertices = gl.AppendF32(vertices, color.z)
+	vertices = gl.AppendF32(vertices, color.w)
+	vertices = gl.AppendF32(vertices, 0.0)
+	vertices = gl.AppendF32(vertices, 0.0)
+
+	vertices = gl.AppendF32(vertices, pb.x)
+	vertices = gl.AppendF32(vertices, pb.y)
+	vertices = gl.AppendF32(vertices, pb.z)
+	vertices = gl.AppendF32(vertices, color.x)
+	vertices = gl.AppendF32(vertices, color.y)
+	vertices = gl.AppendF32(vertices, color.z)
+	vertices = gl.AppendF32(vertices, color.w)
+	vertices = gl.AppendF32(vertices, 1.0)
+	vertices = gl.AppendF32(vertices, 1.0)
+
+	g_meshes[mesh].vertices = vertices
+	g_meshes[mesh].indices = indices
 }
 
 // MeshAppendBox ...

@@ -43,6 +43,11 @@ var ZERO i32 = gl.ZERO
 // Globals ...
 var DEBUG_0 mat.v4
 
+var GL_VERSION_NONE i32 = 0
+var GL_VERSION_DS_3_2 i32 = 1
+var GL_VERSION_ES_3_1 i32 = 2
+
+var g_glVersion i32 = 0
 var g_sizeofF32 i32 = 4
 var g_sizeofI32 i32 = 4
 var g_sizeofUI32 i32 = 4
@@ -132,6 +137,14 @@ var g_nearestClamp SamplerState = SamplerStateCreate(gl.NEAREST, gl.NEAREST, gl.
 var g_vertexLayout []VertexAttribute
 var g_particleLayout []VertexAttribute
 
+var g_fullscreenQuad MeshId
+
+func resizeFullscreenQuad(width i32, height i32) () {
+	MeshBegin(g_fullscreenQuad)
+	MeshAppendOrthoQuad(g_fullscreenQuad, gfx_viewportBounds, v4.make(0.0, 1.0, 1.0, 0.0), v4.ONE, gfx_viewportBounds, 0.0)
+	MeshEnd(g_fullscreenQuad)
+}
+
 // Debug ...
 //var g_debugMesh MeshId
 var g_debugColorCount i32 = 8
@@ -164,7 +177,7 @@ func GlError() (error bool) {
 			} else if glerr == gl.OUT_OF_MEMORY {
 				printf("GL_OUT_OF_MEMORY\n")
 			} else if glerr != 0 {
-				panicIfNot(false, "invalid glError\n")
+				panicIfNot(false, sprintf("invalid glError %d\n", glerr))
 			}
 		}
 	}
@@ -220,6 +233,8 @@ func GlString(value i32) (out str) {
 		out = "TEXTURE_2D"
 	} else if value == gl.TEXTURE_CUBE_MAP {
 		out = "TEXTURE_CUBE_MAP"
+    } else if value == gl.RGBA8 {
+        out = "RGBA8"
 	} else {
 		out = "unknown gl enum"
 	}
@@ -281,12 +296,12 @@ func assignVector4(slot i32, value mat.v4) {
 
 func assignMatrix4(slot i32, value mat.m44, transpose bool) {
 	gl.UniformM44F(slot, transpose, value)
-	panicIf(GlError(), "gl.UniformM4f")
+	panicIf(GlError(), "gl.UniformM44F")
 }
 
 func assignMatrix4V(slot i32, value []mat.m44, transpose bool) {
 	gl.UniformM44FV(slot, len(value), transpose, value)
-	panicIf(GlError(), "gl.UniformM4f")
+	panicIf(GlError(), "gl.UniformM44FV")
 }
 
 func bindTexture(target i32, name i32) {
@@ -581,6 +596,7 @@ func SetViewport(bounds mat.v4) {
 	var width i32 = f32.i32(bounds.z)
 	var height i32 = f32.i32(bounds.w)
 
+    //printf("SET_VIEWPORT %f, %f, %f, %f\n", bounds.x, bounds.y, bounds.z, bounds.w)
 	if (gfx_viewportX != x ||
 		gfx_viewportY != y ||
 		gfx_viewportWidth != width ||
@@ -621,8 +637,31 @@ func SetScissor(bounds mat.v4) {
 }
 
 
+func GetGLVersion() (out i32) {
+    out = g_glVersion
+}
+
+func GetGLVersionFromString(glVersion str) (out i32) {
+    if glVersion == "gl32" {
+        out = GL_VERSION_DS_3_2
+    } else if glVersion == "gles31" {
+        out = GL_VERSION_ES_3_1
+    }
+}
+
+func GetGLVersionToString(glVersion i32) (out str) {
+    if glVersion == GL_VERSION_DS_3_2 {
+        out = "gl32"
+    } else if glVersion == GL_VERSION_ES_3_1 {
+        out = "gles31"
+    } else {
+        out = "unsupported"
+    }
+}
+
 // Init ...
-func Init(width i32, height i32, dataDir str)() {
+func Init(width i32, height i32, dataDir str, glVersion i32)() {
+    g_glVersion = glVersion
 	/*var view []f32
 	view = resize(view, 16)
 	State.View = view
@@ -827,13 +866,15 @@ func Init(width i32, height i32, dataDir str)() {
 	// sky
 	TemplateReset(g_tfxSky)
 	TemplateSetVertexKey(g_tfxSky, USE_TRANSFORM, true)
+    TemplateSetPixelKey(g_tfxSky, USE_LINEAR_ALBEDO, true)
 	TemplateBindAttribute(g_tfxSky, ATTRIBUTE_POSITION, "i_v3Position")
 	TemplateBindSampler(g_tfxSky, SAMPLER_ENV_DIFFUSE, "u_tcEnvironmentDiffuse", TEXTURE_CUBE_MAP)
 	TemplateBindUniform(g_tfxSky, UNIFORM_DEBUG_0, "DEBUG_0")
 	TemplateBindUniform(g_tfxSky, UNIFORM_WORLD, "u_m44World")
 	TemplateBindUniform(g_tfxSky, UNIFORM_VIEW, "u_m44View")
 	TemplateBindUniform(g_tfxSky, UNIFORM_PROJECTION, "u_m44Projection")
-	g_fxSky = TemplateInstance(g_tfxSky)
+    TemplateBindUniform(g_tfxSky, UNIFORM_PBR, "u_v4PBR")
+    g_fxSky = TemplateInstance(g_tfxSky)
 
 	// pbr
 	TemplateReset(g_tfxPbr)
@@ -862,10 +903,15 @@ func Init(width i32, height i32, dataDir str)() {
 	TemplateBindUniform(g_tfxPbr, UNIFORM_METAL_ROUGH, "u_v4MetalRough")
 	TemplateBindUniform(g_tfxPbr, UNIFORM_EMISSIVE, "u_v4Emissive")
 	TemplateBindUniform(g_tfxPbr, UNIFORM_SKELETON, "u_m44Skeleton")
+    TemplateBindUniform(g_tfxPbr, UNIFORM_PBR, "u_v4PBR")
+
+    g_fullscreenQuad = MeshCreate(gl.TRIANGLES, gl.UNSIGNED_SHORT, 6 * 3, g_vertexLayout, 6 * 3)
+	resizeFullscreenQuad(width, height)
 }
 
 // Resize ...
 func Resize(width i32, height i32)() {
+	resizeFullscreenQuad(width, height)
 	resizeViewport(width, height)
 	ResizeTargets(width, height)
 	//ResizeTextures(width, height)
