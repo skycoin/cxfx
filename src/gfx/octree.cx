@@ -28,6 +28,7 @@ type OctreeCell struct {
 // Octree ...
 type Octree struct {
     debugMesh MeshId
+    debugRender bool
     center mat.v3
     size mat.v3
     min mat.v3
@@ -162,6 +163,7 @@ var P6 fps.ProfileId = fps.InvalidProfile()*/
 
 // OctreeRender ...
 func OctreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, projection mat.m44) {
+    panicIfNot(OctreeIsValid(id), "invalid id")
     DisableBlending()
     DepthState(true, LESS, true)
     g_octrees[id.octree].opaqueBuckets = sortBuckets(id, g_octrees[id.octree].opaqueBuckets, true)
@@ -172,14 +174,21 @@ func OctreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, proje
     g_octrees[id.octree].transparentBuckets = sortBuckets(id, g_octrees[id.octree].transparentBuckets, false)
     octreeRender(id, model, world, view, projection, g_octrees[id.octree].transparentBuckets)
 
-    DepthState(true, LESS, false)
-	EffectUse(g_fxVertexColor3D)
-	EffectAssignM44(g_fxVertexColor3D, UNIFORM_WORLD, world, false)
-	EffectAssignM44(g_fxVertexColor3D, UNIFORM_VIEW, view, false)
-	EffectAssignM44(g_fxVertexColor3D, UNIFORM_PROJECTION, projection, false)
-	MeshRender(g_octrees[id.octree].debugMesh)
+    if g_octrees[id.octree].debugRender {
+        DepthState(true, LESS, false)
+	    EffectUse(g_fxVertexColor3D)
+	    EffectAssignM44(g_fxVertexColor3D, UNIFORM_WORLD, world, false)
+	    EffectAssignM44(g_fxVertexColor3D, UNIFORM_VIEW, view, false)
+	    EffectAssignM44(g_fxVertexColor3D, UNIFORM_PROJECTION, projection, false)
+	    MeshRender(g_octrees[id.octree].debugMesh)
+    }
 }
 
+// OctreeSetDebug ...
+func OctreeSetDebug(id OctreeId, debugRender bool) {
+    panicIfNot(OctreeIsValid(id), "invalid id")
+    g_octrees[id.octree].debugRender = debugRender
+}
 
 func sortBuckets(id OctreeId, in []PrimitiveBucket, opaque bool) (out []PrimitiveBucket) {
     out = in

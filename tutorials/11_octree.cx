@@ -46,6 +46,7 @@ var world mat.m44
 
 var camera gam.CameraId
 var snapFrustum bool = true
+var debugOctree bool = false
 
 var worldPosY f32 = -10.0
 
@@ -96,6 +97,12 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
                 snapFrustum = false
             } else {
                 snapFrustum = true
+            }
+        } else if key == app.KEYCODE_2 && action == app.KEY_PRESS {
+            if debugOctree {
+                debugOctree = false
+            } else {
+                debugOctree = true
             }
         }
 	} else if mods == app.MOD_ALT && action == app.KEY_PRESS {
@@ -239,6 +246,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.ModelSetBRDF(model, brdf)
 	gfx.ModelSetCameraPosition(model, cameraPosition)
     gfx.ModelSetExposure(model, 1.0)
+    gfx.OctreeSetDebug(octree, debugOctree)
     gfx.OctreeRender(octree, models[currentModel], m44.IDENTITY, view, projection)
     gfx.FrustumRender(frustum, m44.IDENTITY, view, projection)
 
@@ -533,7 +541,7 @@ func gameOnStart(window str) {
 //-----------------------------------------------------------------------------
 func main()() {
     app.SetStartCallback("main", "gameOnStart")
-	if app.Run("Model Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
+	if app.Run("Octree Tutorial", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
 	    gfx.MeshUnlock(skyMesh)
 	    gfx.MeshUnlock(groundMesh)
 	    //gam.Destroy()//ISSUE : can't call gam.Destroy()
