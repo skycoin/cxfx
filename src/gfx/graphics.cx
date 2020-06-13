@@ -866,13 +866,15 @@ func Init(width i32, height i32, dataDir str, glVersion i32)() {
 	// sky
 	TemplateReset(g_tfxSky)
 	TemplateSetVertexKey(g_tfxSky, USE_TRANSFORM, true)
+    TemplateSetPixelKey(g_tfxSky, USE_LINEAR_ALBEDO, true)
 	TemplateBindAttribute(g_tfxSky, ATTRIBUTE_POSITION, "i_v3Position")
 	TemplateBindSampler(g_tfxSky, SAMPLER_ENV_DIFFUSE, "u_tcEnvironmentDiffuse", TEXTURE_CUBE_MAP)
 	TemplateBindUniform(g_tfxSky, UNIFORM_DEBUG_0, "DEBUG_0")
 	TemplateBindUniform(g_tfxSky, UNIFORM_WORLD, "u_m44World")
 	TemplateBindUniform(g_tfxSky, UNIFORM_VIEW, "u_m44View")
 	TemplateBindUniform(g_tfxSky, UNIFORM_PROJECTION, "u_m44Projection")
-	g_fxSky = TemplateInstance(g_tfxSky)
+    TemplateBindUniform(g_tfxSky, UNIFORM_PBR, "u_v4PBR")
+    g_fxSky = TemplateInstance(g_tfxSky)
 
 	// pbr
 	TemplateReset(g_tfxPbr)
@@ -901,6 +903,7 @@ func Init(width i32, height i32, dataDir str, glVersion i32)() {
 	TemplateBindUniform(g_tfxPbr, UNIFORM_METAL_ROUGH, "u_v4MetalRough")
 	TemplateBindUniform(g_tfxPbr, UNIFORM_EMISSIVE, "u_v4Emissive")
 	TemplateBindUniform(g_tfxPbr, UNIFORM_SKELETON, "u_m44Skeleton")
+    TemplateBindUniform(g_tfxPbr, UNIFORM_PBR, "u_v4PBR")
 
     g_fullscreenQuad = MeshCreate(gl.TRIANGLES, gl.UNSIGNED_SHORT, 6 * 3, g_vertexLayout, 6 * 3)
 	resizeFullscreenQuad(width, height)

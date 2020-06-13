@@ -1,0 +1,267 @@
+package mat
+
+import "v1"
+import "v3"
+import "v4"
+
+// ProjectPointsOnAxis ...
+func ProjectPointsOnAxis(points []v3, axis v3) (min f32, max f32) {
+    min = v1.MAX
+    max = v1.MIN
+    var count i32 = len(points)
+    for i := 0; i < count; i++ {
+        var dot f32 = v3.dot(axis, points[i])
+        if dot < min {
+            min = dot
+        }
+        if dot > max {
+            max = dot
+        }
+    }
+}
+
+// TriangleIntersectsAABB ...
+func TriangleIntersectsAABB(sizeMin v3, sizeMax v3, boxVertices []v3, triangleVertices []v3) (out bool) {
+    var triangleMin f32
+    var triangleMax f32
+    var boxMin f32
+    var boxMax f32
+
+    var bn0 v3 = v3.make(1.0, 0.0, 0.0)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, bn0)
+    if (triangleMax < sizeMin.x) || (triangleMin > sizeMax.x) {
+        out = false
+        return
+    }
+
+    var bn1 v3 = v3.make(0.0, 1.0, 0.0)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, bn1)
+    if (triangleMax < sizeMin.y) || (triangleMin > sizeMax.y) {
+        out = false
+        return
+    }
+
+    var bn2 v3 = v3.make(0.0, 0.0, 1.0)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, bn2)
+    if (triangleMax < sizeMin.z) || (triangleMin > sizeMax.z) {
+        out = false
+        return
+    }
+
+    var t01 v3 = v3.sub(triangleVertices[0], triangleVertices[1])
+    var t12 v3 = v3.sub(triangleVertices[1], triangleVertices[2])
+    var t20 v3 = v3.sub(triangleVertices[2], triangleVertices[2])
+    var triangleNormal v3 = v3.cross(t01, t20)
+    var triangleOffset f32 = v3.dot(t01, t20)
+    boxMin, boxMax = ProjectPointsOnAxis(triangleVertices, triangleNormal);
+    if (boxMax < triangleOffset) || (boxMin > triangleOffset) {
+        out = false
+        return
+    }
+
+    var axis v3
+
+    axis = v3.cross(t01, bn0)
+    boxMin, boxMax = ProjectPointsOnAxis(boxVertices, axis)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, axis)
+    if (boxMax < triangleMin) || (boxMin > triangleMax) {
+        out = false
+        return
+    }
+
+    axis = v3.cross(t01, bn1)
+    boxMin, boxMax = ProjectPointsOnAxis(boxVertices, axis)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, axis)
+    if (boxMax < triangleMin) || (boxMin > triangleMax) {
+        out = false
+        return
+    }
+
+    axis = v3.cross(t01, bn2)
+    boxMin, boxMax = ProjectPointsOnAxis(boxVertices, axis)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, axis)
+    if (boxMax < triangleMin) || (boxMin > triangleMax) {
+        out = false
+        return
+    }
+
+    axis = v3.cross(t12, bn0)
+    boxMin, boxMax = ProjectPointsOnAxis(boxVertices, axis)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, axis)
+    if (boxMax < triangleMin) || (boxMin > triangleMax) {
+        out = false
+        return
+    }
+
+    axis = v3.cross(t12, bn1)
+    boxMin, boxMax = ProjectPointsOnAxis(boxVertices, axis)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, axis)
+    if (boxMax < triangleMin) || (boxMin > triangleMax) {
+        out = false
+        return
+    }
+
+    axis = v3.cross(t12, bn2)
+    boxMin, boxMax = ProjectPointsOnAxis(boxVertices, axis)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, axis)
+    if (boxMax < triangleMin) || (boxMin > triangleMax) {
+        out = false
+        return
+    }
+
+    axis = v3.cross(t20, bn0)
+    boxMin, boxMax = ProjectPointsOnAxis(boxVertices, axis)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, axis)
+    if (boxMax < triangleMin) || (boxMin > triangleMax) {
+        out = false
+        return
+    }
+
+    axis = v3.cross(t20, bn1)
+    boxMin, boxMax = ProjectPointsOnAxis(boxVertices, axis)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, axis)
+    if (boxMax < triangleMin) || (boxMin > triangleMax) {
+        out = false
+        return
+    }
+
+    axis = v3.cross(t20, bn2)
+    boxMin, boxMax = ProjectPointsOnAxis(boxVertices, axis)
+    triangleMin, triangleMax = ProjectPointsOnAxis(triangleVertices, axis)
+    if (boxMax < triangleMin) || (boxMin > triangleMax) {
+        out = false
+        return
+    }
+
+    out = true
+}
+
+// RayIntersectsPlane ...
+func RayIntersectsPlane(r0 v3, r1 v3, p v3, n v3) (inter bool, time f32) {
+    var ls v3 = v3.sub(r1, r0)
+    var ll f32 = v3.length(ls)
+    var l v3 = v3.divf(ls, ll)
+    var d f32= v3.dot(n, l)
+    if f32.abs(d) > 0.0000001 {
+        var pr0 v3 = v3.sub(p, r0)
+        inter = true
+        time = (v3.dot(pr0, n) / d) / ll
+        if d < 0.0 {
+            d = 1.0 - d
+        }
+    } else {
+    }
+}
+
+// RayIntersectsAABB ...
+func RayAABBIntersection(p0 v3, p1 v3, min v3, max v3) (time f32) {
+    time = -1.0
+    var dx f32 = p1.x - p0.x
+    var dy f32 = p1.y - p0.y
+    var dz f32 = p1.z - p0.z
+
+    var tmp f32
+
+    var txmin f32 = (min.x - p0.x) / dx
+    var txmax f32 = (max.x - p0.x) / dx
+    if txmin > txmax {
+        tmp = txmin
+        txmin = txmax
+        txmax = tmp
+    }
+
+    var tymin f32 = (min.y - p0.y) / dy
+    var tymax f32 = (max.y - p0.y) / dy
+    if tymin > tymax {
+        tmp = tymin
+        tymin = tymax
+        tymax = tmp
+    }
+
+    if (txmin > tymax) || (tymin > txmax) {
+    } else {
+        if tymin > txmin {
+            txmin = tymin
+        }
+        if tymax < txmax {
+            txmax = tymax
+        }
+
+        var tzmin f32 = (min.z - p0.z) / dz
+        var tzmax f32 = (max.z - p0.z) / dz
+        if tzmin > tzmax {
+            tmp = tzmin
+            tzmin = tzmax
+            tzmax = tmp
+        }
+
+        if (txmin > tzmax) || (tzmin > txmax) {
+        } else {
+            if tzmin > txmin {
+                txmin = tzmin
+            }
+            if tzmax < txmax {
+                txmax = tzmax
+            }
+            time = txmax / f32.sqrt(dx*dx + dy*dy + dz*dz)
+        }
+    }
+}
+
+// AABBIntersectsPlane ...
+func AABBIntersectsPlane(min v3, max v3, plane v4) (out i32) {
+    var pos v3
+    var neg v3
+
+	if plane.x >= 0.0 {
+		pos.x = max.x
+		neg.x = min.x
+	} else {
+		pos.x = min.x
+		neg.x = max.x
+	}
+
+	if plane.y >= 0.0 {
+		pos.y = max.y
+		neg.y = min.y
+	} else {
+		pos.y = min.y
+		neg.y = max.y
+	}
+
+	if plane.z >= 0.0 {
+		pos.z = max.z
+		neg.z = min.z
+	} else {
+		pos.z = min.z
+		neg.z = max.z
+	}
+
+	if (plane.x * neg.x + plane.y * neg.y + plane.z * neg.z + plane.w)  > 0.0 {
+		out = -1
+		//return
+	} else if (plane.x * pos.x + plane.y * pos.y + plane.z * pos.z + plane.w) < 0.0 {
+		out = 1
+		//return
+	} else {
+        out = 0
+    }
+}
+
+// AABBIntersectsPlanes ...
+func AABBIntersectsPlanes(min v3, max v3, planes []v4) (out i32) {
+    out = -1
+    var intersect bool
+    for i := 0; i < 6; i++ {
+        var inter i32 = AABBIntersectsPlane(min, max, planes[i])
+        if inter == 1 {
+            out = 1
+            return
+        } else if inter == 0 {
+            out = 0
+        } else if inter == -1 {
+        }
+    }
+}
+
+

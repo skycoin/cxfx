@@ -12,17 +12,6 @@ in vec4 v_v4Distance;
 
 out vec4 o_v4Color;
 
-
-vec3 gamma(vec3 color) // REMOVE : duplicate
-{
-	return pow(color, vec3(2.2));
-}
-
-vec3 invgamma(vec3 color) // REMOVE : duplicate
-{
-	return pow(color, vec3(1.0 / 2.2));
-}
-
 bool valid(float f) {
 	return isinf(abs(f)) == false && isnan(f) == false;
 }

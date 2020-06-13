@@ -1,0 +1,131 @@
+package gfx
+
+import "mat"
+
+// Globals ...
+var g_frustums []Frustum
+
+// Frustum ...
+type Frustum struct {
+    cornersV4 []mat.v4 // TODO : issue when using array
+    corners []mat.v3 // TODO : issue when using array
+    planes []mat.v4 // TODO : issue when using array
+    debugMesh MeshId
+}
+
+// FrustumId
+type FrustumId struct {
+    frustum i32
+}
+
+// InvalidFrustum ...
+func InvalidFrustum() (out FrustumId) {
+    out.frustum = -1
+}
+
+// FrustumCreate ...
+func FrustumCreate() (out FrustumId) {
+    out.frustum = len(g_frustums)
+    var frustum Frustum
+    frustum.debugMesh = MeshCreate(LINES, UNSIGNED_SHORT, 1024 * 3, g_vertexLayout, 1024 * 3)
+
+    frustum.planes = append(frustum.planes, v4.ZERO)
+    frustum.planes = append(frustum.planes, v4.ZERO)
+    frustum.planes = append(frustum.planes, v4.ZERO)
+    frustum.planes = append(frustum.planes, v4.ZERO)
+    frustum.planes = append(frustum.planes, v4.ZERO)
+    frustum.planes = append(frustum.planes, v4.ZERO)
+
+    frustum.cornersV4 = append(frustum.cornersV4, v4.ZERO)
+    frustum.cornersV4 = append(frustum.cornersV4, v4.ZERO)
+    frustum.cornersV4 = append(frustum.cornersV4, v4.ZERO)
+    frustum.cornersV4 = append(frustum.cornersV4, v4.ZERO)
+    frustum.cornersV4 = append(frustum.cornersV4, v4.ZERO)
+    frustum.cornersV4 = append(frustum.cornersV4, v4.ZERO)
+    frustum.cornersV4 = append(frustum.cornersV4, v4.ZERO)
+    frustum.cornersV4 = append(frustum.cornersV4, v4.ZERO)
+
+    frustum.corners = append(frustum.corners, v3.ZERO)
+    frustum.corners = append(frustum.corners, v3.ZERO)
+    frustum.corners = append(frustum.corners, v3.ZERO)
+    frustum.corners = append(frustum.corners, v3.ZERO)
+    frustum.corners = append(frustum.corners, v3.ZERO)
+    frustum.corners = append(frustum.corners, v3.ZERO)
+    frustum.corners = append(frustum.corners, v3.ZERO)
+    frustum.corners = append(frustum.corners, v3.ZERO)
+
+    g_frustums = append(g_frustums, frustum)
+}
+
+
+func planeFromPoints(a mat.v3, b mat.v3, c mat.v3) (out mat.v4) {
+    var ab mat.v3 = v3.sub(b, a)
+    var ac mat.v3 = v3.sub(c, a)
+    var cross mat.v3 = v3.cross(ab, ac)
+    var normal mat.v3 = v3.normalize(cross)
+    out.x = normal.x
+    out.y = normal.y
+    out.z = normal.z
+    out.w = 0.0 - v3.dot(normal, a)
+}
+
+// FrustumUpdate ...
+func FrustumUpdate(id FrustumId, invViewProj mat.m44) {
+    var cornersV4 []mat.v4 = g_frustums[id.frustum].cornersV4
+    cornersV4[0] = v4.make(-1.0, -1.0, -1.0, 1.0)
+    cornersV4[1] = v4.make( 1.0, -1.0, -1.0, 1.0)
+    cornersV4[2] = v4.make(-1.0, -1.0,  1.0, 1.0)
+    cornersV4[3] = v4.make( 1.0, -1.0,  1.0, 1.0)
+    cornersV4[4] = v4.make(-1.0,  1.0, -1.0, 1.0)
+    cornersV4[5] = v4.make( 1.0,  1.0, -1.0, 1.0)
+    cornersV4[6] = v4.make(-1.0,  1.0,  1.0, 1.0)
+    cornersV4[7] = v4.make( 1.0,  1.0,  1.0, 1.0)
+
+    var corners []mat.v3 = g_frustums[id.frustum].corners
+    for i := 0; i < 8; i++ {
+        cornersV4[i] = v4.transform(cornersV4[i], invViewProj)
+        corners[i] = v3.divf(v3.make(cornersV4[i].x, cornersV4[i].y, cornersV4[i].z), cornersV4[i].w)
+    }
+
+    var planes []mat.v4 = g_frustums[id.frustum].planes
+    planes[0] = planeFromPoints(corners[0], corners[1], corners[2])
+    planes[1] = planeFromPoints(corners[4], corners[6], corners[5])
+    planes[2] = planeFromPoints(corners[4], corners[0], corners[6])
+    planes[3] = planeFromPoints(corners[5], corners[7], corners[1])
+    planes[4] = planeFromPoints(corners[0], corners[4], corners[5])
+    planes[5] = planeFromPoints(corners[2], corners[7], corners[6])
+
+    var debugMesh MeshId = g_frustums[id.frustum].debugMesh
+    MeshBegin(debugMesh)
+
+    MeshAppendLine(debugMesh, corners[0], corners[1], v4.BLUE)
+    MeshAppendLine(debugMesh, corners[1], corners[3], v4.BLUE)
+    MeshAppendLine(debugMesh, corners[3], corners[2], v4.BLUE)
+    MeshAppendLine(debugMesh, corners[2], corners[0], v4.BLUE)
+
+    MeshAppendLine(debugMesh, corners[4], corners[5], v4.BLUE)
+    MeshAppendLine(debugMesh, corners[5], corners[7], v4.BLUE)
+    MeshAppendLine(debugMesh, corners[7], corners[6], v4.BLUE)
+    MeshAppendLine(debugMesh, corners[6], corners[4], v4.BLUE)
+
+    MeshAppendLine(debugMesh, corners[0], corners[4], v4.BLUE)
+    MeshAppendLine(debugMesh, corners[1], corners[5], v4.BLUE)
+    MeshAppendLine(debugMesh, corners[2], corners[6], v4.BLUE)
+    MeshAppendLine(debugMesh, corners[3], corners[7], v4.BLUE)
+    MeshEnd(debugMesh)
+}
+
+// FrustumIntersectsAABB ...
+func FrustumIntersectsAABB(id FrustumId, min mat.v3, max mat.v3) (out i32) {
+    out = mat.AABBIntersectsPlanes(min, max, g_frustums[id.frustum].planes)
+}
+
+// FrustumRender ...
+func FrustumRender(id FrustumId, world mat.m44, view mat.m44, projection mat.m44) {
+    DepthState(true, LESS, false)
+	EffectUse(g_fxVertexColor3D)
+	EffectAssignM44(g_fxVertexColor3D, UNIFORM_WORLD, world, false)
+	EffectAssignM44(g_fxVertexColor3D, UNIFORM_VIEW, view, false)
+	EffectAssignM44(g_fxVertexColor3D, UNIFORM_PROJECTION, projection, false)
+	MeshRender(g_frustums[id.frustum].debugMesh)
+}
