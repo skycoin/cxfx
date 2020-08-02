@@ -1,25 +1,520 @@
 package main
+import "snd"
 
 import "gfx"
 import "gui"
+import "fps"
 
 var gameScreen gui.ScreenId
 var exitScreen gui.ScreenId
+var titleScreen gui.ScreenId
+var bootScreen gui.ScreenId
+var skycoinScreen gui.ScreenId
+var characterScreen gui.ScreenId
+var BackGRPicture gui.PictureId
+var FacePicture gui.PictureId
+var NamePicture gui.PictureId
+var TitlePicture2 gui.PictureId
+var TitlePicture3 gui.PictureId
+var TitlePicture4 gui.PictureId
+var TitlePicture5 gui.PictureId
+var TitlePicture6 gui.PictureId
+var CloudPicture gui.PictureId
+var CloudPicture2 gui.PictureId
+var CloudPicture3 gui.PictureId
+var CloudPicture4 gui.PictureId
+var CloudPicture5 gui.PictureId
+var CloudPicture6 gui.PictureId
+var CloudPicture7 gui.PictureId
+var CloudPicture9 gui.PictureId
+var Icon_single gui.PictureId
+var Icon_options gui.PictureId
+var Icon_multi gui.PictureId
+var Icon_back gui.PictureId
 
+
+var skylightPicture PictureId = gui.PictureCreate("skylightPicture")
+var skycoinPicture PictureId = gui.PictureCreate("skycoinPicture")
+
+
+
+var valid_game i32//ADVANCE GAME STEP//PREVENT MULTIPLE CLICKING
+//ANIMATIONS AND TEXTURES VARIABLES
 var cxfxAnim gui.AnimationId = gui.InvalidAnimation()
 var skylightTexture gfx.TextureId = gui.InvalidTexture()
 var skylightAnim gui.AnimationId = gui.InvalidAnimation()
+var FaceAnim gui.AnimationId = gui.InvalidAnimation()
+var FaceTexture gfx.TextureId = gui.InvalidTexture()
+var NameAnim gui.AnimationId = gui.InvalidAnimation()
+var CloudTexture gfx.TextureId = gui.InvalidTexture()
+var CloudAnim gui.AnimationId = gui.InvalidAnimation()
+var CloudTexture2 gfx.TextureId = gui.InvalidTexture()
+var CloudAnim2 gui.AnimationId = gui.InvalidAnimation()
+var BGFlipTexture gfx.TextureId = gui.InvalidTexture()
+var BGFlipAnim gui.AnimationId = gui.InvalidAnimation()
+var NameTexture gfx.TextureId = gui.InvalidTexture()
+var Icon00Anim gui.AnimationId = gui.InvalidAnimation()
+var Icon00Texture gfx.TextureId = gui.InvalidTexture()
+var Icon01Anim gui.AnimationId = gui.InvalidAnimation()
+var Icon01Texture gfx.TextureId = gui.InvalidTexture()
+var Icon02Anim gui.AnimationId = gui.InvalidAnimation()
+var Icon02Texture gfx.TextureId = gui.InvalidTexture()
+var Icon03Anim gui.AnimationId = gui.InvalidAnimation()
+var Icon03Texture gfx.TextureId = gui.InvalidTexture()
 var charactersTexture gfx.TextureId = gui.InvalidTexture()
 var charactersAnim gui.AnimationId = gui.InvalidAnimation()
+var SynthTexture gfx.TextureId = gui.InvalidTexture()
+var SynthAnim gui.AnimationId = gui.InvalidAnimation()
+var BackGRTexture gfx.TextureId = gui.InvalidTexture()
+var BackGRAnim gui.AnimationId = gui.InvalidAnimation()
+var BogdanTexture gfx.TextureId = gui.InvalidTexture()
+var BogdanAnim gui.AnimationId = gui.InvalidAnimation()
+var MacronTexture gfx.TextureId = gui.InvalidTexture()
+var MacronAnim gui.AnimationId = gui.InvalidAnimation()
+var BufTexture gfx.TextureId = gui.InvalidTexture()
+var BufAnim gui.AnimationId = gui.InvalidAnimation()
+var WojTexture gfx.TextureId = gui.InvalidTexture()
+var WojAnim gui.AnimationId = gui.InvalidAnimation()
+var CarTexture gfx.TextureId = gui.InvalidTexture()
+var CarAnim gui.AnimationId = gui.InvalidAnimation()
+var LagTexture gfx.TextureId = gui.InvalidTexture()
+var LagAnim gui.AnimationId = gui.InvalidAnimation()
+var MusTexture gfx.TextureId = gui.InvalidTexture()
+var MusAnim gui.AnimationId = gui.InvalidAnimation()
+var ZucTexture gfx.TextureId = gui.InvalidTexture()
+var ZucAnim gui.AnimationId = gui.InvalidAnimation()
+var VitTexture gfx.TextureId = gui.InvalidTexture()
+var VitAnim gui.AnimationId = gui.InvalidAnimation()
+var FunTexture gfx.TextureId = gui.InvalidTexture()
+var FunAnim gui.AnimationId = gui.InvalidAnimation()
+var SynTexture gfx.TextureId = gui.InvalidTexture()
+var SynAnim gui.AnimationId = gui.InvalidAnimation()
+var McaTexture gfx.TextureId = gui.InvalidTexture()
+var McaAnim gui.AnimationId = gui.InvalidAnimation()
+
 
 var texture gfx.TextureId = gfx.InvalidTexture()
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+var Nbre_Portrait i32 //Amount of unlocked characters
+
+
+//PORTRAIT PARAMETERS TYPE
+type portrait struct {
+	name PictureId
+	pic str
+	anim AnimationId
+	coorx f32
+	coory f32
+	sizex f32
+	sizey f32
+	snnd VoiceId
+	disp_scale f32
+	flux f32
+}
+
+var Porpic[12] portrait
+var timer i32
+var timer_title i32
+var display_time i32///VARIABLE TO SCALE THE LAST PORTRAIT!!!
+var title_time f32
+var title_size f32
+var scroll_horiz f32//Background image scrolling
+var scroll_horiz2 f32//Background clouds scrolling
+var pumpscale f32//moving icons
+var pumpmark i32
+var zoom_flux f32//title zoom speed
+var port_flux f32//portraits zoom speed
+var p i32
+var Explosnd snd.VoiceId
+var Titlesnd snd.VoiceId
+var Skysnd snd.VoiceId
+var initial_size f32
+var Portrait_select i32//MARKER IF A PORTRAIT IS SELECTED
+var Pornum i32//WHICH PORTRAIT IS SELECTED
+
+////DELTATIME
+var dts f64 = fps.DeltaSecond()
+var dt f32 = f64.f32(dts)
+var deltatime f32
+var dts_title f64 = fps.DeltaSecond()
+var dt_title f32 = f64.f32(dts_title)
+var deltatime_title f32
+var deltatime_scroll f32
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//UPDATING THE SCREEN
+func CharaOnUpdate(controlIndex i32, controlAction i32) {
+		gui.ControlSetBounds(BackGRPicture.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
+		gui.ControlSetAlign(BackGRPicture.base, gui.ALIGN_CENTER)
+		gui.PictureSetAlign(BackGRPicture, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(BackGRPicture.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(BackGRPicture, BackGRAnim, false, 30)
+
+		valid_game=2
+
+
+		//CALCULATING THE RATIO BETWEEN INITIAL SCREENSIZE AND REFRESHED SCREENSIZE
+		var bande_noire f32//Size of black boarder on top and botton
+		var bande_horiz f32//Size of black boarder on the sides
+		var true_width f32//Real size of width with no boarder
+		var true_height f32//Real size of height with no boarder
+		bande_noire= (gfx.gfx_height-(gfx.gfx_width*0.56))
+		bande_horiz= (gfx.gfx_width-(gfx.gfx_height*1.77))
+		if bande_noire < 0.0{
+			bande_noire = 0.0
+		}
+		if bande_horiz < 0.0{
+			bande_horiz = 0.0
+		}
+		true_width=gfx.gfx_width-bande_horiz
+		true_height=gfx.gfx_height-(bande_noire)
+		Nbre_Portrait=12
+		
+		gui.ControlSetBounds(CloudPicture6.base, v4.make((bande_horiz/2.0)+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
+		gui.PictureSetAlpha(CloudPicture6, true)
+		gui.ControlSetBounds(CloudPicture7.base, v4.make((bande_horiz/2.0)-true_width+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
+		gui.PictureSetAlpha(CloudPicture7, true)
+		gui.ControlSetBounds(CloudPicture9.base, v4.make((bande_horiz/2.0)-true_width*2.0+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
+		gui.PictureSetAlpha(CloudPicture9, true)
+		dts_title = fps.DeltaSecond()
+		dt_title = f64.f32(dts_title)
+		deltatime_scroll = deltatime_scroll + dt_title
+		if deltatime_scroll>0.01{///BACKGROUND SCROLLING SPEED REAL TIME
+		scroll_horiz2 = scroll_horiz2+0.1//scrolling clouds
+		if scroll_horiz2>true_width*2.0{
+		scroll_horiz2=0.0
+		}
+		deltatime_scroll=0.0
+		}
+		//////////////////////////////////////////////
+		////PORTRAIT DISPLAY PARAMETERS
+		Porpic[0].pic = "MacronTexture"
+		Porpic[0].anim = MacronAnim
+		Porpic[0].coorx=(bande_horiz/2.0)+(0.075*true_width)
+		Porpic[0].coory=-0.35*(true_height/2.0)
+		Porpic[0].sizex=0.17*true_width
+		Porpic[0].sizey=gfx.gfx_height
+
+		Porpic[1].pic = "BufTexture"
+		Porpic[1].anim = BufAnim
+		Porpic[1].coorx=(bande_horiz/2.0)+(0.58*true_width)
+		Porpic[1].coory=-0.14*(true_height/2.0)
+		Porpic[1].sizex=0.3*true_width
+		Porpic[1].sizey=gfx.gfx_height
+
+		Porpic[2].pic = "WojTexture"
+		Porpic[2].anim = WojAnim
+		Porpic[2].coorx=(bande_horiz/2.0)+(0.0*true_width)
+		Porpic[2].coory=-0.643*(true_height/2.0)
+		Porpic[2].sizex=0.21*true_width
+		Porpic[2].sizey=gfx.gfx_height
+
+		Porpic[3].pic = "CarTexture"
+		Porpic[3].anim = CarAnim
+		Porpic[3].coorx=(bande_horiz/2.0)+(0.39*true_width)
+		Porpic[3].coory=-0.05*(true_height/2.0)
+		Porpic[3].sizex=0.41*true_width
+		Porpic[3].sizey=gfx.gfx_height
+
+		Porpic[4].pic = "LagTexture"
+		Porpic[4].anim = LagAnim
+		Porpic[4].coorx=(bande_horiz/2.0)+(0.18*true_width)
+		Porpic[4].coory=0.015*(true_height/2.0)
+		Porpic[4].sizex=0.245*true_width
+		Porpic[4].sizey=gfx.gfx_height
+
+		Porpic[5].pic = "BogdanTexture"
+		Porpic[5].anim = BogdanAnim
+		Porpic[5].coorx=(bande_horiz/2.0)+(0.33*true_width)
+		Porpic[5].coory=0.135*(true_height/2.0)
+		Porpic[5].sizex=0.29*true_width
+		Porpic[5].sizey=gfx.gfx_height
+
+		Porpic[6].pic = "ZucTexture"
+		Porpic[6].anim = ZucAnim
+		Porpic[6].coorx=(bande_horiz/2.0)+(0.73*true_width)
+		Porpic[6].coory=-0.37*(true_height/2.0)
+		Porpic[6].sizex=0.275*true_width
+		Porpic[6].sizey=gfx.gfx_height
+
+		Porpic[7].pic = "MusTexture"
+		Porpic[7].anim = MusAnim
+		Porpic[7].coorx=(bande_horiz/2.0)+(0.12*true_width)
+		Porpic[7].coory=-0.51*(true_height/2.0)
+		Porpic[7].sizex=0.34*true_width
+		Porpic[7].sizey=gfx.gfx_height
+
+		Porpic[8].pic = "VitTexture"
+		Porpic[8].anim = VitAnim
+		Porpic[8].coorx=(bande_horiz/2.0)+(0.60*true_width)
+		Porpic[8].coory=-0.41*(true_height/2.0)
+		Porpic[8].sizex=0.22*true_width
+		Porpic[8].sizey=gfx.gfx_height
+
+		Porpic[9].pic = "FunTexture"
+		Porpic[9].anim = FunAnim
+		Porpic[9].coorx=(bande_horiz/2.0)+(0.695*true_width)
+		Porpic[9].coory=-0.80*(true_height/2.0)
+		Porpic[9].sizex=0.265*true_width
+		Porpic[9].sizey=gfx.gfx_height
+
+		Porpic[10].pic = "SynTexture"
+		Porpic[10].anim = SynAnim
+		Porpic[10].coorx=(bande_horiz/2.0)+(0.285*true_width)
+		Porpic[10].coory=-0.45*(true_height/2.0)
+		Porpic[10].sizex=0.30*true_width
+		Porpic[10].sizey=gfx.gfx_height
+
+		Porpic[11].pic = "McaTexture"
+		Porpic[11].anim = McaAnim
+		Porpic[11].coorx=(bande_horiz/2.0)+(0.41*true_width)
+		Porpic[11].coory=-0.51*(true_height/2.0)
+		Porpic[11].sizex=0.28*true_width
+		Porpic[11].sizey=gfx.gfx_height
+	
+		
+		//////////////////////////////////////////////
+		//DISPLAY PORTRAIT LOOP//////////////////////////////////////
+		printf("la valeur de i : ", Porpic[0].disp_scale);
+		////DISPLAY PORTRAIT ONE BY ONE
+		dts = fps.DeltaSecond()
+		dt = f64.f32(dts)
+		deltatime = deltatime + dt
+		if deltatime > 0.3{////TIME WHEN EACH PORTRAITS ARE DISPLAYED IN SECONDS
+		timer++
+		deltatime = 0.0
+		}
+		if timer == 1 {
+			if display_time < Nbre_Portrait+1 {
+			if p<12{
+			gui.ControlSetBounds(Porpic[p].name.base, v4.make(Porpic[p].coorx, Porpic[p].coory, Porpic[p].sizex*Porpic[p].disp_scale, Porpic[p].sizey))
+			gui.PictureSetAlpha(Porpic[p].name, true)
+			//snd.VoicePlay(Porpic[p].snnd)
+			p++
+			display_time++
+		}
+			
+			timer=0
+			if Porpic[p].disp_scale<1.0{
+			Porpic[p].disp_scale=Porpic[p].disp_scale*1.0///////INITIAL SCALING SPEED
+		}	else {
+				Porpic[p].disp_scale=1.0
+			}
+		}
+	}
+		////KEEP ASPECT RATIO WHILE DISPLAY PORTRAIT ONE BY ONE
+		if display_time < Nbre_Portrait+1{
+		for i:=0; i < p; i++{
+		gui.ControlSetBounds(Porpic[i].name.base, v4.make(Porpic[i].coorx, Porpic[i].coory, Porpic[i].sizex*Porpic[i].disp_scale, Porpic[i].sizey))
+		gui.PictureSetAlpha(Porpic[i].name, true)
+		if Porpic[i].disp_scale<1.0{
+		Porpic[i].disp_scale=Porpic[i].disp_scale*Porpic[i].flux///////SCALING SPEED
+		Porpic[i].flux=Porpic[i].flux*1.02//ZOOM SPEED ACCELERATION
+		}	else {
+			Porpic[i].disp_scale=1.0
+			Porpic[i].flux=1.0
+		}
+		if Porpic[11].disp_scale==1.0{//IF FINAL ZOOM OVER, CAN PROCEED.
+			display_time++
+		}
+		}
+
+	}
+		////KEEP DISPLAYING PORTRAITS AFTER ALL ZOOM FINISHED
+		if display_time == Nbre_Portrait+1{
+		for i:=0; i < Nbre_Portrait; i++{
+		gui.ControlSetBounds(Porpic[i].name.base, v4.make(Porpic[i].coorx, Porpic[i].coory, Porpic[i].sizex*Porpic[i].disp_scale, Porpic[i].sizey))
+		gui.PictureSetAlpha(Porpic[i].name, true)
+		}
+		//BACK BUTTON:
+		gui.ControlSetBounds(Icon_back.base, v4.make((bande_horiz/2.0)+(0.94*true_width),0.89*(true_height/2.0), 0.05*true_width*pumpscale, gfx.gfx_height))
+		gui.PictureSetAlpha(Icon_back, true)
+		gui.PictureSetOnState(Icon_back, "main", "onBackButton")
+		if pumpmark==0{
+		pumpscale=pumpscale*0.997
+		}
+		
+		if pumpscale<0.95{
+			if pumpmark==0{
+			pumpmark=1
+		}
+		}
+		if pumpmark==1{
+		pumpscale=pumpscale*1.002
+		}
+		if pumpscale>1.0{
+			if pumpmark==1{
+				pumpmark=0
+			}
+		}
+		
+	}
+		
+		////////////////////////////////////////////
+}
+
+func TitleOnUpdate(controlIndex i32, controlAction i32) {
+		//CALCULATING THE RATIO BETWEEN INITIAL SCREENSIZE AND REFRESHED SCREENSIZE
+		valid_game=1
+		var bande_noire f32//Size of black boarder on top and botton
+		var bande_horiz f32//Size of black boarder on the sides
+		var true_width f32//Real size of width with no boarder
+		var true_height f32//Real size of height with no boarder
+		bande_noire= (gfx.gfx_height-(gfx.gfx_width*0.56))
+		bande_horiz= (gfx.gfx_width-(gfx.gfx_height*1.77))
+		if bande_noire < 0.0{
+			bande_noire = 0.0
+		}
+		if bande_horiz < 0.0{
+			bande_horiz = 0.0
+		}
+		true_width=gfx.gfx_width-bande_horiz
+		true_height=gfx.gfx_height-(bande_noire)
+
+//DISPLAY TITLE BACKGROUND IMAGE
+		//MAIN
+		gui.ControlSetBounds(skylightPicture.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
+		gui.ControlSetAlign(skylightPicture.base, gui.ALIGN_CENTER)
+		gui.PictureSetAlign(skylightPicture, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(skylightPicture.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(skylightPicture, skylightAnim, false, 30)
+
+		//SCROLLING
+		gui.ControlSetBounds(TitlePicture2.base, v4.make((bande_horiz/2.0)+scroll_horiz, 0.0, true_width, gfx.gfx_height))
+		gui.ControlSetBounds(TitlePicture3.base, v4.make((bande_horiz/2.0)-true_width+scroll_horiz, 0.0, true_width, gfx.gfx_height))
+		gui.ControlSetBounds(TitlePicture4.base, v4.make((bande_horiz/2.0)+true_width+scroll_horiz, 0.0, true_width, gfx.gfx_height))
+		gui.ControlSetBounds(TitlePicture5.base, v4.make((bande_horiz/2.0)-true_width*2.0+scroll_horiz, 0.0, true_width, gfx.gfx_height))
+		gui.ControlSetBounds(TitlePicture6.base, v4.make((bande_horiz/2.0)-true_width*3.0+scroll_horiz, 0.0, true_width, gfx.gfx_height))
+
+		gui.ControlSetBounds(CloudPicture.base, v4.make((bande_horiz/2.0)+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
+		gui.PictureSetAlpha(CloudPicture, true)
+		gui.ControlSetBounds(CloudPicture2.base, v4.make((bande_horiz/2.0)-true_width+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
+		gui.PictureSetAlpha(CloudPicture2, true)
+		gui.ControlSetBounds(CloudPicture3.base, v4.make((bande_horiz/2.0)+true_width+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
+		gui.PictureSetAlpha(CloudPicture3, true)
+		gui.ControlSetBounds(CloudPicture4.base, v4.make((bande_horiz/2.0)-true_width*2.0+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
+		gui.PictureSetAlpha(CloudPicture4, true)
+		gui.ControlSetBounds(CloudPicture5.base, v4.make((bande_horiz/2.0)-true_width*3.0+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
+		gui.PictureSetAlpha(CloudPicture5, true)
+
+		dts_title = fps.DeltaSecond()
+		dt_title = f64.f32(dts_title)
+		deltatime_scroll = deltatime_scroll + dt_title
+		if deltatime_scroll>0.01{///BACKGROUND SCROLLING SPEED REAL TIME
+		scroll_horiz = scroll_horiz+0.1//scrolling speed
+		if scroll_horiz>true_width*2.0{
+		scroll_horiz=0.0
+		}
+		scroll_horiz2 = scroll_horiz2+0.8//scrolling clouds
+		if scroll_horiz2>true_width*2.0{
+		scroll_horiz2=0.0
+		}
+		deltatime_scroll=0.0
+		}
+
+////DISPLAY MCAFEE + TITLE
+
+		dts_title = fps.DeltaSecond()
+		dt_title = f64.f32(dts_title)
+		if timer_title<3{
+		deltatime_title = deltatime_title + dt_title
+		}
+		if timer_title==0{
+		if deltatime_title > 0.6{////TIME WHEN MCAFEE'S FACE APPEAR
+		gui.ControlSetBounds(FacePicture.base, v4.make((bande_horiz/2.0)+(0.19*true_width), 0.0, true_width*0.613, gfx.gfx_height))
+		gui.PictureSetAlpha(FacePicture, true)
+		//snd.VoicePlay(Titlesnd)
+		timer_title=1
+			}
+		}
+		if timer_title == 1 {
+			if deltatime_title > 1.2{////TIME WHEN TITLE APPEAR
+			gui.ControlSetBounds(NamePicture.base, v4.make((bande_horiz/2.0), 0.0, true_width*title_size, gfx.gfx_height))
+			gui.PictureSetAlpha(NamePicture, true)
+			//snd.VoicePlay(Title_Explo)
+			timer_title=2
+		}
+	}
+		if timer_title==2{
+		gui.ControlSetBounds(FacePicture.base, v4.make((bande_horiz/2.0)+(0.19*true_width), 0.0, true_width*0.613, gfx.gfx_height))
+		gui.PictureSetAlpha(FacePicture, true)
+		gui.ControlSetBounds(NamePicture.base, v4.make((bande_horiz/2.0)+(true_width/2.0)*(1.0-title_size), 0.0, true_width*title_size, gfx.gfx_height))
+		gui.PictureSetAlpha(NamePicture, true)
+
+		if deltatime_title > 1.0{
+		if title_size < 1.0{
+		title_size=title_size*zoom_flux///TITLE ZOOM SPEED
+		zoom_flux=zoom_flux*1.008//accelerate zoom
+		if title_size>1.0{
+			title_size=1.0
+			timer_title=3
+			}
+		deltatime=0.0
+			}
+		}
+
+		
+		}
+		if timer_title==3{
+		gui.ControlSetBounds(FacePicture.base, v4.make((bande_horiz/2.0)+(0.19*true_width), 0.0, true_width*0.613, gfx.gfx_height))
+		gui.PictureSetAlpha(FacePicture, true)
+		gui.ControlSetBounds(NamePicture.base, v4.make((bande_horiz/2.0), 0.0, true_width, gfx.gfx_height))
+		gui.PictureSetAlpha(NamePicture, true)
+		gui.ControlSetBounds(Icon_single.base, v4.make((bande_horiz/2.0)+(0.40*true_width), -0.75*(true_height/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
+		gui.ControlSetBounds(Icon_multi.base, v4.make((bande_horiz/2.0)+(0.47*true_width), -0.75*(true_height/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
+		gui.ControlSetBounds(Icon_options.base, v4.make((bande_horiz/2.0)+(0.54*true_width), -0.75*(true_height/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
+		if pumpmark==0{
+		pumpscale=pumpscale*0.995
+		}
+		
+		if pumpscale<0.95{
+			if pumpmark==0{
+			pumpmark=1
+		}
+		}
+		if pumpmark==1{
+		pumpscale=pumpscale*1.002
+		}
+		if pumpscale>1.0{
+			if pumpmark==1{
+				pumpmark=0
+			}
+		}
+		gui.PictureSetOnState(Icon_single, "main", "onSingleButton")
+}
+}
+	
+	
+
+
+
+	
+
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func skycoinOnUpdate(controlIndex i32, controlAction i32) {
-	//if snd.VoiceState(voiceId) == snd.VOICE_STOPPED {
-	//	snd.VoicePlay(voiceId)
-	//}
+	
+	gui.ControlSetBounds(skycoinPicture.base, v4.make(0.0, 0.0, gfx.gfx_width/2.0, gfx.gfx_height/2.0))
+	gui.ControlSetAlign(skycoinPicture.base, gui.ALIGN_CENTER)
+	gui.ControlSetAutoscale(skycoinPicture.base, gui.AUTOSCALE)
+	gui.PictureSetAlign(skycoinPicture, gui.ALIGN_CENTER)
+	gui.PictureSetOnState(skycoinPicture, "main", "onSelectButton")
+	
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func onPortraitButton(controlIndex i32, controlAction i32) {
+	Portrait_select=1
+	Porpic[Pornum].disp_scale=2.0
+	if controlAction == app.KEY_PRESS {
+		gui.ScreenShow(gameScreen)
+	} else if controlAction != app.KEY_RELEASE && controlAction != app.KEY_REPEAT {
+		panicIfNot(false, "invalid action")
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -32,6 +527,42 @@ func onPlayButton(controlIndex i32, controlAction i32) {
 	}
 }
 
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func onSelectButton(controlIndex i32, controlAction i32) {
+	if controlAction == app.KEY_PRESS {
+		if valid_game==0{//PREVENT MULTIPLE CLICKING
+			gui.ScreenShow(titleScreen)
+			valid_game=1
+		}
+	} else if controlAction != app.KEY_RELEASE && controlAction != app.KEY_REPEAT {
+		panicIfNot(false, "invalid action")
+	}
+}
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func onSingleButton(controlIndex i32, controlAction i32) {
+	if controlAction == app.MOUSE_PRESS {
+		if valid_game==1{//PREVENT MULTIPLE CLICKING
+		gui.ScreenShow(characterScreen)
+		valid_game=2
+	}
+	} else if controlAction != app.MOUSE_RELEASE && controlAction != app.MOUSE_REPEATE {
+		panicIfNot(false, "invalid action")
+	}
+}
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func onBackButton(controlIndex i32, controlAction i32) {
+	if controlAction == app.MOUSE_PRESS {
+		if valid_game==2{//PREVENT MULTIPLE CLICKING
+		gui.ScreenShow(titleScreen)
+		valid_game=1
+	}
+	} else if controlAction != app.MOUSE_RELEASE && controlAction != app.MOUSE_REPEATE {
+		panicIfNot(false, "invalid action")
+	}
+}
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func onExitButton(controlIndex i32, controlAction i32) {
@@ -70,14 +601,116 @@ func onExitDialogYes(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func loadMenu() {
-    cxfxAnim = gui.AnimationCreateFromPath(sprintf("%stextures/cxfx.gif", app.DataDir()))
-    skylightTexture = gfx.TextureCreate(sprintf("%s/textures/skylight.jpeg", app.DataDir()),
+    //cxfxAnim = gui.AnimationCreateFromPath(sprintf("%stextures/cxfx.gif", app.DataDir()))
+    skylightTexture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/Title_Back.png", app.DataDir()),
             gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
     skylightAnim = gui.AnimationCreateFromTexture(skylightTexture)
+
+	BGFlipTexture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/Title_Back_flip.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    BGFlipAnim = gui.AnimationCreateFromTexture(BGFlipTexture)
+
+    CloudTexture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/Title_clouds.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    CloudAnim = gui.AnimationCreateFromTexture(CloudTexture)
+
+    CloudTexture2 = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/Title_clouds2.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    CloudAnim2 = gui.AnimationCreateFromTexture(CloudTexture2)
+
+    FaceTexture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/Title_Face.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    FaceAnim = gui.AnimationCreateFromTexture(FaceTexture)
+
+    NameTexture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/Title_Name.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    NameAnim = gui.AnimationCreateFromTexture(NameTexture)
+
+    Icon00Texture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/icon_single.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    Icon00Anim = gui.AnimationCreateFromTexture(Icon00Texture)
+
+    Icon01Texture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/icon_options.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    Icon01Anim = gui.AnimationCreateFromTexture(Icon01Texture)
+
+    Icon02Texture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/icon_multi.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    Icon02Anim = gui.AnimationCreateFromTexture(Icon02Texture)
+
+ 	Icon03Texture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/icon_back.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    Icon03Anim = gui.AnimationCreateFromTexture(Icon03Texture)
 
     charactersTexture = gfx.TextureCreate(sprintf("%s/textures/characters.jpeg", app.DataDir()),
             gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
     charactersAnim = gui.AnimationCreateFromTexture(charactersTexture)
+
+    SynthTexture = gfx.TextureCreate(sprintf("%s/textures/synth.gif", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    SynthAnim = gui.AnimationCreateFromTexture(SynthTexture)
+
+    BackGRTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/fond_charselect_01.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    BackGRAnim = gui.AnimationCreateFromTexture(BackGRTexture)
+
+    BogdanTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/bogdan_por_00.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    BogdanAnim = gui.AnimationCreateFromTexture(BogdanTexture)
+
+    MacronTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/placeholder_macro.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    MacronAnim = gui.AnimationCreateFromTexture(MacronTexture)
+
+    BufTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/Buffet_por1.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    BufAnim = gui.AnimationCreateFromTexture(BufTexture)
+
+    WojTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/wojack_por_00.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    WojAnim = gui.AnimationCreateFromTexture(WojTexture)
+
+    CarTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/carstens_por_00.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    CarAnim = gui.AnimationCreateFromTexture(CarTexture)
+
+    LagTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/lagarde_por_00.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    LagAnim = gui.AnimationCreateFromTexture(LagTexture)
+
+    MusTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/Musk_por1.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    MusAnim = gui.AnimationCreateFromTexture(MusTexture)
+
+    ZucTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/Zuck_por_00.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    ZucAnim = gui.AnimationCreateFromTexture(ZucTexture)
+
+    VitTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/vitalik_por_00.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    VitAnim = gui.AnimationCreateFromTexture(VitTexture)
+
+    FunTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/funds_por_00.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    FunAnim = gui.AnimationCreateFromTexture(FunTexture)
+
+    SynTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/synth_por_00.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    SynAnim = gui.AnimationCreateFromTexture(SynTexture)
+
+    McaTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/mcafee_00.png", app.DataDir()),
+            gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+    McaAnim = gui.AnimationCreateFromTexture(McaTexture)
+
+    ///CREATE SOUNDS/////////////////
+    var ExploId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/BIG_Gun.wav", app.DataDir()))
+	Explosnd = snd.VoiceCreate(ExploId)
+	var ExploTitle snd.AudioId = snd.AudioCreate(sprintf("%s/audios/Bommm.wav", app.DataDir()))
+	Titlesnd = snd.VoiceCreate(ExploTitle)
+	var Skycoinscrn snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
+	Skysnd = snd.VoiceCreate(Skycoinscrn)
+
+    	
 
 
    	// exitScreen
@@ -137,23 +770,239 @@ func loadMenu() {
 	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
 	gui.ScreenSetRenderEx(gameScreen, true)
 
+// characterScreen
+	characterScreen = gui.ScreenId = gui.ScreenCreate("characterScreen")
+	gui.ScreenSetOnUpdate(characterScreen, "main", "CharaOnUpdate")
+	gui.ControlSetSkin(characterScreen.base, gui.g_bootSkin)
+	gui.ControlSetDock(characterScreen.base, gui.DOCK_FILL)
+	gui.ScreenSetDuration(characterScreen, -2.0D)
+	gui.ScreenSetOnNext(characterScreen, bootScreen)
+	gui.ScreenShow(characterScreen)
+    {
+		//BACKGRUND PICTURE CREATION
+		BackGRPicture = gui.PictureId = gui.PictureCreate("BackGRTexture")
+		gui.ControlAddChild(characterScreen.base, BackGRPicture.base)
+		p=0
+		display_time=0
+		timer=0
+		Nbre_Portrait=12
+		initial_size=0.02//INITIAL SIZE OF PORTRAIT WHEN IT FIRST APPEARS - KEEP IT VERY LOW (0.01) TO AVOID GRAPHICAL BUGS
+		port_flux=1.01//INITIAL ZOOM SPEED
+		scroll_horiz=0.001
+		//////////////////////////////////////////////
+		//PARAMETERS
+		Porpic[0].pic = "MacronTexture"
+		Porpic[0].anim = MacronAnim
+		Porpic[0].disp_scale=initial_size
+		Porpic[0].flux=port_flux
+		
+		Porpic[1].pic = "BufTexture"
+		Porpic[1].anim = BufAnim
+		Porpic[1].disp_scale=initial_size
+		Porpic[1].flux=port_flux
+
+		Porpic[2].pic = "WojTexture"
+		Porpic[2].anim = WojAnim
+		Porpic[2].disp_scale=initial_size
+		Porpic[2].flux=port_flux
+
+		Porpic[3].pic = "CarTexture"
+		Porpic[3].anim = CarAnim
+		Porpic[3].disp_scale=initial_size
+		Porpic[3].flux=port_flux
+
+		Porpic[4].pic = "LagTexture"
+		Porpic[4].anim = LagAnim
+		Porpic[4].disp_scale=initial_size
+		Porpic[4].flux=port_flux
+
+		Porpic[5].pic = "BogdanTexture"
+		Porpic[5].anim = BogdanAnim
+		Porpic[5].disp_scale=initial_size
+		Porpic[5].flux=port_flux
+
+		Porpic[6].pic = "ZucTexture"
+		Porpic[6].anim = ZucAnim
+		Porpic[6].disp_scale=initial_size
+		Porpic[6].flux=port_flux
+
+		Porpic[7].pic = "MusTexture"
+		Porpic[7].anim = MusAnim
+		Porpic[7].disp_scale=initial_size
+		Porpic[7].flux=port_flux
+
+		Porpic[8].pic = "VitTexture"
+		Porpic[8].anim = VitAnim
+		Porpic[8].disp_scale=initial_size
+		Porpic[8].flux=port_flux
+
+		Porpic[9].pic = "FunTexture"
+		Porpic[9].anim = FunAnim
+		Porpic[9].disp_scale=initial_size
+		Porpic[9].flux=port_flux
+
+		Porpic[10].pic = "SynTexture"
+		Porpic[10].anim = SynAnim
+		Porpic[10].disp_scale=initial_size
+		Porpic[10].flux=port_flux
+
+		Porpic[11].pic = "McaTexture"
+		Porpic[11].anim = McaAnim
+		Porpic[11].disp_scale=initial_size
+		Porpic[11].flux=port_flux
+		
+		//BACK CLOUDS
+		CloudPicture6 = gui.PictureId = gui.PictureCreate("CloudTexture")
+		gui.ControlAddChild(characterScreen.base, CloudPicture6.base)
+		gui.PictureSetAlign(CloudPicture6, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(CloudPicture6.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(CloudPicture6, CloudAnim, false, 30)
+		gui.PictureSetAlpha(CloudPicture6, true)
+		CloudPicture7 = gui.PictureId = gui.PictureCreate("CloudTexture2")
+		gui.ControlAddChild(characterScreen.base, CloudPicture7.base)
+		gui.PictureSetAlign(CloudPicture7, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(CloudPicture7.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(CloudPicture7, CloudAnim2, false, 30)
+		gui.PictureSetAlpha(CloudPicture7, true)
+		CloudPicture9 = gui.PictureId = gui.PictureCreate("CloudTexture")
+		gui.ControlAddChild(characterScreen.base, CloudPicture9.base)
+		gui.PictureSetAlign(CloudPicture9, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(CloudPicture9.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(CloudPicture9, CloudAnim, false, 30)
+		gui.PictureSetAlpha(CloudPicture9, true)
+		
+		//CREATION PORTRAIT LOOP
+		for i:=0; i < Nbre_Portrait; i++{
+			Porpic[i].name = gui.PictureCreate(Porpic[i].pic)
+			gui.ControlAddChild(characterScreen.base, Porpic[i].name.base)
+			gui.ControlSetAutoscale(Porpic[i].name.base, gui.AUTOSCALE)
+			gui.PictureSetAlign(Porpic[i].name, gui.ALIGN_CENTER)
+			gui.PictureSetAnimation(Porpic[i].name, Porpic[i].anim, false, 30)
+			gui.PictureSetAlpha(Porpic[i].name, true)
+			Porpic[i].snnd=	snd.VoiceCreate(ExploId)
+
+		}
+		Icon_back = gui.PictureId = gui.PictureCreate("Icon03Texture")
+		gui.ControlAddChild(characterScreen.base, Icon_back.base)
+		gui.ControlSetAutoscale(Icon_back.base, gui.AUTOSCALE)
+		gui.PictureSetAlign(Icon_back, gui.ALIGN_CENTER)
+		gui.PictureSetAnimation(Icon_back, Icon03Anim, false, 30)
+		gui.PictureSetAlpha(Icon_back, true)
+		
+		
+
+
 	// titleScreen
-	var titleScreen gui.ScreenId = gui.ScreenCreate("titleScreen")
+	titleScreen = gui.ScreenId = gui.ScreenCreate("titleScreen")
+	gui.ScreenSetOnUpdate(titleScreen, "main", "TitleOnUpdate")
 	gui.ControlSetSkin(titleScreen.base, gui.g_bootSkin)
 	gui.ControlSetDock(titleScreen.base, gui.DOCK_FILL)
-	gui.ScreenSetDuration(titleScreen, 2.0D)
-	gui.ScreenSetOnNext(titleScreen, mainScreen)
+	gui.ScreenSetDuration(titleScreen, -1.0D)
+	gui.ScreenSetOnNext(titleScreen, characterScreen)
     {
-		var skylightPicture PictureId = gui.PictureCreate("skylightPicture")
+		title_size=0.001
+		scroll_horiz=0.001
+		pumpscale=1.0
+		pumpmark=0
+		zoom_flux=1.01//TITLE ZOOM SPEED
 		gui.ControlAddChild(titleScreen.base, skylightPicture.base)
 		gui.ControlSetBounds(skylightPicture.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
 		gui.ControlSetAlign(skylightPicture.base, gui.ALIGN_CENTER)
-		gui.ControlSetAutoscale(skylightPicture.base, gui.AUTOSCALE)
 		gui.PictureSetAlign(skylightPicture, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(skylightPicture.base, gui.AUTOSCALE)
 		gui.PictureSetAnimation(skylightPicture, skylightAnim, false, 30)
+		FacePicture = gui.PictureId = gui.PictureCreate("FaceTexture")
+		gui.ControlAddChild(titleScreen.base, FacePicture.base)
+		gui.ControlSetAutoscale(FacePicture.base, gui.AUTOSCALE)
+		gui.PictureSetAlign(FacePicture, gui.ALIGN_CENTER)
+		gui.PictureSetAnimation(FacePicture, FaceAnim, false, 30)
+		gui.PictureSetAlpha(FacePicture, true)
+		NamePicture = gui.PictureId = gui.PictureCreate("NameTexture")
+		gui.ControlAddChild(titleScreen.base, NamePicture.base)
+		gui.ControlSetAutoscale(NamePicture.base, gui.AUTOSCALE)
+		gui.PictureSetAlign(NamePicture, gui.ALIGN_CENTER)
+		gui.PictureSetAnimation(NamePicture, NameAnim, false, 30)
+		gui.PictureSetAlpha(NamePicture, true)
+		TitlePicture2 = gui.PictureId = gui.PictureCreate("skylightTexture")
+		gui.ControlAddChild(titleScreen.base, TitlePicture2.base)
+		gui.PictureSetAlign(TitlePicture2, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(TitlePicture2.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(TitlePicture2, skylightAnim, false, 30)
+		TitlePicture3 = gui.PictureId = gui.PictureCreate("BGFlipTexture")
+		gui.ControlAddChild(titleScreen.base, TitlePicture3.base)
+		gui.PictureSetAlign(TitlePicture3, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(TitlePicture3.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(TitlePicture3, BGFlipAnim, false, 30)
+		TitlePicture4 = gui.PictureId = gui.PictureCreate("BGFlipTexture")
+		gui.ControlAddChild(titleScreen.base, TitlePicture4.base)
+		gui.PictureSetAlign(TitlePicture4, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(TitlePicture4.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(TitlePicture4, BGFlipAnim, false, 30)
+		TitlePicture5 = gui.PictureId = gui.PictureCreate("skylightTexture")
+		gui.ControlAddChild(titleScreen.base, TitlePicture5.base)
+		gui.PictureSetAlign(TitlePicture5, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(TitlePicture5.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(TitlePicture5, skylightAnim, false, 30)
+		TitlePicture6 = gui.PictureId = gui.PictureCreate("BGFlipTexture")
+		gui.ControlAddChild(titleScreen.base, TitlePicture6.base)
+		gui.PictureSetAlign(TitlePicture6, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(TitlePicture6.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(TitlePicture6, BGFlipAnim, false, 30)
+		CloudPicture = gui.PictureId = gui.PictureCreate("CloudTexture")
+		gui.ControlAddChild(titleScreen.base, CloudPicture.base)
+		gui.PictureSetAlign(CloudPicture, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(CloudPicture.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(CloudPicture, CloudAnim, false, 30)
+		gui.PictureSetAlpha(CloudPicture, true)
+		CloudPicture2 = gui.PictureId = gui.PictureCreate("CloudTexture2")
+		gui.ControlAddChild(titleScreen.base, CloudPicture2.base)
+		gui.PictureSetAlign(CloudPicture2, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(CloudPicture2.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(CloudPicture2, CloudAnim2, false, 30)
+		gui.PictureSetAlpha(CloudPicture2, true)
+		CloudPicture3 = gui.PictureId = gui.PictureCreate("CloudTexture2")
+		gui.ControlAddChild(titleScreen.base, CloudPicture3.base)
+		gui.PictureSetAlign(CloudPicture3, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(CloudPicture3.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(CloudPicture3, CloudAnim2, false, 30)
+		gui.PictureSetAlpha(CloudPicture3, true)
+		CloudPicture4 = gui.PictureId = gui.PictureCreate("CloudTexture")
+		gui.ControlAddChild(titleScreen.base, CloudPicture4.base)
+		gui.PictureSetAlign(CloudPicture4, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(CloudPicture4.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(CloudPicture4, CloudAnim, false, 30)
+		gui.PictureSetAlpha(CloudPicture4, true)
+		CloudPicture5 = gui.PictureId = gui.PictureCreate("CloudTexture2")
+		gui.ControlAddChild(titleScreen.base, CloudPicture5.base)
+		gui.PictureSetAlign(CloudPicture5, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(CloudPicture5.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(CloudPicture5, CloudAnim2, false, 30)
+		gui.PictureSetAlpha(CloudPicture5, true)
+		Icon_single = gui.PictureId = gui.PictureCreate("Icon00Texture")
+		gui.ControlAddChild(titleScreen.base, Icon_single.base)
+		gui.PictureSetAlign(Icon_single, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(Icon_single.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(Icon_single, Icon00Anim, false, 30)
+		gui.PictureSetAlpha(Icon_single, true)
+		Icon_multi = gui.PictureId = gui.PictureCreate("Icon02Texture")
+		gui.ControlAddChild(titleScreen.base, Icon_multi.base)
+		gui.PictureSetAlign(Icon_multi, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(Icon_multi.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(Icon_multi, Icon02Anim, false, 30)
+		gui.PictureSetAlpha(Icon_multi, true)
+		Icon_options = gui.PictureId = gui.PictureCreate("Icon01Texture")
+		gui.ControlAddChild(titleScreen.base, Icon_options.base)
+		gui.PictureSetAlign(Icon_options, gui.ALIGN_CENTER)
+		gui.ControlSetAutoscale(Icon_options.base, gui.AUTOSCALE)
+		gui.PictureSetAnimation(Icon_options, Icon01Anim, false, 30)
+		gui.PictureSetAlpha(Icon_options, true)
+		Titlesnd = snd.VoiceCreate(ExploTitle)
 	}
 
+
+
 	// cxfxScreen
+	/*
 	var cxfxScreen gui.ScreenId = gui.ScreenCreate("skycoinScreen")
 	gui.ControlSetSkin(cxfxScreen.base, gui.g_bootSkin)//gui.g_goldBorderSkin)
 	gui.ControlSetDock(cxfxScreen.base, gui.DOCK_FILL)
@@ -169,32 +1018,42 @@ func loadMenu() {
 		gui.PictureSetAlign(cxfxPicture, gui.ALIGN_CENTER)
 		gui.PictureSetAnimation(cxfxPicture, cxfxAnim, false, 30)
         gui.ScreenSetDuration(cxfxScreen, gui.PictureGetAnimationDuration(cxfxPicture))
-	}
+	}*/
 
 	// skycoinScreen
-	var skycoinScreen gui.ScreenId = gui.ScreenCreate("skycoinScreen")
+	skycoinScreen = gui.ScreenId = gui.ScreenCreate("skycoinScreen")
 	gui.ControlSetSkin(skycoinScreen.base, gui.g_blackSkin)
 	gui.ControlSetDock(skycoinScreen.base, gui.DOCK_FILL)
-	gui.ScreenSetDuration(skycoinScreen, 2.0D)
+	gui.ScreenSetDuration(skycoinScreen, 1.0D)
 	gui.ScreenSetOnUpdate(skycoinScreen, "main", "skycoinOnUpdate")
-	gui.ScreenSetOnNext(skycoinScreen, cxfxScreen)
+	gui.ScreenSetOnNext(skycoinScreen, titleScreen)
 	{
-		var skycoinPicture PictureId = gui.PictureCreate("skycoinPicture")
+		
 		gui.ControlAddChild(skycoinScreen.base, skycoinPicture.base)
 		gui.ControlSetBounds(skycoinPicture.base, v4.make(0.0, 0.0, gfx.gfx_width / 2.0, gfx.gfx_height / 2.0))
 		gui.ControlSetAlign(skycoinPicture.base, gui.ALIGN_CENTER)
 		gui.ControlSetAutoscale(skycoinPicture.base, gui.AUTOSCALE)
 		gui.PictureSetAlign(skycoinPicture, gui.ALIGN_CENTER)
+		gui.PictureSetOnState(skycoinPicture, "main", "onSelectButton")
 		gui.PictureSetAnimation(skycoinPicture, gui.g_skycoinAnim, false, 30)
+		//snd.VoicePlay(Skysnd)
 	}
 
-	// bootScreen
-	var bootScreen gui.ScreenId = gui.ScreenCreate("bootScreen")
+
+
+		// bootScreen
+	bootScreen = gui.ScreenId = gui.ScreenCreate("bootScreen")
 	gui.ControlSetSkin(bootScreen.base, gui.g_bootSkin)
 	gui.ControlSetDock(bootScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(bootScreen, 2.0D)
 	gui.ScreenSetOnNext(bootScreen, skycoinScreen)
 	gui.ScreenShow(bootScreen)
+	valid_game=0
 
+
+
+		
+		
+	}
 }
 
