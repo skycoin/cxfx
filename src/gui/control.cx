@@ -198,6 +198,18 @@ func ControlSetBounds(id ControlId, bounds v4) {
 	g_controls[id.control].size = v4.zw(bounds)
 }
 
+// ControlGetRenderBounds ...
+func ControlGetRenderBounds(id ControlId) (out mat.v4) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	out = v4.make_v22(g_controls[id.control].renderPosition, g_controls[id.control].size)
+}
+
+// ControlGetBounds ...
+func ControlGetBounds(id ControlId) (out mat.v4) {
+	panicIfNot(IsValidControl(id), "invalid id")
+	out = v4.make_v22(g_controls[id.control].position, g_controls[id.control].size)
+}
+
 // ControlSetScale ...
 func ControlSetScale(id ControlId, scale mat.v2) {
 	panicIfNot(IsValidControl(id), "invalid id")

@@ -21,6 +21,7 @@ type Picture struct {
 	picturePosition mat.v2
 	alpha bool
 	onState func_i32_i32_id
+    color mat.v4
 }
 
 // NewPictureId ...
@@ -84,6 +85,13 @@ func PictureSetOnState(i_id PictureId, packageName str, functionName str) {
 	g_pictures[i_id.picture].onState = func_i32_i32(packageName, functionName)
 	var onState func_i32_i32_id = g_pictures[i_id.picture].onState
 	panicIfNot(onState.index >= 0, "invalid function")
+}
+
+// PictureSetColor ...
+func PictureSetColor(id PictureId, color mat.v4) {
+	panicIfNot(IsValidPicture(id), "invalid id")
+    g_pictures[id.picture].color = color
+
 }
 
 // PictureProcessEvent ...
@@ -207,16 +215,7 @@ func PictureRender(id PictureId, clip mat.v4, stack i32) () {
 
 	var controlIndex i32 = id.base.control
 
-	var color mat.v4 = v4.ONE
-	var skin SkinId = g_controls[controlIndex].skin
-	panicIfNot(IsValidSkin(skin) || skin.skin == -1, "invalid id")
-	if IsValidSkin(skin) {
-		var backLayer LayerId = g_skins[skin.skin].back
-		panicIfNot(IsValidLayer(backLayer) || backLayer.layer == -1, "invalid id")
-		if IsValidLayer(backLayer) {
-			color = g_layers[backLayer.layer].surface
-		}
-	}
+	var color mat.v4 = g_pictures[id.picture].color
 
 	var animation AnimationId = g_pictures[id.picture].animation
 	panicIfNot(IsValidAnimation(animation), "invalid animation")
