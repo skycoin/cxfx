@@ -49,7 +49,7 @@ func PictureCreate(name str) (out PictureId) {
 	picture.picturePosition = v2.ZERO
 	picture.alpha = false
     picture.onState = invalid_func_i32_i32()
-
+    picture.color = v4.ONE
 	g_pictures = append(g_pictures, picture)
 	panicIfNot(IsValidPicture(out), "invalid id")
 }
