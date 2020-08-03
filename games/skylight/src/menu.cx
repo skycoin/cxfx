@@ -96,9 +96,7 @@ var McaAnim gui.AnimationId = gui.InvalidAnimation()
 
 var texture gfx.TextureId = gfx.InvalidTexture()
 
-///LAYERS & SKINS
-var g_mcaLayer gui.LayerId
-var g_mcaSkin gui.SkinId
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 var Nbre_Portrait i32 //Amount of unlocked characters
@@ -277,6 +275,7 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 			if p<12{
 				gui.ControlSetBounds(Porpic[p].name.base, v4.make(Porpic[p].coorx, Porpic[p].coory, Porpic[p].sizex*Porpic[p].disp_scale, Porpic[p].sizey))
 				gui.PictureSetAlpha(Porpic[p].name, true)
+
 				//snd.VoicePlay(Porpic[p].snnd)
 				p++
 				display_time++
@@ -408,23 +407,31 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		}
 
 ////DISPLAY MCAFEE + TITLE
-
+		
 		dts_title = fps.DeltaSecond()
 		dt_title = f64.f32(dts_title)
 		if timer_title<3{
 		deltatime_title = deltatime_title + dt_title
 		}
+		if g_mcaAlpha<1.0{
+			g_mcaAlpha=g_mcaAlpha+dt_title*1.02
+		}	else{
+			g_mcaAlpha=1.0
+			timer_title=1
+		}
+
 		if timer_title==0{
-		if deltatime_title > 0.6{////TIME WHEN MCAFEE'S FACE APPEAR
 		gui.ControlSetBounds(FacePicture.base, v4.make((bande_horiz/2.0)+(0.19*true_width), 0.0, true_width*0.613, gfx.gfx_height))
 		gui.PictureSetAlpha(FacePicture, true)
-
+		gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
+		
 		//snd.VoicePlay(Titlesnd)
-		timer_title=1
-			}
 		}
 		if timer_title == 1 {
-			if deltatime_title > 1.2{////TIME WHEN TITLE APPEAR
+			if deltatime_title > 1.6{////TIME WHEN TITLE APPEAR
+			gui.ControlSetBounds(FacePicture.base, v4.make((bande_horiz/2.0)+(0.19*true_width), 0.0, true_width*0.613, gfx.gfx_height))
+			gui.PictureSetAlpha(FacePicture, true)
+			gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
 			gui.ControlSetBounds(NamePicture.base, v4.make((bande_horiz/2.0), 0.0, true_width*title_size, gfx.gfx_height))
 			gui.PictureSetAlpha(NamePicture, true)
 			//snd.VoicePlay(Title_Explo)
@@ -436,7 +443,8 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		gui.PictureSetAlpha(FacePicture, true)
 		gui.ControlSetBounds(NamePicture.base, v4.make((bande_horiz/2.0)+(true_width/2.0)*(1.0-title_size), 0.0, true_width*title_size, gfx.gfx_height))
 		gui.PictureSetAlpha(NamePicture, true)
-		
+		gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
+
 
 		if deltatime_title > 1.0{
 		if title_size < 1.0{
@@ -455,6 +463,7 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		if timer_title==3{
 		gui.ControlSetBounds(FacePicture.base, v4.make((bande_horiz/2.0)+(0.19*true_width), 0.0, true_width*0.613, gfx.gfx_height))
 		gui.PictureSetAlpha(FacePicture, true)
+		gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
 		gui.ControlSetBounds(NamePicture.base, v4.make((bande_horiz/2.0), 0.0, true_width, gfx.gfx_height))
 		gui.PictureSetAlpha(NamePicture, true)
 
@@ -1020,10 +1029,9 @@ func loadMenu() {
 		gui.ControlSetBounds(Icon_multi.base, v4.make(0.0,-1000.0,0.0,0.0))
 		gui.ControlSetBounds(Icon_options.base, v4.make(0.0,-1000.0,0.0,0.0))
 
-		g_mcaAlpha=0.20
-		//g_mcaLayer= gui.LayerCreate("MCALayer", v4.make(1.0,1.0,1.0,g_mcaAlpha), v4.ONE, v4.ONE, v4.ONE, v4.ONE)
-		//g_mcaSkin= gui.SkinCreate("MCASkin", gui.InvalidLayer(),g_mcaLayer,gui.InvalidLayer(),gui.InvalidLayer(),gui.InvalidLayer(),gui.InvalidLayer(),gui.InvalidLayer(),gui.InvalidLayer(),gui.InvalidLayer(),gui.InvalidLayer())
-		//gui.ControlSetSkin(FacePicture.base, g_mcaSkin)
+		g_mcaAlpha=0.01
+		gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
+
 
 	}
 
