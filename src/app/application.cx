@@ -130,7 +130,7 @@ func Run(name str, width i32, height i32, fps i32, dataDir str, glVersion i32, f
                     fps.StartProfile(g_app.prfUpdate)
                     {
                         fps.StartProfile(g_app.prfSound)
-                        snd.Update()
+                        //snd.Update()
                         fps.StopProfile(g_app.prfSound)
 
                         fps.StartProfile(g_app.prfUIUpdate)
@@ -257,7 +257,7 @@ func Resize(width i32, height i32) {
 // Destroy ...
 func Destroy()() {
 	glfw.MakeContextCurrent(g_app.window)
-    snd.Destroy()
+    //snd.Destroy()
     gfx.Destroy()
 }
 
@@ -434,7 +434,7 @@ func Init() {
 
     gfx.Init(Width(), Height(), DataDir(), GLVersion())
     gui.Init(Width(), Height(), DataDir())
-    snd.Init(64, 64)
+    //snd.Init(64, 64)
 
     g_app.visible = true
 }

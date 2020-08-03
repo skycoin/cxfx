@@ -31,7 +31,7 @@ DATA = ++data=$(CXFX_SRC)/resources/
 GLFWHINTS = ++hints=resizable
 FPS = ++fps=30
 
-CXFXOPTS = $(GLVERSION) $(DATA)#$(GLFWHINTS)
+CXFXOPTS = $(GLVERSION) $(DATA) $(GLFWHINTS)
 
 SKYLIGHT := $(CXFX_SRC)/games/skylight/src
 TUTORIALS := $(CXFX_SRC)/tutorials
