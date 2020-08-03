@@ -80,6 +80,13 @@ func LayerPrint(message str, id LayerId) {
 		g_layers[index].top.w)
 }
 
+// LayerSetSurface ...
+func LayerSetSurface(layer LayerId, surface mat.v4) {
+    if IsValidLayer(layer) {
+        g_layers[layer.layer].surface = surface
+    }
+}
+
 // LayerRender ...
 func LayerRender(layer LayerId, renderBounds mat.v4, renderClips mat.v4, depth f32) {
 	if IsValidLayer(layer) {
