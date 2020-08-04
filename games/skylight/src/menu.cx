@@ -100,10 +100,11 @@ var texture gfx.TextureId = gfx.InvalidTexture()
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 var Nbre_Portrait i32 //Amount of unlocked characters
-var mousePosition mat.v2 = gui.CurrentEvent.mouse.position
+var g_mousePos v2
 
 //PORTRAIT PARAMETERS TYPE
 type portrait struct {
+
 	name PictureId
 	pic str
 	anim AnimationId
@@ -114,6 +115,8 @@ type portrait struct {
 	snnd VoiceId
 	disp_scale f32
 	flux f32
+	Select i32
+	
 }
 
 var Porpic[12] portrait
@@ -157,7 +160,10 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 	gui.PictureSetAnimation(BackGRPicture, BackGRAnim, false, 30)
 
 	valid_game=2
-
+	//GET MOUSE POSITION
+	//printf("souris: %f, %f/n", g_mousePos.x, g_mousePos.y)
+	g_mousePos = gui.CurrentEvent.mouse.position
+	
 
 	//CALCULATING THE RATIO BETWEEN INITIAL SCREENSIZE AND REFRESHED SCREENSIZE
 	var bande_noire f32//Size of black boarder on top and botton
@@ -310,15 +316,41 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 
 	////KEEP DISPLAYING PORTRAITS AFTER ALL ZOOM FINISHED
 	if display_time == Nbre_Portrait+1 {
+		//CHECK IF MOUSE TOUCH PORTRAIT/////////////////////////////
+		Portrait_select=-1
+		for i:=0; i < Nbre_Portrait; i++ {
+			var f i32
+			f=11-i
+			Porpic[f].Select=0
+			var no_select i32
+			var selBounds v4
+			selBounds= gui.ControlGetRenderBounds(Porpic[f].name.base)
+			if (g_mousePos.x>selBounds.x) && (g_mousePos.x<(selBounds.x+selBounds.z)) && (g_mousePos.y>selBounds.y) && (g_mousePos.y<(selBounds.y+selBounds.w)){
+				Porpic[f].Select=f
+				no_select=1
+				}
+			if Porpic[f].Select>Portrait_select && no_select==1{
+				Portrait_select=Porpic[f].Select///TOUCHED PORTRAIT
+				
+			}else{
+				Porpic[f].disp_scale=1.0
+			}
+			if Portrait_select>-1{
+			Porpic[Portrait_select].disp_scale=pumpscale
+			}
+			
+			printf("BOUNDS: ", Portrait_select, "\n")
+			//printf("bogbounds %f, %f, %f, %f\n", selBounds.x, selBounds.y, selBounds.z, selBounds.w)
+		}
+		//DISPLAY PORTRAITS////////////////////////////////////
 		for i:=0; i < Nbre_Portrait; i++ {
 			gui.ControlSetBounds(Porpic[i].name.base, v4.make(Porpic[i].coorx, Porpic[i].coory, Porpic[i].sizex*Porpic[i].disp_scale, Porpic[i].sizey))
 			gui.PictureSetAlpha(Porpic[i].name, true)
-			gui.PictureSetOnState(Porpic[i].name, "main", "onPortraitButton")
-
-
-		printf("control %d, base %d, picture %d\n", controlIndex, Porpic[i].name.base.control, Porpic[i].name.picture)
+			
+			
+			
 		}
-		//BACK BUTTON:
+		//DISPLAY BACK BUTTON:////////////////////////////////////////
 		gui.ControlSetAutoscale(Icon_back.base, gui.AUTOSCALE_X)
 		gui.ControlSetAutosize(Icon_back.base, gui.AUTOSIZE_Y)
 		gui.ControlSetBounds(Icon_back.base, v4.make((bande_horiz/2.0)+(0.94*true_width),0.89*(true_height)+(bande_noire/2.0), 0.05*true_width*pumpscale, gfx.gfx_height))
@@ -341,9 +373,12 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 				pumpmark=0
 			}
 		}
-
-	}
+		
+		
 		////////////////////////////////////////////
+		
+
+}
 }
 
 func TitleOnUpdate(controlIndex i32, controlAction i32) {
@@ -413,13 +448,14 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		if timer_title<3{
 		deltatime_title = deltatime_title + dt_title
 		}
+		if timer_title==0{
 		if g_mcaAlpha<1.0{
 			g_mcaAlpha=g_mcaAlpha+dt_title*1.02
 		}	else{
 			g_mcaAlpha=1.0
 			timer_title=1
 		}
-
+		}
 		if timer_title==0{
 		gui.ControlSetBounds(FacePicture.base, v4.make((bande_horiz/2.0)+(0.19*true_width), 0.0, true_width*0.613, gfx.gfx_height))
 		gui.PictureSetAlpha(FacePicture, true)
@@ -475,7 +511,7 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		gui.ControlSetAutosize(Icon_options.base, gui.AUTOSIZE_Y)
 		//var oldpos mat.v4 = v4.make((bande_horiz/2.0)+(0.40*true_width), -0.75*(true_height/2.0), true_width*0.06*pumpscale, gfx.gfx_height)
 		//var thepos mat.v4 = v4.make(oldpos.x, 0.09*(true_height/2.0)+(bande_noire/2.0), oldpos.z, oldpos.w)
-		//printf("THE_POS %f, %f, %f, %f\n", thepos.x, thepos.y, thepos.z, thepos.w)
+		//printf("THE_POS ", timer_title)
 		gui.ControlSetBounds(Icon_single.base, v4.make((bande_horiz/2.0)+(0.40*true_width), 0.09*(true_height/2.0)+(bande_noire/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
 		gui.ControlSetBounds(Icon_multi.base, v4.make((bande_horiz/2.0)+(0.47*true_width), 0.09*(true_height/2.0)+(bande_noire/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
 		gui.ControlSetBounds(Icon_options.base, v4.make((bande_horiz/2.0)+(0.54*true_width), 0.09*(true_height/2.0)+(bande_noire/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
@@ -804,12 +840,14 @@ func loadMenu() {
 		port_flux=1.01//INITIAL ZOOM SPEED
 		scroll_horiz=0.001
 		appear_time=0.3
+		Portrait_select=-1
 		//////////////////////////////////////////////
 		//PARAMETERS
 		Porpic[0].pic = "MacronTexture"
 		Porpic[0].anim = MacronAnim
 		Porpic[0].disp_scale=initial_size
 		Porpic[0].flux=port_flux
+		
 		
 		Porpic[1].pic = "BufTexture"
 		Porpic[1].anim = BufAnim
@@ -835,6 +873,7 @@ func loadMenu() {
 		Porpic[5].anim = BogdanAnim
 		Porpic[5].disp_scale=initial_size
 		Porpic[5].flux=port_flux
+		
 
 		Porpic[6].pic = "ZucTexture"
 		Porpic[6].anim = ZucAnim
