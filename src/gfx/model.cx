@@ -733,7 +733,7 @@ func loadTexture(asset AssetId, dataDir str, index i32) (out TextureId) {
 		var texture gltf.Texture = gltf.AssetGetTexture(asset, index)
 		var image gltf.Image = gltf.AssetGetImage(asset, texture.source)
 		if image.uri != "" {
-			out = TextureCreate(sprintf("%s%s", dataDir, image.uri), FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+			out = TextureCreate(sprintf("%s%s", dataDir, image.uri), FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
 		}
 	//}
 }

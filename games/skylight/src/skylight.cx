@@ -1271,42 +1271,42 @@ func gameOnStart(window str) {
 	var halfHeight i32 = height / scale
 
 	edgeTarget = gfx.TargetCreate(1, width, height, scale, true)
-	var edgeTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_R8, halfWidth, halfHeight, 0, true)
+	var edgeTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_R8, halfWidth, halfHeight, 0, true, false)
 	gfx.TextureSamplerState(edgeTexture, gfx.g_nearestClamp)
 	gfx.TargetAttachColor(edgeTarget, edgeTexture, 0)
 
 	opaqueTarget = gfx.TargetCreate(1, width, height, 1, true)
-	var opaque0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true)
+	var opaque0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true, false)
 	gfx.TextureSamplerState(opaque0, gfx.g_nearestClamp)
 	gfx.TargetAttachColor(opaqueTarget, opaque0, 0)
-	var opaqueDepthTexture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, width, height, 0, true)
+	var opaqueDepthTexture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, width, height, 0, true, false)
 	gfx.TargetAttachDepth(opaqueTarget, opaqueDepthTexture)
 
 	alphaFullTarget = gfx.TargetCreate(2, width, height, 1, true)
-	var alphaFull0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true)
+	var alphaFull0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true, false)
 	gfx.TextureSamplerState(alphaFull0, gfx.g_linearWrap)
 	gfx.TargetAttachColor(alphaFullTarget, alphaFull0, 0)
-	var alphaFull1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true)
+	var alphaFull1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true, false)
 	gfx.TextureSamplerState(alphaFull1, gfx.g_linearWrap)
 	gfx.TargetAttachColor(alphaFullTarget, alphaFull1, 1)
-	var alphaFullStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true)
+	var alphaFullStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true, false)
 	gfx.TargetAttachStencil(alphaFullTarget, alphaFullStencilTexture)
 
 	alphaTarget = gfx.TargetCreate(2, width, height, scale, true)
-	var alpha0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true)
+	var alpha0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true, false)
 	gfx.TextureSamplerState(alpha0, gfx.g_linearWrap)
 	gfx.TargetAttachColor(alphaTarget, alpha0, 0)
-	var alpha1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true)
+	var alpha1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true, false)
 	gfx.TextureSamplerState(alpha1, gfx.g_linearWrap)
 	gfx.TargetAttachColor(alphaTarget, alpha1, 1)
-	var alphaStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, halfWidth, halfHeight, 0, true)
+	var alphaStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, halfWidth, halfHeight, 0, true, false)
 	gfx.TargetAttachStencil(alphaTarget, alphaStencilTexture)
 
 	mergeTarget = gfx.TargetCreate(1, width, height, 1, true)
-	var merge0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true)
+	var merge0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true, false)
 	gfx.TextureSamplerState(merge0, gfx.g_nearestClamp)
 	gfx.TargetAttachColor(mergeTarget, merge0, 0)
-	var mergeStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true)
+	var mergeStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true, false)
 	gfx.TargetAttachStencil(mergeTarget, mergeStencilTexture)
 
 
@@ -1352,8 +1352,8 @@ func gameOnStart(window str) {
 		v3.make(groundRight, 0.0, 0.0), v3.GREEN, v3.make(0.0, 0.0, groundBack),
 		0.0, 1.0, v4.make(0.0, 1.0, 0.0, 0.0), v4.ONE)
 
-	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
-	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
+	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
 
 
     var skies []str
