@@ -367,6 +367,7 @@ func parse() {
         }
 
 		if args.Flags(arg, "hints", &hints, &hintsMatch, hintNames, hintValues) {
+			g_app.options.hints = hints
 			continue
 		}
 
