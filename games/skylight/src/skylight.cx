@@ -1,6 +1,7 @@
 package main
 
 import "app"
+import "args"
 import "fps"
 import "gam"
 import "gfx"
@@ -165,6 +166,17 @@ var groundBack f32 = worldSizeZ / groundScale
 var groundWidth i32 = 16
 var groundHeight i32 = 16
 
+var GAME_MODE_MENU       i32 = 1
+var GAME_MODE_GAME       i32 = 2
+var GAME_MODE_LIGHT      i32 = 4
+
+var gameMode i32
+var gameModeMatch bool
+var gameModeNames []str
+var gameModeValues []i32
+var hasModeMenu bool
+var hasModeGame bool
+var isModeLight bool
 //var voiceId snd.VoiceId
 
 var TAG_GROUND i32 = 1
@@ -1256,6 +1268,30 @@ func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
+func gameOnParse(i i32, argc i32) {
+    if len(gameModeNames) == 0 {
+        gameModeNames = []str {"menu", "game", "light"}
+        gameModeValues = []i32 {GAME_MODE_MENU, GAME_MODE_GAME, GAME_MODE_LIGHT}
+        app.SetUserHelp("++gmode : Game Mode flag : menu, game, light\n")
+    }
+
+    app.SetCurrentArgIsValid(false)
+    var arg str = app.GetCurrentArg()
+    if args.Flags(arg, "gmode", &gameMode, &gameModeMatch, gameModeNames, gameModeValues) {
+        app.SetCurrentArgIsValid(true)
+        if ((gameMode & GAME_MODE_MENU) != 0) || (gameMode == 0) || (gameMode == GAME_MODE_LIGHT) {
+            hasModeMenu = true
+        }
+        if ((gameMode & GAME_MODE_GAME) != 0) || (gameMode == 0) || (gameMode == GAME_MODE_LIGHT) {
+            hasModeGame = true
+        }
+        if ((gameMode & GAME_MODE_LIGHT) != 0) {
+            isModeLight = true
+        }
+    }
+}
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 func gameOnStart(window str) {
     StartCPUProfile("skylight_init", 100)
     app.Init()
@@ -1271,42 +1307,42 @@ func gameOnStart(window str) {
 	var halfHeight i32 = height / scale
 
 	edgeTarget = gfx.TargetCreate(1, width, height, scale, true)
-	var edgeTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_R8, halfWidth, halfHeight, 0, true)
+	var edgeTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_R8, halfWidth, halfHeight, 0, true, false)
 	gfx.TextureSamplerState(edgeTexture, gfx.g_nearestClamp)
 	gfx.TargetAttachColor(edgeTarget, edgeTexture, 0)
 
 	opaqueTarget = gfx.TargetCreate(1, width, height, 1, true)
-	var opaque0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true)
+	var opaque0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true, false)
 	gfx.TextureSamplerState(opaque0, gfx.g_nearestClamp)
 	gfx.TargetAttachColor(opaqueTarget, opaque0, 0)
-	var opaqueDepthTexture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, width, height, 0, true)
+	var opaqueDepthTexture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, width, height, 0, true, false)
 	gfx.TargetAttachDepth(opaqueTarget, opaqueDepthTexture)
 
 	alphaFullTarget = gfx.TargetCreate(2, width, height, 1, true)
-	var alphaFull0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true)
+	var alphaFull0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true, false)
 	gfx.TextureSamplerState(alphaFull0, gfx.g_linearWrap)
 	gfx.TargetAttachColor(alphaFullTarget, alphaFull0, 0)
-	var alphaFull1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true)
+	var alphaFull1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true, false)
 	gfx.TextureSamplerState(alphaFull1, gfx.g_linearWrap)
 	gfx.TargetAttachColor(alphaFullTarget, alphaFull1, 1)
-	var alphaFullStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true)
+	var alphaFullStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true, false)
 	gfx.TargetAttachStencil(alphaFullTarget, alphaFullStencilTexture)
 
 	alphaTarget = gfx.TargetCreate(2, width, height, scale, true)
-	var alpha0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true)
+	var alpha0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true, false)
 	gfx.TextureSamplerState(alpha0, gfx.g_linearWrap)
 	gfx.TargetAttachColor(alphaTarget, alpha0, 0)
-	var alpha1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true)
+	var alpha1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true, false)
 	gfx.TextureSamplerState(alpha1, gfx.g_linearWrap)
 	gfx.TargetAttachColor(alphaTarget, alpha1, 1)
-	var alphaStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, halfWidth, halfHeight, 0, true)
+	var alphaStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, halfWidth, halfHeight, 0, true, false)
 	gfx.TargetAttachStencil(alphaTarget, alphaStencilTexture)
 
 	mergeTarget = gfx.TargetCreate(1, width, height, 1, true)
-	var merge0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true)
+	var merge0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true, false)
 	gfx.TextureSamplerState(merge0, gfx.g_nearestClamp)
 	gfx.TargetAttachColor(mergeTarget, merge0, 0)
-	var mergeStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true)
+	var mergeStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true, false)
 	gfx.TargetAttachStencil(mergeTarget, mergeStencilTexture)
 
 
@@ -1318,14 +1354,17 @@ func gameOnStart(window str) {
 		v4.ONE)
 	gfx.MeshEnd(skyMesh)
 
-	playerCreate("synth", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-	//playerCreate("metalic", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-	//playerCreate("bw", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-    //playerCreate("megafee", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-	//playerCreate("bugd", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-	//playerCreate("npc", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-	skyminerModel = loadModel("skyminer/low", "skyminer_low_test.gltf", gfx.MODEL_GEOMETRY)
-
+    if hasModeGame {
+	    playerCreate("synth", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+        if isModeLight == false {
+	        playerCreate("metalic", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+	        playerCreate("bw", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+            playerCreate("megafee", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+	        playerCreate("bugd", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+	        playerCreate("npc", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+        }
+	    skyminerModel = loadModel("skyminer/low", "skyminer_low_test.gltf", gfx.MODEL_GEOMETRY)
+    }
 	currentPlayer = 0
 
 	dollarMesh = gfx.MeshCreate(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 8192 * 3, gfx.g_vertexLayout, 8192 * 3)
@@ -1352,27 +1391,31 @@ func gameOnStart(window str) {
 		v3.make(groundRight, 0.0, 0.0), v3.GREEN, v3.make(0.0, 0.0, groundBack),
 		0.0, 1.0, v4.make(0.0, 1.0, 0.0, 0.0), v4.ONE)
 
-	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
-	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
+	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
 
 
     var skies []str
-    skies = append(skies, "doge2")
-    /*skies = append(skies, "ennis")
-    skies = append(skies, "field")
-    skies = append(skies, "footprint_court")
-    skies = append(skies, "helipad")
-    skies = append(skies, "papermill")
-    skies = append(skies, "pisa")
-    skies = append(skies, "studio_grey")
-    skies = append(skies, "studio_red_green")*/
-   /*for i := 0; i < len(skies); i++ {
-        skySpeculars = append(skySpeculars, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/specular/specular_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 32, false))
-	    skyDiffuses = append(skyDiffuses, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/diffuse/diffuse_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 0, false))
+    if hasModeGame {
+        skies = append(skies, "doge2")
+        if isModeLight == false {
+            skies = append(skies, "ennis")
+            skies = append(skies, "field")
+            skies = append(skies, "footprint_court")
+            skies = append(skies, "helipad")
+            skies = append(skies, "papermill")
+            skies = append(skies, "pisa")
+            skies = append(skies, "studio_grey")
+            skies = append(skies, "studio_red_green")
+        }
+        for i := 0; i < len(skies); i++ {
+            skySpeculars = append(skySpeculars, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/specular/specular_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 32, false))
+	        skyDiffuses = append(skyDiffuses, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/diffuse/diffuse_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 0, false))
+        }
+
+        brdf = gfx.TextureCreate(sprintf("%s/textures/environments/brdf.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false, false)
     }
 
-    brdf = gfx.TextureCreate(sprintf("%s/textures/environments/brdf.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
-*/
 	camera = gam.CameraCreate()
 	gam.CameraSetProjection(camera, 0.5, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y, true)
 	gam.CameraSetPosition(camera, v3.make(0.0, worldPosY + 1.0, 0.0), true)
@@ -1390,6 +1433,7 @@ func gameOnStart(window str) {
 //-----------------------------------------------------------------------------
 func main()() {
     StartCPUProfile("skylight_run", 100)
+    app.SetParseCallback("main", "gameOnParse")
 	app.SetStartCallback("main", "gameOnStart")
 	if app.Run("skylight", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
 	    gfx.MeshUnlock(skyMesh)

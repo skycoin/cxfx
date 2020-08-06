@@ -249,7 +249,7 @@ func Init(width i32, height i32, dataDir str) {
 
 
 	// textures
-	g_skycoinTexture = gfx.TextureCreate(sprintf("%stextures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", dataDir), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+	g_skycoinTexture = gfx.TextureCreate(sprintf("%stextures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", dataDir), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true, false)
 
 	g_synthAnim = AnimationCreateFromPath(sprintf("%stextures/synth.gif", dataDir))
 	g_skycoinAnim = AnimationCreateFromTexture(g_skycoinTexture)
@@ -695,11 +695,11 @@ func lockTarget() (out TargetId) {
 		//gfx.TargetBind(out)
 	} else {
 		out = gfx.TargetCreate(1, app.Width(), app.Height(), 1, true)
-		var color TextureId  = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, app.Width(), app.Height(), 0, true)
+		var color TextureId  = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, app.Width(), app.Height(), 0, true, false)
 		gfx.TextureSamplerState(color, gfx.g_nearestClamp)
 		gfx.TargetAttachColor(out, color, 0)
 		var test TextureId = gfx.TargetGetColor(out, 0)
-		var depthTexture TextureId  = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, app.Width(), app.Height(), 0, true)
+		var depthTexture TextureId  = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, app.Width(), app.Height(), 0, true, false)
 		gfx.TextureSamplerState(depthTexture, gfx.g_nearestClamp)
 		gfx.TargetAttachDepth(out, depthTexture)
 		g_allTargets = append(g_allTargets, out)

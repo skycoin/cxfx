@@ -167,7 +167,7 @@ func TextureSetResizable(id TextureId, resizable bool) {
 	g_textures[id.texture].resizable = resizable
 }*/
 
-func textureCreate0(path str, target i32, format i32, width i32, height i32, mipmap i32, resizable bool) (out TextureId) {
+func textureCreate0(path str, target i32, format i32, width i32, height i32, mipmap i32, resizable bool, cpuCopy bool) (out TextureId) {
 	var name i32 = gl.GenTextures(1, name) // TODO : change gl.GenTextures signature
 	panicIf(GlError(), "gl.GenTextures")
     var extension str
@@ -206,15 +206,15 @@ func textureCreate0(path str, target i32, format i32, width i32, height i32, mip
 		panicIf(GlError(), "gl.TexParameteri")
 
 		if target == gl.TEXTURE_2D {
-			gl.UploadImageToTexture(path, target, 0)
+			gl.UploadImageToTexture(path, target, 0, cpuCopy)
 		} else if target == gl.TEXTURE_CUBE_MAP {
 			gl.TexParameteri(target, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE)
-			gl.UploadImageToTexture(sprintf("%sright%s", pattern, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0)
-			gl.UploadImageToTexture(sprintf("%sleft%s", pattern, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0)
-			gl.UploadImageToTexture(sprintf("%stop%s", pattern, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0)
-			gl.UploadImageToTexture(sprintf("%sbottom%s", pattern, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0)
-			gl.UploadImageToTexture(sprintf("%sfront%s", pattern, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0)
-			gl.UploadImageToTexture(sprintf("%sback%s", pattern, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0)
+			gl.UploadImageToTexture(sprintf("%sright%s", pattern, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, cpuCopy)
+			gl.UploadImageToTexture(sprintf("%sleft%s", pattern, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, cpuCopy)
+			gl.UploadImageToTexture(sprintf("%stop%s", pattern, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, cpuCopy)
+			gl.UploadImageToTexture(sprintf("%sbottom%s", pattern, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, cpuCopy)
+			gl.UploadImageToTexture(sprintf("%sfront%s", pattern, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, cpuCopy)
+			gl.UploadImageToTexture(sprintf("%sback%s", pattern, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, cpuCopy)
 		}
 		panicIf(GlError(), "gl.NewTexture")
 	}
@@ -226,16 +226,16 @@ func textureCreate0(path str, target i32, format i32, width i32, height i32, mip
             var mipmapCount i32 = TextureGetMipmapCount(out)
             if target == gl.TEXTURE_2D {
                 for i := 1; i < mipmapCount; i++ {
-                    gl.UploadImageToTexture(sprintf("%s_%d%s", pattern, i, extension), target, i)
+                    gl.UploadImageToTexture(sprintf("%s_%d%s", pattern, i, extension), target, i, cpuCopy)
                 }
             } else if target == gl.TEXTURE_CUBE_MAP {
                 for i := 1; i < mipmapCount; i++ {
-			        gl.UploadImageToTexture(sprintf("%sright_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_X, i)
-			        gl.UploadImageToTexture(sprintf("%sleft_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_X, i)
-			        gl.UploadImageToTexture(sprintf("%stop_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Y, i)
-			        gl.UploadImageToTexture(sprintf("%sbottom_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, i)
-			        gl.UploadImageToTexture(sprintf("%sfront_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Z, i)
-			        gl.UploadImageToTexture(sprintf("%sfront_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, i)
+			        gl.UploadImageToTexture(sprintf("%sright_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_X, i, cpuCopy)
+			        gl.UploadImageToTexture(sprintf("%sleft_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_X, i, cpuCopy)
+			        gl.UploadImageToTexture(sprintf("%stop_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Y, i, cpuCopy)
+			        gl.UploadImageToTexture(sprintf("%sbottom_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, i, cpuCopy)
+			        gl.UploadImageToTexture(sprintf("%sfront_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_POSITIVE_Z, i, cpuCopy)
+			        gl.UploadImageToTexture(sprintf("%sfront_%d%s", pattern, i, extension), gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, i, cpuCopy)
                 }
             }
         }
@@ -246,13 +246,20 @@ func textureCreate0(path str, target i32, format i32, width i32, height i32, mip
 }
 
 // TextureCreate ...
-func TextureCreate(path str, format i32, width i32, height i32, mipmap i32, resizable bool) (out TextureId) {
-	out = textureCreate0(path, gl.TEXTURE_2D, format, width, height, mipmap, resizable)
+func TextureCreate(path str, format i32, width i32, height i32, mipmap i32, resizable bool, cpuCopy bool) (out TextureId) {
+	out = textureCreate0(path, gl.TEXTURE_2D, format, width, height, mipmap, resizable, cpuCopy)
 }
 
 // TextureCreateCube ...
 func TextureCreateCube(path str, format i32, width i32, height i32, mipmap i32, resizable bool) (out TextureId) {
-	out = textureCreate0(path, gl.TEXTURE_CUBE_MAP, format, width, height, mipmap, resizable)
+	out = textureCreate0(path, gl.TEXTURE_CUBE_MAP, format, width, height, mipmap, resizable, false)
+}
+
+// TextureGetPixel ...
+func TextureGetPixel(id TextureId, x i32, y i32) (r f32, g f32, b f32, a f32) {
+	panicIfNot(IsValidTexture(id), "invalid id")
+    printf("TextureGetPixel %d, %d\n", x, y)
+    r, g, b, a = gl.CxTextureGetPixel(g_textures[id.texture].path, x, y)
 }
 
 // TextureResize ...

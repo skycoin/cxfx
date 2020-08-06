@@ -31,7 +31,7 @@ DATA = ++data=$(CXFX_SRC)/resources/
 GLFWHINTS = ++hints=resizable
 FPS = ++fps=30
 
-CXFXOPTS = $(GLVERSION) $(DATA) $(GLFWHINTS)
+CXFXOPTS = $(GLVERSION) $(DATA) $(GLFWHINTS) ++gmode=$(GMODE)
 
 SKYLIGHT := $(CXFX_SRC)/games/skylight/src
 TUTORIALS := $(CXFX_SRC)/tutorials
@@ -80,6 +80,7 @@ SRC = $(CX_SRC)/lib/args.cx\
 	  $(CXFX_SRC)/src/mat/m44f.cx\
       $(CXFX_SRC)/src/mat/intersect.cx\
 	  $(CXFX_SRC)/src/app/application.cx\
+	  $(CXFX_SRC)/src/app/callback.cx\
 	  $(CXFX_SRC)/src/app/event.cx\
 	  $(CXFX_SRC)/src/fps/profiler.cx\
 	  $(CXFX_SRC)/src/fps/framerate.cx\
@@ -99,7 +100,6 @@ SRC = $(CX_SRC)/lib/args.cx\
 	  $(CXFX_SRC)/src/gfx/scissor.cx\
 	  $(CXFX_SRC)/src/gfx/frustum.cx\
 	  $(CXFX_SRC)/src/gfx/octree.cx\
-	  $(CXFX_SRC)/src/gui/callback.cx\
 	  $(CXFX_SRC)/src/gui/layer.cx\
 	  $(CXFX_SRC)/src/gui/skin.cx\
 	  $(CXFX_SRC)/src/gui/scope.cx\
