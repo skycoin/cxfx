@@ -656,6 +656,9 @@ func loadMenu() {
     }
 
     if hasModeMenu {
+	    //var audioId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
+	    //voiceId = snd.VoiceCreate(audioId)
+
         skylightTexture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/Title_Back.png", app.DataDir()),
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true, false)
         skylightAnim = gui.AnimationCreateFromTexture(skylightTexture)
