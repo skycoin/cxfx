@@ -28,7 +28,9 @@ type Sky struct {
 
 type Level struct {
     name str
+    scene str
     loaded bool
+    model gfx.ModelId
 }
 
 
@@ -127,10 +129,10 @@ var prfAlphaHalf fps.ProfileId = fps.InvalidProfile()
 var characters []Player
 var players []Player
 var skies []Sky
-var levels []str
+var levels []Level
 
-var gameScreen gui.ScreenId
-var exitScreen gui.ScreenId
+var currentSky i32
+var currentLevel i32
 
 var skyminerModel gfx.ModelId = gfx.ModelInvalid()
 var skyminerScale f32 = 0.1
@@ -144,12 +146,6 @@ var alphaFullTarget gfx.TargetId
 var mergeTarget gfx.TargetId
 var edgeTarget gfx.TargetId
 
-var cxfxAnim gui.AnimationId = gui.InvalidAnimation()
-var skylightTexture gfx.TextureId = gfx.InvalidTexture()
-var skylightAnim gui.AnimationId = gui.InvalidAnimation()
-var charactersTexture gfx.TextureId = gfx.InvalidTexture()
-var charactersAnim gui.AnimationId = gui.InvalidAnimation()
-
 var groundMesh gfx.MeshId = gfx.InvalidMesh()
 var texture gfx.TextureId = gfx.InvalidTexture()
 var dollar gfx.TextureId = gfx.InvalidTexture()
@@ -158,7 +154,6 @@ var smokeTexture gfx.TextureId = gfx.InvalidTexture()
 var dollarMesh gfx.MeshId = gfx.InvalidMesh()
 
 var skyMesh gfx.MeshId = gfx.InvalidMesh()
-var currentSky i32
 var brdf gfx.TextureId = gfx.InvalidTexture()
 
 var world m44
@@ -800,17 +795,17 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 
     if firstGameUpdate {
         firstGameUpdate = false
-        printf("LOAD_GAME\n")
         loadGame()
     }
 
     if firstLevelUpdate {
         firstLevelUpdate = false
-        printf("LOAD_LEVEL\n")
         loadLevel()
     }
 
-    printf("LOADED\n")
+
+    //gfx.ModelUpdate(levels[currentLevel].model, gfx.InvalidAnim()
+
 	var scaleBox f32 = 50.0
 	for i:= aimCount; i < aimMax; i++ {
 		newAimBox(v3.add(v3.make((2.0 * f32.rand() - 1.0) * scaleBox, scaleBox + f32.rand() * 5.0, (2.0 * f32.rand() - 1.0) * scaleBox),
@@ -1003,6 +998,23 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 		m44.makev_AT(phx.GetObjectRotation(phxGround1), phx.GetObjectPosition(phxGround1)), false)
 	gfx.MeshRender(groundMesh)
 	fps.StopProfile(prfRenderGround)
+
+	//-------------------------------------------------------------------------
+    // LevelRender
+	//-------------------------------------------------------------------------
+	if isModeLight == false {
+        var levelModel gfx.ModelId = levels[currentLevel].model
+	    gfx.ModelUpdate(levelModel, gfx.AnimationInvalid(), 0.0, true)
+	    gfx.ModelSetWorld(levelModel, m44.IDENTITY)
+	    gfx.ModelSetView(levelModel, view)
+	    gfx.ModelSetProjection(levelModel, projection)
+	    gfx.ModelSetEnvironmentSpecular(levelModel, skies[currentSky].specular)
+	    gfx.ModelSetEnvironmentDiffuse(levelModel, skies[currentSky].diffuse)
+	    gfx.ModelSetBRDF(levelModel, brdf)
+	    gfx.ModelSetCameraPosition(levelModel, cameraPosition)
+        gfx.ModelSetExposure(levelModel, 1.0)
+	    gfx.ModelRender(levelModel)
+    }
 
 	//-------------------------------------------------------------------------
 	// PhxRender
@@ -1268,8 +1280,16 @@ func characterCreate(name str) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
+func levelCreate(name str, scene str) {
+    var level Level
+    level.name = name
+    level.scene = scene
+    levels = append(levels, level)
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
-    printf("PLAYER_CREATE %s\n", pattern)
     var characterCount i32 = len(characters)
     var loadedChar i32 = -1
     for i := 0; i < characterCount; i++ {
@@ -1279,12 +1299,12 @@ func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
         }
     }
 
-    printf("LOADEDCHAR %d\n", loadedChar)
     if loadedChar != -1 {
         if characters[loadedChar].loaded {
             players = append(players, characters[loadedChar])
         } else {
 	        var player Player
+            player.name = pattern
 	        player.idle = animCreate(sprintf("%s/idle", pattern), gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
 	        player.jump = animCreate(sprintf("%s/jump", pattern), gfx.MODEL_ANIMATION)
 	        player.throw = animCreate(sprintf("%s/throw", pattern), gfx.MODEL_ANIMATION)
@@ -1469,8 +1489,7 @@ func loadGame()() {
     //characterCreate("dmux")
     //characterCreate("bouffet")
 
-    levels = append(levels, "skyminer")
-
+    levelCreate("skyminer/high", "scene.gltf")
 
     skyCreate("doge2")
     skyCreate("ennis")
@@ -1498,13 +1517,18 @@ func loadGame()() {
 func loadLevel()() {
     if isModeLight == false {
         playerCount = 3
+        var levelCount i32 = len(levels)
+        currentLevel = i32.rand(0, levelCount) % levelCount
+        if levels[currentLevel].loaded == false {
+            levels[currentLevel].model = loadModel(levels[currentLevel].name, levels[currentLevel].scene, gfx.MODEL_GEOMETRY)
+            levels[currentLevel].loaded = true
+        }
     }
 
     var characterCount i32 = len(characters)
     players = resize(players, 0)
     for i := 0; i < playerCount; i++ {
         var r i32 = i32.rand(0, characterCount) % characterCount
-            printf("BEFORE CREATE %d, %d\n", r, characterCount)
         playerCreate(characters[r].name, "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
     }
 	currentPlayer = 0
