@@ -651,6 +651,7 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
+var firstSkycoinScreenUpdate bool
 func skycoinOnUpdate(controlIndex i32, controlAction i32) {
 	
 	gui.ControlSetBounds(skycoinPicture.base, v4.make(0.0, 0.0, gfx.gfx_width/2.0, gfx.gfx_height/2.0))
@@ -658,7 +659,11 @@ func skycoinOnUpdate(controlIndex i32, controlAction i32) {
 	gui.ControlSetAutoscale(skycoinPicture.base, gui.AUTOSCALE)
 	gui.PictureSetAlign(skycoinPicture, gui.ALIGN_CENTER)
 	gui.PictureSetOnState(skycoinPicture, "main", "onSelectButton")
-	
+
+    if firstSkycoinScreenUpdate == false {
+        snd.VoicePlay(skycoinVoice)
+        firstSkycoinScreenUpdate = true
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -1266,7 +1271,6 @@ func loadMenu() {
 		gui.PictureSetAlign(skycoinPicture, gui.ALIGN_CENTER)
 		gui.PictureSetOnState(skycoinPicture, "main", "onSelectButton")
 		gui.PictureSetAnimation(skycoinPicture, gui.g_skycoinAnim, false, 30)
-		snd.VoicePlay(skycoinVoice)
 	}
 
 
