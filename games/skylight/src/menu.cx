@@ -114,7 +114,7 @@ type portrait struct {
 	coory f32
 	sizex f32
 	sizey f32
-	snnd VoiceId
+	voice VoiceId
 	disp_scale f32
 	flux f32
 	Select i32
@@ -142,9 +142,16 @@ var zoom_flux f32//title zoom speed
 var port_flux f32//portraits zoom speed
 var appear_time f32//TIMESTAMP FOR PORTRAIT APPEARANCE
 var p i32
-var Explosnd snd.VoiceId
-var Titlesnd snd.VoiceId
-var Skysnd snd.VoiceId
+
+var characterSnd snd.AudioId
+var characterVoice snd.VoiceId
+
+var titleSnd snd.AudioId
+var titleVoice snd.VoiceId
+
+var skycoinSnd snd.AudioId
+var skycoinVoice snd.VoiceId
+
 var initial_size f32
 var Portrait_select i32//MARKER IF A PORTRAIT IS SELECTED
 var Pornum i32//WHICH PORTRAIT IS SELECTED
@@ -291,7 +298,7 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 				gui.ControlSetBounds(Porpic[p].name.base, v4.make(Porpic[p].coorx, Porpic[p].coory, Porpic[p].sizex*Porpic[p].disp_scale, Porpic[p].sizey))
 				gui.PictureSetAlpha(Porpic[p].name, true)
 
-				//snd.VoicePlay(Porpic[p].snnd)
+				snd.VoicePlay(Porpic[p].voice)
 				p++
 				display_time++
 			}
@@ -556,18 +563,18 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		gui.ControlSetBounds(FacePicture.base, v4.make((bande_horiz/2.0)+(0.19*true_width), 0.0, true_width*0.613, gfx.gfx_height))
 		gui.PictureSetAlpha(FacePicture, true)
 		gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
-		
-		//snd.VoicePlay(Titlesnd)
+
+		snd.VoicePlay(titleVoice)
 		}
 		if timer_title == 1 {
 			if deltatime_title > 1.6{////TIME WHEN TITLE APPEAR
-			gui.ControlSetBounds(FacePicture.base, v4.make((bande_horiz/2.0)+(0.19*true_width), 0.0, true_width*0.613, gfx.gfx_height))
-			gui.PictureSetAlpha(FacePicture, true)
-			gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
-			gui.ControlSetBounds(NamePicture.base, v4.make((bande_horiz/2.0), 0.0, true_width*title_size, gfx.gfx_height))
-			gui.PictureSetAlpha(NamePicture, true)
-			//snd.VoicePlay(Title_Explo)
-			timer_title=2
+			    gui.ControlSetBounds(FacePicture.base, v4.make((bande_horiz/2.0)+(0.19*true_width), 0.0, true_width*0.613, gfx.gfx_height))
+			    gui.PictureSetAlpha(FacePicture, true)
+			    gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
+			    gui.ControlSetBounds(NamePicture.base, v4.make((bande_horiz/2.0), 0.0, true_width*title_size, gfx.gfx_height))
+			    gui.PictureSetAlpha(NamePicture, true)
+			    snd.VoicePlay(characterVoice)
+			    timer_title=2
 			}
 		}
 		if timer_title==2{
@@ -752,8 +759,18 @@ func loadMenu() {
     if isModeLight == false {
         cxfxAnim = gui.AnimationCreateFromPath(sprintf("%stextures/cxfx.gif", app.DataDir()))
     }
-	    //var audioId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
-	    //voiceId = snd.VoiceCreate(audioId)
+
+    characterSnd = snd.AudioCreate(sprintf("%s/audios/character.wav", app.DataDir()))
+    characterVoice = snd.VoiceCreate(characterSnd)
+    printf("CHAR %d, %d\n", characterSnd.audio, characterVoice.voice)
+
+    titleSnd = snd.AudioCreate(sprintf("%s/audios/title.wav", app.DataDir()))
+    titleVoice = snd.VoiceCreate(titleSnd)
+    printf("TITLE %d, %d\n", titleSnd.audio, titleVoice.voice)
+
+    skycoinSnd = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
+    skycoinVoice = snd.VoiceCreate(skycoinSnd)
+    printf("SKYCOIN %d, %d\n", skycoinSnd.audio, skycoinVoice.voice)
 
     skylightTexture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/Title_Back.png", app.DataDir()),
             gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
@@ -854,16 +871,6 @@ func loadMenu() {
     McaTexture = gfx.TextureCreate(sprintf("%s/textures/Menu_Textures/mcafee_00.png", app.DataDir()),
             gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, false,true)
     McaAnim = gui.AnimationCreateFromTexture(McaTexture)
-
-    ///CREATE SOUNDS/////////////////
-    /*var ExploId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/BIG_Gun.wav", app.DataDir()))
-	Explosnd = snd.VoiceCreate(ExploId)
-	var ExploTitle snd.AudioId = snd.AudioCreate(sprintf("%s/audios/Bommm.wav", app.DataDir()))
-	Titlesnd = snd.VoiceCreate(ExploTitle)
-	var Skycoinscrn snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
-	Skysnd = snd.VoiceCreate(Skycoinscrn)
-*/
-    	
 
 
    	// exitScreen
@@ -1088,13 +1095,8 @@ func loadMenu() {
 			gui.PictureSetAlign(Porpic[i].name, gui.ALIGN_CENTER)
 			gui.PictureSetAnimation(Porpic[i].name, Porpic[i].anim, false, 30)
 			gui.PictureSetAlpha(Porpic[i].name, true)
-			//Porpic[i].snnd=	snd.VoiceCreate(ExploId)
-
+			Porpic[i].voice = snd.VoiceCreate(characterSnd)
 		}
-
-
-
-
 
 		Icon_back = gui.PictureId = gui.PictureCreate("Icon03Texture")
 		gui.ControlAddChild(characterScreen.base, Icon_back.base)
@@ -1217,7 +1219,6 @@ func loadMenu() {
 		//gui.ControlSetAutoscale(Icon_options.base, gui.AUTOSCALE)
 		gui.PictureSetAnimation(Icon_options, Icon01Anim, false, 30)
 		gui.PictureSetAlpha(Icon_options, true)
-		//Titlesnd = snd.VoiceCreate(ExploTitle)
 		gui.ControlSetBounds(Icon_single.base, v4.make(0.0,-1000.0,0.0,0.0))
 		gui.ControlSetBounds(Icon_multi.base, v4.make(0.0,-1000.0,0.0,0.0))
 		gui.ControlSetBounds(Icon_options.base, v4.make(0.0,-1000.0,0.0,0.0))
@@ -1265,7 +1266,7 @@ func loadMenu() {
 		gui.PictureSetAlign(skycoinPicture, gui.ALIGN_CENTER)
 		gui.PictureSetOnState(skycoinPicture, "main", "onSelectButton")
 		gui.PictureSetAnimation(skycoinPicture, gui.g_skycoinAnim, false, 30)
-		//snd.VoicePlay(Skysnd)
+		snd.VoicePlay(skycoinVoice)
 	}
 
 
