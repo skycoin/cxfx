@@ -1026,7 +1026,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 		gfx.ModelSetCameraPosition(currentModel, cameraPosition)
 		gfx.ModelSetWorld(currentModel, player.world)
         gfx.ModelSetExposure(currentModel, 1.0)
-		gfx.ModelRender(currentModel)
+        gfx.ModelRender(currentModel)
 	}
 	fps.StopProfile(prfRenderPlayers)
 
@@ -1465,6 +1465,9 @@ func loadGame()() {
     characterCreate("megafee")
     characterCreate("bugd")
     characterCreate("npc")
+    //characterCreate("darkz")
+    //characterCreate("dmux")
+    //characterCreate("bouffet")
 
     levels = append(levels, "skyminer")
 
