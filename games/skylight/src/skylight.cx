@@ -42,6 +42,10 @@ type Anim struct {
 
 type Player struct {
     name str
+    spineName str
+    torsoName str
+    shoulderName str
+    handName str
     loaded bool
 
 	idle Anim
@@ -1272,9 +1276,15 @@ func skyCreate(name str) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func characterCreate(name str) {
+func characterCreate(name str, scale f32, spine str, torso str, shoulder str, hand str, backwardQuat mat.v4) {
     var character Player
     character.name = name
+    character.scale = scale
+    character.spineName = spine
+    character.torsoName = torso
+    character.shoulderName = shoulder
+    character.handName = hand
+    character.backwardQuat = backwardQuat
     characters = append(characters, character)
 }
 
@@ -1289,11 +1299,12 @@ func levelCreate(name str, scene str) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
+func playerCreate(characterIndex i32) {
+    var characterName str = characters[characterIndex].name
     var characterCount i32 = len(characters)
     var loadedChar i32 = -1
     for i := 0; i < characterCount; i++ {
-        if characters[i].name == pattern {
+        if characters[i].name == characterName {
             loadedChar = i
             i = characterCount
         }
@@ -1303,27 +1314,23 @@ func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
         if characters[loadedChar].loaded {
             players = append(players, characters[loadedChar])
         } else {
-	        var player Player
-            player.name = pattern
-	        player.idle = animCreate(sprintf("%s/idle", pattern), gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
-	        player.jump = animCreate(sprintf("%s/jump", pattern), gfx.MODEL_ANIMATION)
-	        player.throw = animCreate(sprintf("%s/throw", pattern), gfx.MODEL_ANIMATION)
-	        player.forward = animCreate(sprintf("%s/forward", pattern), gfx.MODEL_ANIMATION)
-	        player.backward = animCreate(sprintf("%s/backward", pattern), gfx.MODEL_ANIMATION)
-	        player.left = animCreate(sprintf("%s/left", pattern), gfx.MODEL_ANIMATION)
-	        player.right = animCreate(sprintf("%s/right", pattern), gfx.MODEL_ANIMATION)
+	        var player Player = characters[characterIndex]
+	        player.idle = animCreate(sprintf("%s/idle", characterName), gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
+	        player.jump = animCreate(sprintf("%s/jump", characterName), gfx.MODEL_ANIMATION)
+	        player.throw = animCreate(sprintf("%s/throw", characterName), gfx.MODEL_ANIMATION)
+	        player.forward = animCreate(sprintf("%s/forward", characterName), gfx.MODEL_ANIMATION)
+	        player.backward = animCreate(sprintf("%s/backward", characterName), gfx.MODEL_ANIMATION)
+	        player.left = animCreate(sprintf("%s/left", characterName), gfx.MODEL_ANIMATION)
+	        player.right = animCreate(sprintf("%s/right", characterName), gfx.MODEL_ANIMATION)
 	        player.cpuFire = f32.rand() * 2.0
 
 	        var model gfx.ModelId = player.idle.model
-	        player.spine = gfx.ModelGetNodeByName(model, spine)
-	        player.torso = gfx.ModelGetNodeByName(model, torso)
-	        player.shoulder = gfx.ModelGetNodeByName(model, shoulder)
-	        player.hand = gfx.ModelGetNodeByName(model, hand)
-
-	        player.scale = 0.1
+	        player.spine = gfx.ModelGetNodeByName(model, player.spineName)
+	        player.torso = gfx.ModelGetNodeByName(model, player.torsoName)
+	        player.shoulder = gfx.ModelGetNodeByName(model, player.shoulderName)
+	        player.hand = gfx.ModelGetNodeByName(model, player.handName)
 
 	        player.yawTime = -1.0
-	        player.backwardQuat = q4.from_axis_angle(0.0, 1.0, 0.0, v1.PI)
 	        player.tmpAnim0 = gfx.AnimationCreate()
 	        gfx.AnimationSetRuntime(player.tmpAnim0, true)
 
@@ -1479,15 +1486,15 @@ func loadGame()() {
 	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
 
 
-    characterCreate("synth")
-    characterCreate("metalic")
-    characterCreate("bw")
-    characterCreate("megafee")
-    characterCreate("bugd")
-    characterCreate("npc")
-    //characterCreate("darkz")
-    //characterCreate("dmux")
-    //characterCreate("bouffet")
+    characterCreate("synth", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, v1.PI))
+    characterCreate("metalic", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("bw", 0.1, "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("megafee", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("bugd", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("npc", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("darkz", 6.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("dmux", 6.0,"mixamorig:Hips_01", "mixamorig:Spine_02", "mixamorig:RightShoulder_012", "mixamorig:RightHand_00", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("bouffet", 6.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
 
     levelCreate("skyminer/high", "scene.gltf")
 
@@ -1529,7 +1536,7 @@ func loadLevel()() {
     players = resize(players, 0)
     for i := 0; i < playerCount; i++ {
         var r i32 = i32.rand(0, characterCount) % characterCount
-        playerCreate(characters[r].name, "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
+        playerCreate(r)
     }
 	currentPlayer = 0
 
