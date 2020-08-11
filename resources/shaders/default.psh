@@ -150,11 +150,11 @@ struct pbr_s
 #ifdef USE_PBR
 vec3 getIBLContribution(pbr_s pbrInputs, vec3 n, vec3 reflection)
 {
-	float mipCount = u_v4PBR.x - 1.0;//11.0; // resolution of 512x512
+	float mipCount = u_v4PBR.x - 1.0; // resolution of 512x512
 	float lod = (pbrInputs.perceptualRoughness * mipCount);
 	// retrieve a scale and bias to F0. See [1], Figure 3
 	vec3 brdf = /*gamma*/(texture2D(u_t2BRDF, vec2(pbrInputs.NdotV, 1.0 - pbrInputs.perceptualRoughness)).rgb);
-	vec3 diffuseLight = /*gamma*/(textureCube(u_tcEnvironmentDiffuse, vec3(-n.x, n.y, -n.z)/*, lod*/).rgb);
+	vec3 diffuseLight = /*gamma*/(textureCube(u_tcEnvironmentDiffuse, n/*vec3(-n.x, n.y, -n.z)/*, lod*/).rgb);
 
 	vec3 specularLight = /*gamma*/(textureCubeLod(u_tcEnvironmentSpecular, reflection, lod).rgb);
 
@@ -165,7 +165,7 @@ vec3 getIBLContribution(pbr_s pbrInputs, vec3 n, vec3 reflection)
 	//diffuse *= u_ScaleIBLAmbient.x;
 	//specular *= u_ScaleIBLAmbient.y;
 
-	return (diffuse + specular) * 2.0;
+	return (diffuse + specular);
 }
 
 vec3 diffuse(pbr_s pbrInputs)
@@ -286,7 +286,8 @@ void main()
 #endif
 
 #ifdef USE_PBR
-	rough = clamp(rough, c_MinRoughness, 1.0);
+	rough = clamp(rough /** 10*/, c_MinRoughness, 1.0);
+    metal = clamp(metal, 0.0, 1.0);
 
 	vec3 f0 = vec3(0.04);
 	vec3 f1 = vec3(1.0) - f0;
