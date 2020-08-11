@@ -135,14 +135,21 @@ var title_size f32
 var scroll_horiz f32//Background image scrolling
 var scroll_horiz2 f32//Background clouds scrolling
 var pumpscale f32//moving icons
+var pumpscalePor f32//moving portraits
 var pumpcolor f32//change color
 var pumpmark i32
+var pumpmarkPor i32
 var pumpmarkcol i32
 var pumpV mat.v4
 var zoom_flux f32//title zoom speed
 var port_flux f32//portraits zoom speed
 var appear_time f32//TIMESTAMP FOR PORTRAIT APPEARANCE
 var p i32
+var Iconsinglecolor f32
+var Iconoptionscolor f32
+var Iconmulticolor f32
+var Iconbackcolor f32
+var prevSelect i32
 
 var characterSnd snd.AudioId
 var characterVoice snd.VoiceId
@@ -298,8 +305,8 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 			if p<12{
 				gui.ControlSetBounds(Porpic[p].name.base, v4.make(Porpic[p].coorx, Porpic[p].coory, Porpic[p].sizex*Porpic[p].disp_scale, Porpic[p].sizey))
 				gui.PictureSetAlpha(Porpic[p].name, true)
-
-				snd.VoicePlay(Porpic[p].voice)
+				Porpic[p].Select=0
+				
 				p++
 				display_time++
 			}
@@ -323,11 +330,18 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 			}	else {
 				Porpic[i].disp_scale=1.0
 				Porpic[i].flux=1.0
+
+			}
+			if Porpic[i].Select==0 && Porpic[i].disp_scale==1.0{
+				snd.VoicePlay(Porpic[i].voice)
+				Porpic[i].Select=-1
 			}
 			if Porpic[11].disp_scale==1.0{//IF FINAL ZOOM OVER, CAN PROCEED.
 				display_time++
 			}
+			
 		}
+
 	}
 
 
@@ -338,7 +352,7 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 		for i:=0; i < Nbre_Portrait; i++ {
 			var f i32
 			f=11-i
-			
+			Porpic[f].Select=-1
 			var no_select i32// IF MOUSE OVER ANY PIC = 1
 			var selBounds v4//PICTURE COORDINATES AND SIZE
 			var r f32
@@ -354,6 +368,8 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 			mousePicy=0
 			 ///GET PICTURES BOUNDS
 			selBounds= gui.ControlGetRenderBounds(Porpic[f].name.base)
+			selBounds.z=(selBounds.z/pumpscalePor)
+			selBounds.w=(selBounds.w/pumpscalePor)
 			
 			///CHECK IF MOUSE IS WITHIN BOUNDS
 			if (g_mousePos.x>selBounds.x) && (g_mousePos.x<(selBounds.x+selBounds.z)) && (g_mousePos.y>selBounds.y) && (g_mousePos.y<(selBounds.y+selBounds.w)){
@@ -377,54 +393,60 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 				mousePicy = f32.i32(fousePicy)
 				
 			 	r, g, b, a = gfx.TextureGetPixel(Porpic[f].Portex, mousePicx, mousePicy)
-			 	if a==1.0{/////////////IF ALPHA OK THEN PICTURE SELECTED
+			 	if a==1.0 && f>Portrait_select{/////////////IF ALPHA OK THEN PICTURE SELECTED
+					
 					Porpic[f].Select=f
 					no_select=1
+					Portrait_select=Porpic[f].Select///TOUCHED PORTRAIT VALIDATED
+					if Portrait_select!=prevSelect{
+						pumpscalePor=1.0
+					}
 					
 				}else{
+					
 					Porpic[f].Select=-1
+					}
 
-				}
-			if Porpic[f].Select>Portrait_select && no_select==1{
-				Portrait_select=Porpic[f].Select///TOUCHED PORTRAIT VALIDATED
-			}else{
-			Porpic[f].Select=-1
-			}
+			
 			////PUMPSCALING THE RIGHT PORTRAIT
-			if Porpic[f].Select>-1{
-			Porpic[Portrait_select].disp_scale=pumpscale
+			if Porpic[f].Select>-1 && Portrait_select==Porpic[f].Select{
+			Porpic[Portrait_select].disp_scale=pumpscalePor
 			////PUMPCOLORING THE RIGHT PORTRAIT
 			pumpV.x=Porpic[Portrait_select].pumpcolor
 			pumpV.y=Porpic[Portrait_select].pumpcolor
 			pumpV.z=Porpic[Portrait_select].pumpcolor
 			pumpV.w=Porpic[Portrait_select].pumpcolor
-			Porpic[Portrait_select].pumpcolor=((pumpscale-0.95)/(1.0-0.95))
+			Porpic[Portrait_select].pumpcolor=((pumpscalePor-0.95)/(1.0-0.95))
 
             //highlight 0
-            var refHlColor mat.v4 = v4.divf(v4.make(15.7, 66.3, 71.4, 255.0), 255.0)
-			var targetHlColor mat.v4 = v4.divf(v4.make(86.3, 63.9, 43.1, 255.0), 255.0)
+            //var refHlColor mat.v4 = v4.divf(v4.make(15.7, 66.3, 71.4, 255.0), 255.0)
+			//var targetHlColor mat.v4 = v4.divf(v4.make(86.3, 63.9, 43.1, 255.0), 255.0)
 
 
-            /* //highlight 1
-            var refHlColor mat.v4 = v4.divf(v4.make(15.7, 66.3, 71.4, 255.0), 255.0)
-            var targetHlColor mat.v4 = v4.divf(v4.make(94.5, 86.3, 65.5, 255.0), 255.0)
-            */
+             //highlight 1
+            var refHlColor mat.v4 = v4.divf(v4.make(45.7, 6.3, 41.4, 255.0), 255.0)
+            var targetHlColor mat.v4 = v4.divf(v4.make(124.5, 6.3, 35.5, 255.0), 255.0)
+            
 
-            /* //highlight 2
-            var refHlColor mat.v4 = v4.divf(v4.make(14.1, 29.4, 31.4, 255.0), 255.0)
-			var targetHlColor mat.v4 = v4.divf(v4.make(86.3, 63.9, 43.1, 255.0), 255.0)
-            */
+             //highlight 2
+            //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 29.4, 31.4, 255.0), 255.0)
+			//var targetHlColor mat.v4 = v4.divf(v4.make(86.3, 63.9, 43.1, 255.0), 255.0)
+            
 
-            /* //highlight 3
-            var refHlColor mat.v4 = v4.divf(v4.make(14.1, 29.4, 31.4, 255.0), 255.0)
-            var targetHlColor mat.v4 = v4.divf(v4.make(94.5, 86.3, 65.5, 255.0), 255.0)
-            */
+             //highlight 3
+            //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 29.4, 31.4, 255.0), 255.0)
+            //var targetHlColor mat.v4 = v4.divf(v4.make(94.5, 86.3, 65.5, 255.0), 255.0)
+            
+            //clear blue
+            //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 19.4, 51.4, 255.0), 255.0)
+        	//var targetHlColor mat.v4 = v4.divf(v4.make(35.0, 45.0, 115.5, 255.0), 255.0)
     
             gui.PictureSetColor(Porpic[Portrait_select].name, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
 			}
 			
 		
 		}else{
+			
 			Porpic[f].Select=-1
 		}
 		//IF NOT SELECTED DEPUMP
@@ -440,11 +462,23 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 				pumpV.y=Porpic[f].pumpcolor
 				pumpV.z=Porpic[f].pumpcolor
 				pumpV.w=Porpic[f].pumpcolor
-				var Porcolor v4
-				Porcolor = v4.make(0.0,0.2,0.3,1.0)/////////////////COLOR///REPEAT HERE
-				gui.PictureSetColor(Porpic[f].name, v4.lerpsat(v4.ONE, Porcolor, pumpV))
+			
+			var refHlColor mat.v4 = v4.divf(v4.make(45.7, 6.3, 41.4, 255.0), 255.0)
+            var targetHlColor mat.v4 = v4.divf(v4.make(124.5, 6.3, 35.5, 255.0), 255.0)
+
+				gui.PictureSetColor(Porpic[f].name, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
+
+
 			}
+			if Portrait_select==-1 && i==(Nbre_Portrait-1){
+					pumpscalePor=1.0
+					prevSelect=-1
+				}
+			if Portrait_select!=-1 && i==(Nbre_Portrait-1){
+				prevSelect=Portrait_select
+				}
 	}
+	printf("pump: %f /n", pumpscalePor)
 ///////////////////////////////////////////////////////////////////////////////////////////
 		//DISPLAY PORTRAITS////////////////////////////////////
 		for i:=0; i < Nbre_Portrait; i++ {
@@ -454,6 +488,31 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 			
 			
 		}
+		/////////ICON BACK FLASH
+		var IconBounds v4
+		var refHlColor mat.v4 = v4.divf(v4.make(14.1, 19.4, 51.4, 255.0), 255.0)
+        var targetHlColor mat.v4 = v4.divf(v4.make(35.0, 45.0, 95.5, 255.0), 255.0)
+        IconBounds= gui.ControlGetRenderBounds(Icon_back.base)
+        if (g_mousePos.x>IconBounds.x) && (g_mousePos.x<(IconBounds.x+IconBounds.z)) && (g_mousePos.y>IconBounds.y) && (g_mousePos.y<(IconBounds.y+IconBounds.w)){
+			
+			Iconbackcolor=((pumpscale-0.95)/(1.0-0.95))
+			pumpV.x=Iconbackcolor
+			pumpV.y=Iconbackcolor
+			pumpV.z=Iconbackcolor
+			pumpV.w=Iconbackcolor
+			
+            gui.PictureSetColor(Icon_back, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
+        }else{
+        	
+			Iconbackcolor=Iconbackcolor*0.9
+			pumpV.x=Iconbackcolor
+			pumpV.y=Iconbackcolor
+			pumpV.z=Iconbackcolor
+			pumpV.w=Iconbackcolor
+        	gui.PictureSetColor(Icon_back, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
+        }
+		
+		////////////////////////////////////////////
 		//DISPLAY BACK BUTTON:////////////////////////////////////////
 		gui.ControlSetAutoscale(Icon_back.base, gui.AUTOSCALE_X)
 		gui.ControlSetAutosize(Icon_back.base, gui.AUTOSIZE_Y)
@@ -478,9 +537,24 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 			}
 		}
 		
+		///PUMP PORTRAITS
+		if pumpmarkPor==0 {
+			pumpscalePor=pumpscalePor*0.997
+		}
 		
-		////////////////////////////////////////////
-		
+		if pumpscalePor<0.95 {
+			if pumpmarkPor==0{
+				pumpmarkPor=1
+			}
+		}
+		if pumpmarkPor==1{
+			pumpscalePor=pumpscalePor*1.002
+		}
+		if pumpscalePor>1.0{
+			if pumpmarkPor==1{
+				pumpmarkPor=0
+			}
+		}
 
 }
 }
@@ -488,7 +562,8 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		//CALCULATING THE RATIO BETWEEN INITIAL SCREENSIZE AND REFRESHED SCREENSIZE
 		valid_game=1
-		
+		g_mousePos = gui.CurrentEvent.mouse.position
+
 		var bande_noire f32//Size of black boarder on top and botton
 		var bande_horiz f32//Size of black boarder on the sides
 		var true_width f32//Real size of width with no boarder
@@ -565,7 +640,7 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		gui.PictureSetAlpha(FacePicture, true)
 		gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
 
-		snd.VoicePlay(titleVoice)
+		
 		}
 		if timer_title == 1 {
 			if deltatime_title > 1.6{////TIME WHEN TITLE APPEAR
@@ -574,7 +649,7 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 			    gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
 			    gui.ControlSetBounds(NamePicture.base, v4.make((bande_horiz/2.0), 0.0, true_width*title_size, gfx.gfx_height))
 			    gui.PictureSetAlpha(NamePicture, true)
-			    snd.VoicePlay(characterVoice)
+			    //snd.VoicePlay(characterVoice)
 			    timer_title=2
 			}
 		}
@@ -593,6 +668,7 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		if title_size>1.0{
 			title_size=1.0
 			timer_title=3
+			snd.VoicePlay(titleVoice)
 			}
 		deltatime=0.0
 			}
@@ -606,6 +682,73 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
 		gui.ControlSetBounds(NamePicture.base, v4.make((bande_horiz/2.0), 0.0, true_width, gfx.gfx_height))
 		gui.PictureSetAlpha(NamePicture, true)
+
+/////////FLASHING ICONS
+		var IconBounds v4
+		var refHlColor mat.v4 = v4.divf(v4.make(14.1, 19.4, 51.4, 255.0), 255.0)
+        var targetHlColor mat.v4 = v4.divf(v4.make(35.0, 45.0, 95.5, 255.0), 255.0)
+		///CHECK IF MOUSE IS WITHIN BOUNDS
+		/////////////ICON SINGLE
+		IconBounds= gui.ControlGetRenderBounds(Icon_single.base)
+		if (g_mousePos.x>IconBounds.x) && (g_mousePos.x<(IconBounds.x+IconBounds.z)) && (g_mousePos.y>IconBounds.y) && (g_mousePos.y<(IconBounds.y+IconBounds.w)){
+			
+			Iconsinglecolor=((pumpscale-0.95)/(1.0-0.95))
+			pumpV.x=Iconsinglecolor
+			pumpV.y=Iconsinglecolor
+			pumpV.z=Iconsinglecolor
+			pumpV.w=Iconsinglecolor
+			
+            gui.PictureSetColor(Icon_single, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
+        }else{
+        	Iconsinglecolor=Iconsinglecolor*0.9
+			pumpV.x=Iconsinglecolor
+			pumpV.y=Iconsinglecolor
+			pumpV.z=Iconsinglecolor
+			pumpV.w=Iconsinglecolor
+
+        	gui.PictureSetColor(Icon_single, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
+        }
+        /////////ICON MULTI
+        IconBounds= gui.ControlGetRenderBounds(Icon_multi.base)
+        if (g_mousePos.x>IconBounds.x) && (g_mousePos.x<(IconBounds.x+IconBounds.z)) && (g_mousePos.y>IconBounds.y) && (g_mousePos.y<(IconBounds.y+IconBounds.w)){
+			
+			Iconmulticolor=((pumpscale-0.95)/(1.0-0.95))
+			pumpV.x=Iconmulticolor
+			pumpV.y=Iconmulticolor
+			pumpV.z=Iconmulticolor
+			pumpV.w=Iconmulticolor
+			
+			gui.PictureSetColor(Icon_multi, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
+        }else{
+        	Iconmulticolor=Iconmulticolor*0.9
+			pumpV.x=Iconmulticolor
+			pumpV.y=Iconmulticolor
+			pumpV.z=Iconmulticolor
+			pumpV.w=Iconmulticolor
+        	gui.PictureSetColor(Icon_multi, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
+        }
+        /////////ICON OPTIONS
+        IconBounds= gui.ControlGetRenderBounds(Icon_options.base)
+        if (g_mousePos.x>IconBounds.x) && (g_mousePos.x<(IconBounds.x+IconBounds.z)) && (g_mousePos.y>IconBounds.y) && (g_mousePos.y<(IconBounds.y+IconBounds.w)){
+			
+			Iconoptionscolor=((pumpscale-0.95)/(1.0-0.95))
+			pumpV.x=Iconoptionscolor
+			pumpV.y=Iconoptionscolor
+			pumpV.z=Iconoptionscolor
+			pumpV.w=Iconoptionscolor
+			
+            gui.PictureSetColor(Icon_options, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
+        }else{
+        	Iconoptionscolor=Iconoptionscolor*0.9
+			pumpV.x=Iconoptionscolor
+			pumpV.y=Iconoptionscolor
+			pumpV.z=Iconoptionscolor
+			pumpV.w=Iconoptionscolor
+
+        	gui.PictureSetColor(Icon_options, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
+        }
+
+/////////////////////////////////////////////////
 
 		gui.ControlSetAutoscale(Icon_single.base, gui.AUTOSCALE_X)
 		gui.ControlSetAutosize(Icon_single.base, gui.AUTOSIZE_Y)
@@ -637,6 +780,9 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 				pumpmark=0
 			}
 		}
+
+
+        ///////CHECK MOUSE PUSH
 		gui.PictureSetOnState(Icon_single, "main", "onSingleButton")
 
 
@@ -804,7 +950,7 @@ func loadMenu() {
         NameAnim = gui.AnimationCreateFromTexture(NameTexture)
 
         Icon00Texture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/icon_single.png", app.DataDir()),
-                gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,true)
+                gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         Icon00Anim = gui.AnimationCreateFromTexture(Icon00Texture)
 
         Icon01Texture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/icon_options.png", app.DataDir()),
@@ -948,6 +1094,9 @@ func loadMenu() {
 	    	appear_time=0.3
 	    	Portrait_select=-1
 	    	pumpmarkcol=0
+	    	pumpmarkPor=0
+	    	pumpscalePor=1.0
+	    	prevSelect = -1
 	    	//////////////////////////////////////////////
 	    	//PARAMETERS
 	    	Porpic[0].pic = "MacronTexture"
@@ -958,6 +1107,7 @@ func loadMenu() {
 	    	Porpic[0].porwid=426.0
 	    	Porpic[0].porhei=754.0
 	    	Porpic[0].pumpcolor=0.01
+	    	Porpic[0].Select=-1
 
 
 	    	Porpic[1].pic = "BufTexture"
@@ -968,6 +1118,7 @@ func loadMenu() {
 	    	Porpic[1].porwid=777.0
 	    	Porpic[1].porhei=1182.0
 	    	Porpic[1].pumpcolor=0.01
+	    	Porpic[1].Select=-1
 
 	    	Porpic[2].pic = "WojTexture"
 	    	Porpic[2].anim = WojAnim
@@ -977,6 +1128,7 @@ func loadMenu() {
 	    	Porpic[2].porwid=500.0
 	    	Porpic[2].porhei=476.0
 	    	Porpic[2].pumpcolor=0.01
+	    	Porpic[2].Select=-1
 
 	    	Porpic[3].pic = "CarTexture"
 	    	Porpic[3].anim = CarAnim
@@ -986,6 +1138,7 @@ func loadMenu() {
 	    	Porpic[3].porwid=1076.0
 	    	Porpic[3].porhei=1209.0
 	    	Porpic[3].pumpcolor=0.01
+	    	Porpic[3].Select=-1
 
 	    	Porpic[4].pic = "LagTexture"
 	    	Porpic[4].anim = LagAnim
@@ -995,6 +1148,7 @@ func loadMenu() {
 	    	Porpic[4].porwid=630.0
 	    	Porpic[4].porhei=899.0
 	    	Porpic[4].pumpcolor=0.01
+	    	Porpic[4].Select=-1
 
 	    	Porpic[5].pic = "BogdanTexture"
 	    	Porpic[5].anim = BogdanAnim
@@ -1004,6 +1158,7 @@ func loadMenu() {
 	    	Porpic[5].porwid=688.0
 	    	Porpic[5].porhei=1157.0
 	    	Porpic[5].pumpcolor=0.01
+	    	Porpic[5].Select=-1
 	    	
 
 	    	Porpic[6].pic = "ZucTexture"
@@ -1014,6 +1169,7 @@ func loadMenu() {
 	    	Porpic[6].porwid=652.0
 	    	Porpic[6].porhei=910.0
 	    	Porpic[6].pumpcolor=0.01
+	    	Porpic[6].Select=-1
 
 	    	Porpic[7].pic = "MusTexture"
 	    	Porpic[7].anim = MusAnim
@@ -1023,6 +1179,7 @@ func loadMenu() {
 	    	Porpic[7].porwid=795.0
 	    	Porpic[7].porhei=640.0
 	    	Porpic[7].pumpcolor=0.01
+	    	Porpic[7].Select=-1
 
 	    	Porpic[8].pic = "VitTexture"
 	    	Porpic[8].anim = VitAnim
@@ -1032,6 +1189,7 @@ func loadMenu() {
 	    	Porpic[8].porwid=550.0
 	    	Porpic[8].porhei=842.0
 	    	Porpic[8].pumpcolor=0.01
+	    	Porpic[8].Select=-1
 
 	    	Porpic[9].pic = "FunTexture"
 	    	Porpic[9].anim = FunAnim
@@ -1041,6 +1199,7 @@ func loadMenu() {
 	    	Porpic[9].porwid=662.0
 	    	Porpic[9].porhei=658.0
 	    	Porpic[9].pumpcolor=0.01
+	    	Porpic[9].Select=-1
 
 	    	Porpic[10].pic = "SynTexture"
 	    	Porpic[10].anim = SynAnim
@@ -1050,6 +1209,7 @@ func loadMenu() {
 	    	Porpic[10].porwid=772.0
 	    	Porpic[10].porhei=850.0
 	    	Porpic[10].pumpcolor=0.01
+	    	Porpic[10].Select=-1
 
 	    	Porpic[11].pic = "McaTexture"
 	    	Porpic[11].anim = McaAnim
@@ -1059,6 +1219,7 @@ func loadMenu() {
 	    	Porpic[11].porwid=720.0
 	    	Porpic[11].porhei=707.0
 	    	Porpic[11].pumpcolor=0.01
+	    	Porpic[11].Select=-1
 	    	
 	    	//BACK CLOUDS
 	    	CloudPicture6 = gui.PictureId = gui.PictureCreate("CloudTexture")
