@@ -205,7 +205,7 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 	true_width=gfx.gfx_width-bande_horiz
 	true_height=gfx.gfx_height-(bande_noire)
 	Nbre_Portrait=12
-	
+
 	gui.ControlSetBounds(CloudPicture6.base, v4.make((bande_horiz/2.0)+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
 	gui.PictureSetAlpha(CloudPicture6, true)
 	gui.ControlSetBounds(CloudPicture7.base, v4.make((bande_horiz/2.0)-true_width+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
@@ -288,7 +288,7 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 	/*for i := 0; i < 12; i++ {
 		gui.ControlSetSkin(Porpic[i].name.base, gui.g_debugGreenSkin)
 	}*/
-	
+
 	//////////////////////////////////////////////
 	//DISPLAY PORTRAIT LOOP//////////////////////////////////////
 	////DISPLAY PORTRAIT ONE BY ONE
@@ -300,17 +300,17 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 		deltatime = 0.0
 		appear_time=appear_time*0.89//ACCELERATE APPEAR TIME
 	}
+
 	if timer == 1 {
 		if display_time < Nbre_Portrait+1 {
 			if p<12{
 				gui.ControlSetBounds(Porpic[p].name.base, v4.make(Porpic[p].coorx, Porpic[p].coory, Porpic[p].sizex*Porpic[p].disp_scale, Porpic[p].sizey))
 				gui.PictureSetAlpha(Porpic[p].name, true)
 				Porpic[p].Select=0
-				
 				p++
 				display_time++
 			}
-		
+
 			timer=0
 			if Porpic[p].disp_scale<1.0 {
 				Porpic[p].disp_scale=Porpic[p].disp_scale*1.0///////INITIAL SCALING SPEED
@@ -319,7 +319,8 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 			}
 		}
 	}
-	////KEEP ASPECT RATIO WHILE DISPLAY PORTRAIT ONE BY ONE
+
+    ////KEEP ASPECT RATIO WHILE DISPLAY PORTRAIT ONE BY ONE
 	if display_time < Nbre_Portrait+1 {
 		for i:=0; i < p; i++{
 			gui.ControlSetBounds(Porpic[i].name.base, v4.make(Porpic[i].coorx, Porpic[i].coory, Porpic[i].sizex*Porpic[i].disp_scale, Porpic[i].sizey))
@@ -339,9 +340,7 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 			if Porpic[11].disp_scale==1.0{//IF FINAL ZOOM OVER, CAN PROCEED.
 				display_time++
 			}
-			
 		}
-
 	}
 
 
@@ -370,7 +369,7 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 			selBounds= gui.ControlGetRenderBounds(Porpic[f].name.base)
 			selBounds.z=(selBounds.z/pumpscalePor)
 			selBounds.w=(selBounds.w/pumpscalePor)
-			
+
 			///CHECK IF MOUSE IS WITHIN BOUNDS
 			if (g_mousePos.x>selBounds.x) && (g_mousePos.x<(selBounds.x+selBounds.z)) && (g_mousePos.y>selBounds.y) && (g_mousePos.y<(selBounds.y+selBounds.w)){
 				ratiox=Porpic[f].porwid/selBounds.z
@@ -383,7 +382,7 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 				var iselBw i32 = f32.i32(selBounds.w)//PIC HEIGHT INT
 				mousePicx=xi-iselBx//MOUSE POSITION ON PIC X INT
 				if yi<(iselBw+iselBy){
-				mousePicy=(iselBw+iselBy)-yi//MOUSE POSITION ON PIC Y INT
+				    mousePicy=(iselBw+iselBy)-yi//MOUSE POSITION ON PIC Y INT
 				}
 				var fousePicx f32 = i32.f32(mousePicx)//MOUSE POSITION ON PIC X FLOAT
 				var fousePicy f32 = i32.f32(mousePicy)//MOUSE POSITION ON PIC Y FLOAT
@@ -391,119 +390,102 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 				fousePicy=fousePicy*ratioy
 				mousePicx = f32.i32(fousePicx)
 				mousePicy = f32.i32(fousePicy)
-				
+
 			 	r, g, b, a = gfx.TextureGetPixel(Porpic[f].Portex, mousePicx, mousePicy)
 			 	if a==1.0 && f>Portrait_select{/////////////IF ALPHA OK THEN PICTURE SELECTED
-					
 					Porpic[f].Select=f
 					no_select=1
 					Portrait_select=Porpic[f].Select///TOUCHED PORTRAIT VALIDATED
 					if Portrait_select!=prevSelect{
 						pumpscalePor=1.0
 					}
-					
 				}else{
-					
 					Porpic[f].Select=-1
-					}
-
-			
-			////PUMPSCALING THE RIGHT PORTRAIT
-			if Porpic[f].Select>-1 && Portrait_select==Porpic[f].Select{
-			Porpic[Portrait_select].disp_scale=pumpscalePor
-			////PUMPCOLORING THE RIGHT PORTRAIT
-			pumpV.x=Porpic[Portrait_select].pumpcolor
-			pumpV.y=Porpic[Portrait_select].pumpcolor
-			pumpV.z=Porpic[Portrait_select].pumpcolor
-			pumpV.w=Porpic[Portrait_select].pumpcolor
-			Porpic[Portrait_select].pumpcolor=((pumpscalePor-0.95)/(1.0-0.95))
-
-            //highlight 0
-            //var refHlColor mat.v4 = v4.divf(v4.make(15.7, 66.3, 71.4, 255.0), 255.0)
-			//var targetHlColor mat.v4 = v4.divf(v4.make(86.3, 63.9, 43.1, 255.0), 255.0)
-
-
-             //highlight 1
-            var refHlColor mat.v4 = v4.divf(v4.make(45.7, 6.3, 41.4, 255.0), 255.0)
-            var targetHlColor mat.v4 = v4.divf(v4.make(124.5, 6.3, 35.5, 255.0), 255.0)
-            
-
-             //highlight 2
-            //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 29.4, 31.4, 255.0), 255.0)
-			//var targetHlColor mat.v4 = v4.divf(v4.make(86.3, 63.9, 43.1, 255.0), 255.0)
-            
-
-             //highlight 3
-            //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 29.4, 31.4, 255.0), 255.0)
-            //var targetHlColor mat.v4 = v4.divf(v4.make(94.5, 86.3, 65.5, 255.0), 255.0)
-            
-            //clear blue
-            //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 19.4, 51.4, 255.0), 255.0)
-        	//var targetHlColor mat.v4 = v4.divf(v4.make(35.0, 45.0, 115.5, 255.0), 255.0)
-    
-            gui.PictureSetColor(Porpic[Portrait_select].name, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
-			}
-			
-		
-		}else{
-			
-			Porpic[f].Select=-1
-		}
-		//IF NOT SELECTED DEPUMP
-
-			if Porpic[f].Select==-1 && Porpic[f].disp_scale<1.0{
-				Porpic[f].disp_scale=Porpic[f].disp_scale*1.002
-				
-			}
-
-			if Porpic[f].Select==-1 && Porpic[f].pumpcolor>0.01{
-				Porpic[f].pumpcolor=Porpic[f].pumpcolor*0.935
-				pumpV.x=Porpic[f].pumpcolor
-				pumpV.y=Porpic[f].pumpcolor
-				pumpV.z=Porpic[f].pumpcolor
-				pumpV.w=Porpic[f].pumpcolor
-			
-			var refHlColor mat.v4 = v4.divf(v4.make(45.7, 6.3, 41.4, 255.0), 255.0)
-            var targetHlColor mat.v4 = v4.divf(v4.make(124.5, 6.3, 35.5, 255.0), 255.0)
-
-				gui.PictureSetColor(Porpic[f].name, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
-
-
-			}
-			if Portrait_select==-1 && i==(Nbre_Portrait-1){
-					pumpscalePor=1.0
-					prevSelect=-1
 				}
-			if Portrait_select!=-1 && i==(Nbre_Portrait-1){
-				prevSelect=Portrait_select
-				}
-	}
-	printf("pump: %f /n", pumpscalePor)
-///////////////////////////////////////////////////////////////////////////////////////////
+
+			    ////PUMPSCALING THE RIGHT PORTRAIT
+			    if Porpic[f].Select>-1 && Portrait_select==Porpic[f].Select{
+			        Porpic[Portrait_select].disp_scale=pumpscalePor
+			        ////PUMPCOLORING THE RIGHT PORTRAIT
+			        pumpV.x=Porpic[Portrait_select].pumpcolor
+			        pumpV.y=Porpic[Portrait_select].pumpcolor
+			        pumpV.z=Porpic[Portrait_select].pumpcolor
+			        pumpV.w=Porpic[Portrait_select].pumpcolor
+			        Porpic[Portrait_select].pumpcolor=((pumpscalePor-0.95)/(1.0-0.95))
+
+                    //highlight 0
+                    //var refHlColor mat.v4 = v4.divf(v4.make(15.7, 66.3, 71.4, 255.0), 255.0)
+			        //var targetHlColor mat.v4 = v4.divf(v4.make(86.3, 63.9, 43.1, 255.0), 255.0)
+
+                     //highlight 1
+                    var refHlColor mat.v4 = v4.divf(v4.make(45.7, 6.3, 41.4, 255.0), 255.0)
+                    var targetHlColor mat.v4 = v4.divf(v4.make(124.5, 6.3, 35.5, 255.0), 255.0)
+
+                     //highlight 2
+                    //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 29.4, 31.4, 255.0), 255.0)
+			        //var targetHlColor mat.v4 = v4.divf(v4.make(86.3, 63.9, 43.1, 255.0), 255.0)
+
+                     //highlight 3
+                    //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 29.4, 31.4, 255.0), 255.0)
+                    //var targetHlColor mat.v4 = v4.divf(v4.make(94.5, 86.3, 65.5, 255.0), 255.0)
+
+                    //clear blue
+                    //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 19.4, 51.4, 255.0), 255.0)
+        	        //var targetHlColor mat.v4 = v4.divf(v4.make(35.0, 45.0, 115.5, 255.0), 255.0)
+
+                    gui.PictureSetColor(Porpic[Portrait_select].name, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
+			    }
+    		}else{
+	    		Porpic[f].Select=-1
+		    }
+
+            //IF NOT SELECTED DEPUMP
+		    if Porpic[f].Select==-1 && Porpic[f].disp_scale<1.0{
+		    	Porpic[f].disp_scale=Porpic[f].disp_scale*1.002
+		    }
+
+		    if Porpic[f].Select==-1 && Porpic[f].pumpcolor>0.01{
+		    	Porpic[f].pumpcolor=Porpic[f].pumpcolor*0.935
+		    	pumpV.x=Porpic[f].pumpcolor
+		    	pumpV.y=Porpic[f].pumpcolor
+		    	pumpV.z=Porpic[f].pumpcolor
+		    	pumpV.w=Porpic[f].pumpcolor
+		        var refHlColor mat.v4 = v4.divf(v4.make(45.7, 6.3, 41.4, 255.0), 255.0)
+                var targetHlColor mat.v4 = v4.divf(v4.make(124.5, 6.3, 35.5, 255.0), 255.0)
+		    	gui.PictureSetColor(Porpic[f].name, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
+		    }
+		    if Portrait_select==-1 && i==(Nbre_Portrait-1){
+		    	pumpscalePor=1.0
+		    	prevSelect=-1
+		    }
+		    if Portrait_select!=-1 && i==(Nbre_Portrait-1){
+		    	prevSelect=Portrait_select
+		    }
+        }
+
+	    //printf("pump: %f\n", pumpscalePor)
+        ///////////////////////////////////////////////////////////////////////////////////////////
 		//DISPLAY PORTRAITS////////////////////////////////////
 		for i:=0; i < Nbre_Portrait; i++ {
 			gui.ControlSetBounds(Porpic[i].name.base, v4.make(Porpic[i].coorx, Porpic[i].coory, Porpic[i].sizex*Porpic[i].disp_scale, Porpic[i].sizey))
 			gui.PictureSetAlpha(Porpic[i].name, true)
 			//gui.ControlSetSkin(Porpic[i].name.base, gui.g_debugGreenSkin)
-			
-			
 		}
-		/////////ICON BACK FLASH
+
+        /////////ICON BACK FLASH
 		var IconBounds v4
 		var refHlColor mat.v4 = v4.divf(v4.make(14.1, 19.4, 51.4, 255.0), 255.0)
         var targetHlColor mat.v4 = v4.divf(v4.make(35.0, 45.0, 95.5, 255.0), 255.0)
         IconBounds= gui.ControlGetRenderBounds(Icon_back.base)
         if (g_mousePos.x>IconBounds.x) && (g_mousePos.x<(IconBounds.x+IconBounds.z)) && (g_mousePos.y>IconBounds.y) && (g_mousePos.y<(IconBounds.y+IconBounds.w)){
-			
 			Iconbackcolor=((pumpscale-0.95)/(1.0-0.95))
 			pumpV.x=Iconbackcolor
 			pumpV.y=Iconbackcolor
 			pumpV.z=Iconbackcolor
 			pumpV.w=Iconbackcolor
-			
+
             gui.PictureSetColor(Icon_back, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
         }else{
-        	
 			Iconbackcolor=Iconbackcolor*0.9
 			pumpV.x=Iconbackcolor
 			pumpV.y=Iconbackcolor
@@ -511,7 +493,7 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 			pumpV.w=Iconbackcolor
         	gui.PictureSetColor(Icon_back, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
         }
-		
+
 		////////////////////////////////////////////
 		//DISPLAY BACK BUTTON:////////////////////////////////////////
 		gui.ControlSetAutoscale(Icon_back.base, gui.AUTOSCALE_X)
@@ -522,41 +504,44 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 		if pumpmark==0 {
 			pumpscale=pumpscale*0.997
 		}
-		
+
 		if pumpscale<0.95 {
 			if pumpmark==0{
 				pumpmark=1
 			}
 		}
+
 		if pumpmark==1{
 			pumpscale=pumpscale*1.002
 		}
+
 		if pumpscale>1.0{
 			if pumpmark==1{
 				pumpmark=0
 			}
 		}
-		
+
 		///PUMP PORTRAITS
 		if pumpmarkPor==0 {
 			pumpscalePor=pumpscalePor*0.997
 		}
-		
+
 		if pumpscalePor<0.95 {
 			if pumpmarkPor==0{
 				pumpmarkPor=1
 			}
 		}
+
 		if pumpmarkPor==1{
 			pumpscalePor=pumpscalePor*1.002
 		}
+
 		if pumpscalePor>1.0{
 			if pumpmarkPor==1{
 				pumpmarkPor=0
 			}
 		}
-
-}
+    }
 }
 
 func TitleOnUpdate(controlIndex i32, controlAction i32) {
