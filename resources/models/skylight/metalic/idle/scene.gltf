@@ -2657,7 +2657,7 @@
   ],
   "materials": [
     {
-      "alphaMode": "OPAQUE",
+      "alphaMode": "BLEND",
       "doubleSided": true,
       "name": "embed_hair_male",
       "pbrMetallicRoughness": {

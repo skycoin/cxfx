@@ -3119,7 +3119,7 @@
       }
     },
     {
-      "alphaMode": "BLEND",
+      "alphaMode": "OPAQUE",
       "doubleSided": false,
       "name": "Skullcap",
       "pbrMetallicRoughness": {

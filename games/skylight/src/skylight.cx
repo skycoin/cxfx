@@ -135,6 +135,7 @@ var players []Player
 var skies []Sky
 var levels []Level
 
+var debugSky bool
 var currentSky i32
 var currentLevel i32
 
@@ -184,6 +185,7 @@ var groundHeight i32 = 16
 var GAME_MODE_MENU       i32 = 1
 var GAME_MODE_GAME       i32 = 2
 var GAME_MODE_LIGHT      i32 = 4
+var GAME_MODE_DEBUG      i32 = 8
 
 var gameMode i32
 var gameModeMatch bool
@@ -192,6 +194,7 @@ var gameModeValues []i32
 var hasModeMenu bool
 var hasModeGame bool
 var isModeLight bool
+var isModeDebug bool
 //var voiceId snd.VoiceId
 
 var TAG_GROUND i32 = 1
@@ -229,6 +232,7 @@ var currentPlayer i32
 var playerCount i32 = 1
 var currentCPU i32 = 1
 var currentCPU2 i32 = 2
+
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func gameOnEvent(controlIndex i32, controlAction i32) {
@@ -282,6 +286,32 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 				} else if MOVE_ == MOVE_R {
 					printf("-----------ROTATE\n")
 				}
+			}
+        }
+	} else if mods == app.MOD_ALT && isModeDebug {
+		if action == app.KEY_PRESS {
+			if key == app.KEYCODE_LEFT {
+				if action == app.KEY_PRESS {
+					currentSky = currentSky - 1
+					if currentSky < 0 {
+						currentSky = len(skies) - 1
+					}
+				}
+			} else if key == app.KEYCODE_RIGHT {
+				if action == app.KEY_PRESS {
+					currentSky = currentSky + 1
+					if currentSky >= len(skies) {
+						currentSky = 0
+					}
+				}
+			} else if key == app.KEYCODE_UP {
+                if action == app.KEY_PRESS {
+                    debugSky = debugSky == false
+                }
+			} else if key == app.KEYCODE_DOWN {
+                if action == app.KEY_PRESS {
+                    debugSky = debugSky == false
+                }
 			}
 		}
 	} else if mods == app.MOD_SHIFT {
@@ -979,7 +1009,13 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	prfRenderSky = fps.CreateStartProfile(prfRenderSky, "sky")
 	gfx.DepthState(false, gfx.LESS, false)
 	gfx.EffectUse(gfx.g_fxSky)
-	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skies[currentSky].specular, gfx.g_linearWrap)
+    var skyTexture gfx.TextureId = skies[currentSky].specular
+    var skySampler gfx.SamplerState = gfx.g_linearWrap
+    if debugSky {
+        skyTexture = skies[currentSky].diffuse
+        skySampler = gfx.g_linear0Wrap
+    }
+	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skyTexture, skySampler)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
@@ -1367,23 +1403,27 @@ func playerCreate(characterIndex i32) {
 //-----------------------------------------------------------------------------
 func gameOnParse(i i32, argc i32) {
     if len(gameModeNames) == 0 {
-        gameModeNames = []str {"menu", "game", "light"}
-        gameModeValues = []i32 {GAME_MODE_MENU, GAME_MODE_GAME, GAME_MODE_LIGHT}
-        app.SetUserHelp("++gmode : Game Mode flag : menu, game, light\n")
+        gameModeNames = []str {"menu", "game", "light", "debug"}
+        gameModeValues = []i32 {GAME_MODE_MENU, GAME_MODE_GAME, GAME_MODE_LIGHT, GAME_MODE_DEBUG}
+        app.SetUserHelp("++gmode : Game Mode flag : menu, game, light, debug\n")
     }
 
     app.SetCurrentArgIsValid(false)
     var arg str = app.GetCurrentArg()
     if args.Flags(arg, "gmode", &gameMode, &gameModeMatch, gameModeNames, gameModeValues) {
         app.SetCurrentArgIsValid(true)
-        if ((gameMode & GAME_MODE_MENU) != 0) || (gameMode == 0) || (gameMode == GAME_MODE_LIGHT) {
+        var allModes bool = (gameMode == 0) || (gameMode == GAME_MODE_LIGHT) || (gameMode == GAME_MODE_DEBUG)
+        if ((gameMode & GAME_MODE_MENU) != 0) || allModes {
             hasModeMenu = true
         }
-        if ((gameMode & GAME_MODE_GAME) != 0) || (gameMode == 0) || (gameMode == GAME_MODE_LIGHT) {
+        if ((gameMode & GAME_MODE_GAME) != 0) || allModes {
             hasModeGame = true
         }
         if ((gameMode & GAME_MODE_LIGHT) != 0) {
             isModeLight = true
+        }
+        if ((gameMode & GAME_MODE_DEBUG) != 0) {
+            isModeDebug = true
         }
     }
 }
@@ -1493,8 +1533,8 @@ func loadGame()() {
     characterCreate("bugd", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
     characterCreate("npc", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
     characterCreate("darkz", 6.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
-    characterCreate("dmux", 6.0,"mixamorig:Hips_01", "mixamorig:Spine_02", "mixamorig:RightShoulder_012", "mixamorig:RightHand_00", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
-    characterCreate("bouffet", 6.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("dmux", 5.0,"mixamorig:Hips_01", "mixamorig:Spine_02", "mixamorig:RightShoulder_012", "mixamorig:RightHand_00", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("bouffet", 5.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
 
     levelCreate("skyminer/high", "scene.gltf")
 
@@ -1508,7 +1548,7 @@ func loadGame()() {
     skyCreate("studio_grey")
     skyCreate("studio_red_green")
 
-    brdf = gfx.TextureCreate(sprintf("%s/textures/environments/brdf.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false, false)
+    brdf = gfx.TextureCreate(sprintf("%s/textures/environments/brdf2.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false, false)
 
 
     skyminerModel = loadModel("skyminer/low", "skyminer_low_test.gltf", gfx.MODEL_GEOMETRY)
@@ -1542,13 +1582,16 @@ func loadLevel()() {
 
     var skyCount i32 = len(skies)
     currentSky = i32.rand(0, skyCount) % skyCount
-    if skies[currentSky].loaded == false {
-        var sky Sky
-        sky.specular = gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/specular/specular_.hdr", app.DataDir(), skies[currentSky].name), gfx.FORMAT_RGB_16F, 0, 0, 32, false)
-	    sky.diffuse = gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/diffuse/diffuse_.hdr", app.DataDir(), skies[currentSky].name), gfx.FORMAT_RGB_16F, 0, 0, 0, false)
-        sky.loaded = true
-        skies[currentSky] = sky
+    for i := 0; i < skyCount; i++ {
+        if (i == currentSky || isModeDebug == true) && skies[i].loaded == false {
+            var sky Sky
+            sky.specular = gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/specular/specular_.hdr", app.DataDir(), skies[i].name), gfx.FORMAT_RGB_16F, 0, 0, 32, false)
+	        sky.diffuse = gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/diffuse/diffuse_.hdr", app.DataDir(), skies[i].name), gfx.FORMAT_RGB_16F, 0, 0, 0, false)
+            sky.loaded = true
+            skies[i] = sky
+        }
     }
+
 
 	gam.CameraSetProjection(camera, 0.5, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y, true)
 	gam.CameraSetPosition(camera, v3.make(0.0, worldPosY + 1.0, 0.0), true)

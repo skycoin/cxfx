@@ -3084,7 +3084,6 @@
       }
     },
     {
-      "alphaMode": "BLEND",
       "doubleSided": false,
       "name": "embed_hair_male",
       "pbrMetallicRoughness": {
