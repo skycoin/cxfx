@@ -31,7 +31,7 @@ DATA = ++data=$(CXFX_SRC)/resources/
 GLFWHINTS = ++hints=resizable
 FPS = ++fps=30
 
-CXFXOPTS = $(GLVERSION) $(DATA) $(GLFWHINTS) ++gmode=$(GMODE)
+CXFXOPTS = $(GLVERSION) $(DATA) $(GLFWHINTS)
 
 SKYLIGHT := $(CXFX_SRC)/games/skylight/src
 TUTORIALS := $(CXFX_SRC)/tutorials
@@ -211,5 +211,5 @@ tuto11: $(COPY_TUTORIALS_ASSETS)
 .PHONY:skylight
 skylight: $(COPY_SKYLIGHT_ASSETS)
 	@echo $(STATE) skylight...
-	$(call runcx, $(SKYLIGHT)/menu.cx $(SKYLIGHT)/skylight.cx)
+	$(call runcx, $(SKYLIGHT)/menu.cx $(SKYLIGHT)/skylight.cx ++gmode=$(GMODE))
 
