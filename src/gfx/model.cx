@@ -1634,9 +1634,9 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
         if lastEffect != effect.effect {
             lastEffect = effect.effect
 
-		    EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearWrap) // TODO : use gltf sampler
-            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linear0Wrap) // TODO : use gltf sampler
-		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Wrap) // TODO : use gltf sampler
+		    EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearClamp) // TODO : use gltf sampler
+            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linear0Clamp) // TODO : use gltf sampler
+		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Clamp) // TODO : use gltf sampler
 
             EffectAssignM44(effect, UNIFORM_VIEW, view, false)
 	    	EffectAssignM44(effect, UNIFORM_PROJECTION, projection, false)

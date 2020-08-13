@@ -218,7 +218,7 @@ func ResizeTargets(width i32, height i32) {
 				for c := 0; c < colorCount; c++ {
 					if IsValidTexture(colors[c]) {
 						TextureResize(colors[c], targetWidth, targetHeight)
-						TextureSamplerState(colors[c], g_nearestClamp)
+						TextureSamplerState(colors[c], g_nearest0Clamp)
 						printf("ResizeTargets\n")
                         TargetAttachColor(id, colors[c], c)
 					}
@@ -227,14 +227,14 @@ func ResizeTargets(width i32, height i32) {
 				var depth TextureId = g_targets[i].depth
 				if IsValidTexture(depth) {
 					TextureResize(depth, targetWidth, targetHeight)
-					TextureSamplerState(depth, g_nearestClamp)
+					TextureSamplerState(depth, g_nearest0Clamp)
 					TargetAttachDepth(id, depth)
 				}
 
 				var stencil TextureId = g_targets[i].stencil
 				if IsValidTexture(stencil) && depth.texture != stencil.texture {
 					TextureResize(stencil, targetWidth, targetHeight)
-					TextureSamplerState(stencil, g_nearestClamp)
+					TextureSamplerState(stencil, g_nearest0Clamp)
 					TargetAttachStencil(id, stencil)
 				}
 			}

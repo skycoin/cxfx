@@ -65,7 +65,7 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func gameOnUpdate(controlIndex i32, controlAction i32) {
-	gam.FreeCameraUpdate(camera, fps.DeltaSecond())
+	gam.FreeCameraUpdate(camera, fps.DeltaSecond(), 1.0, 1.0)
 
 	var dt f32 = f64.f32(fps.DeltaSecond())
 

@@ -30,6 +30,8 @@ type Level struct {
     name str
     scene str
     loaded bool
+    scale f32
+    world mat.m44
     model gfx.ModelId
 }
 
@@ -160,8 +162,6 @@ var dollarMesh gfx.MeshId = gfx.InvalidMesh()
 
 var skyMesh gfx.MeshId = gfx.InvalidMesh()
 var brdf gfx.TextureId = gfx.InvalidTexture()
-
-var world m44
 
 var camera gam.CameraId
 
@@ -855,6 +855,10 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	updateAnimations(dt)
 	updatePositions(dt)
 
+    var levelScale f32 = levels[currentLevel].scale
+    levels[currentLevel].world = m44.makef_SAT(
+            levelScale, levelScale, levelScale,
+            0.0, 0.0, 1.0, v1.PI/2.0, 0.0, 0.0, 0.0)
 	//-------------------------------------------------------------------------
 	// PhxUpdate
 	//-------------------------------------------------------------------------
@@ -870,7 +874,7 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	//-------------------------------------------------------------------------
 	prfCameraUpdate = fps.CreateStartProfile(prfCameraUpdate, "CameraUpdate")
 	if currentCamera == CAMERA_FREE {
-		gam.FreeCameraUpdate(camera, dts)
+		gam.FreeCameraUpdate(camera, dts, 1.0, 3.0)
 	} else if currentCamera == CAMERA_FPS {
 		gam.FpsCameraUpdate(camera, dts, players[currentPlayer].camera)
 	} else if currentCamera == CAMERA_TPS {
@@ -1010,10 +1014,10 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.DepthState(false, gfx.LESS, false)
 	gfx.EffectUse(gfx.g_fxSky)
     var skyTexture gfx.TextureId = skies[currentSky].specular
-    var skySampler gfx.SamplerState = gfx.g_linearWrap
+    var skySampler gfx.SamplerState = gfx.g_linearClamp
     if debugSky {
         skyTexture = skies[currentSky].diffuse
-        skySampler = gfx.g_linear0Wrap
+        skySampler = gfx.g_linear0Clamp
     }
 	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skyTexture, skySampler)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
@@ -1045,7 +1049,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	if isModeLight == false {
         var levelModel gfx.ModelId = levels[currentLevel].model
 	    gfx.ModelUpdate(levelModel, gfx.AnimationInvalid(), 0.0, true)
-	    gfx.ModelSetWorld(levelModel, m44.IDENTITY)
+	    gfx.ModelSetWorld(levelModel, levels[currentLevel].world)
 	    gfx.ModelSetView(levelModel, view)
 	    gfx.ModelSetProjection(levelModel, projection)
 	    gfx.ModelSetEnvironmentSpecular(levelModel, skies[currentSky].specular)
@@ -1161,10 +1165,10 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	var effect gfx.EffectId = gfx.TemplateInstance(gfx.g_tfxPbr)
 
 	gfx.EffectUse(effect)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_COLOR_0, dollar, gfx.g_linear0Wrap)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_SPECULAR, skies[currentSky].specular, gfx.g_linearWrap)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_DIFFUSE, skies[currentSky].diffuse, gfx.g_linearWrap)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_BRDF, brdf, gfx.g_linear0Wrap)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_COLOR_0, dollar, gfx.g_linearWrap)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_SPECULAR, skies[currentSky].specular, gfx.g_linearClamp)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_DIFFUSE, skies[currentSky].diffuse, gfx.g_linear0Clamp)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_BRDF, brdf, gfx.g_linear0Clamp)
 
 	gfx.EffectAssignV4(effect, gfx.UNIFORM_COLOR, v4.ONE)
 	gfx.EffectAssignV4(effect, gfx.UNIFORM_METAL_ROUGH, v4.make(0.0, 1.0, 0.0, 0.0))
@@ -1186,7 +1190,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.DisableBlending()
 	gfx.DisableStencil()
 	gfx.EffectUse(gfx.g_fxEdge)
-	gfx.EffectAssignTexture(gfx.g_fxEdge, gfx.SAMPLER_COLOR_3, gfx.TargetGetDepth(opaqueTarget), gfx.g_nearestClamp)
+	gfx.EffectAssignTexture(gfx.g_fxEdge, gfx.SAMPLER_COLOR_3, gfx.TargetGetDepth(opaqueTarget), gfx.g_nearest0Clamp)
 	gfx.EffectAssignV4(gfx.g_fxEdge, gfx.UNIFORM_TARGET_SIZE, gfx.TargetGetSize(opaqueTarget))
 	gfx.MeshRender(gfx.g_fullscreenQuad)
 
@@ -1256,19 +1260,19 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	writeEdges()
 
 	gfx.EffectUse(gfx.g_fxMerge)
-	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(opaqueTarget, 0), gfx.g_nearestClamp)
+	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(opaqueTarget, 0), gfx.g_nearest0Clamp)
 	gfx.EffectAssignV4(gfx.g_fxMerge, gfx.UNIFORM_DEBUG_0, v4.make(ffx, ffy, ffz, ffr))
 
 	gfx.ColorWrite(true, true, true, true)
 
 	gfx.StencilState(true, gfx.EQUAL, 1, 1, gfx.KEEP, gfx.KEEP, gfx.KEEP, 0)
-	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaFullTarget, 0), gfx.g_nearestClamp)
-	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaFullTarget, 1), gfx.g_nearestClamp)
+	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaFullTarget, 0), gfx.g_nearest0Clamp)
+	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaFullTarget, 1), gfx.g_nearest0Clamp)
 	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 	gfx.StencilState(true, gfx.EQUAL, 0, 1, gfx.KEEP, gfx.KEEP, gfx.KEEP, 0)
-	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaTarget, 0), gfx.g_nearestClamp)
-	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaTarget, 1), gfx.g_nearestClamp)
+	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaTarget, 0), gfx.g_nearest0Clamp)
+	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaTarget, 1), gfx.g_nearest0Clamp)
 	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 	fps.StopProfile(prfGameOnRender)
@@ -1281,7 +1285,7 @@ func writeEdges()() {
 	gfx.StencilState(true, gfx.ALWAYS, 1, 1, gfx.KEEP, gfx.KEEP, gfx.REPLACE, 1)
 
 	gfx.EffectUse(gfx.g_fxStencil)
-	gfx.EffectAssignTexture(gfx.g_fxStencil, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(edgeTarget, 0), gfx.g_nearestClamp)
+	gfx.EffectAssignTexture(gfx.g_fxStencil, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(edgeTarget, 0), gfx.g_nearest0Clamp)
 	gfx.MeshRender(gfx.g_fullscreenQuad)
 }
 
@@ -1326,10 +1330,12 @@ func characterCreate(name str, scale f32, spine str, torso str, shoulder str, ha
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func levelCreate(name str, scene str) {
+func levelCreate(name str, scene str, scale f32) {
     var level Level
     level.name = name
     level.scene = scene
+    level.scale = scale
+    level.world = m44.IDENTITY
     levels = append(levels, level)
 }
 
@@ -1408,10 +1414,10 @@ func gameOnParse(i i32, argc i32) {
         app.SetUserHelp("++gmode : Game Mode flag : menu, game, light, debug\n")
     }
 
-    app.SetCurrentArgIsValid(false)
+    app.SetCurrentArgIsValid(0)
     var arg str = app.GetCurrentArg()
     if args.Flags(arg, "gmode", &gameMode, &gameModeMatch, gameModeNames, gameModeValues) {
-        app.SetCurrentArgIsValid(true)
+        app.SetCurrentArgIsValid(1)
         var allModes bool = (gameMode == 0) || (gameMode == GAME_MODE_LIGHT) || (gameMode == GAME_MODE_DEBUG)
         if ((gameMode & GAME_MODE_MENU) != 0) || allModes {
             hasModeMenu = true
@@ -1453,39 +1459,39 @@ func loadGame()() {
 
 	edgeTarget = gfx.TargetCreate(1, width, height, scale, true)
 	var edgeTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_R8, halfWidth, halfHeight, 0, true, false)
-	gfx.TextureSamplerState(edgeTexture, gfx.g_nearestClamp)
+	gfx.TextureSamplerState(edgeTexture, gfx.g_nearest0Clamp)
 	gfx.TargetAttachColor(edgeTarget, edgeTexture, 0)
 
 	opaqueTarget = gfx.TargetCreate(1, width, height, 1, true)
 	var opaque0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true, false)
-	gfx.TextureSamplerState(opaque0, gfx.g_nearestClamp)
+	gfx.TextureSamplerState(opaque0, gfx.g_nearest0Clamp)
 	gfx.TargetAttachColor(opaqueTarget, opaque0, 0)
 	var opaqueDepthTexture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, width, height, 0, true, false)
 	gfx.TargetAttachDepth(opaqueTarget, opaqueDepthTexture)
 
 	alphaFullTarget = gfx.TargetCreate(2, width, height, 1, true)
 	var alphaFull0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true, false)
-	gfx.TextureSamplerState(alphaFull0, gfx.g_linearWrap)
+	gfx.TextureSamplerState(alphaFull0, gfx.g_linear0Wrap)
 	gfx.TargetAttachColor(alphaFullTarget, alphaFull0, 0)
 	var alphaFull1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true, false)
-	gfx.TextureSamplerState(alphaFull1, gfx.g_linearWrap)
+	gfx.TextureSamplerState(alphaFull1, gfx.g_linear0Wrap)
 	gfx.TargetAttachColor(alphaFullTarget, alphaFull1, 1)
 	var alphaFullStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true, false)
 	gfx.TargetAttachStencil(alphaFullTarget, alphaFullStencilTexture)
 
 	alphaTarget = gfx.TargetCreate(2, width, height, scale, true)
 	var alpha0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true, false)
-	gfx.TextureSamplerState(alpha0, gfx.g_linearWrap)
+	gfx.TextureSamplerState(alpha0, gfx.g_linear0Wrap)
 	gfx.TargetAttachColor(alphaTarget, alpha0, 0)
 	var alpha1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true, false)
-	gfx.TextureSamplerState(alpha1, gfx.g_linearWrap)
+	gfx.TextureSamplerState(alpha1, gfx.g_linear0Wrap)
 	gfx.TargetAttachColor(alphaTarget, alpha1, 1)
 	var alphaStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, halfWidth, halfHeight, 0, true, false)
 	gfx.TargetAttachStencil(alphaTarget, alphaStencilTexture)
 
 	mergeTarget = gfx.TargetCreate(1, width, height, 1, true)
 	var merge0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true, false)
-	gfx.TextureSamplerState(merge0, gfx.g_nearestClamp)
+	gfx.TextureSamplerState(merge0, gfx.g_nearest0Clamp)
 	gfx.TargetAttachColor(mergeTarget, merge0, 0)
 	var mergeStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true, false)
 	gfx.TargetAttachStencil(mergeTarget, mergeStencilTexture)
@@ -1536,17 +1542,19 @@ func loadGame()() {
     characterCreate("dmux", 5.0,"mixamorig:Hips_01", "mixamorig:Spine_02", "mixamorig:RightShoulder_012", "mixamorig:RightHand_00", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
     characterCreate("bouffet", 5.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
 
-    levelCreate("skyminer/high", "scene.gltf")
+    levelCreate("skyminer/high", "scene.gltf", 50.0)
 
     skyCreate("doge2")
-    skyCreate("ennis")
-    skyCreate("field")
     skyCreate("footprint_court")
     skyCreate("helipad")
     skyCreate("papermill")
     skyCreate("pisa")
-    skyCreate("studio_grey")
-    skyCreate("studio_red_green")
+    if isModeDebug {
+        skyCreate("field")
+        skyCreate("ennis")
+        skyCreate("studio_grey")
+        skyCreate("studio_red_green")
+    }
 
     brdf = gfx.TextureCreate(sprintf("%s/textures/environments/brdf2.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false, false)
 

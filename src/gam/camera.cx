@@ -483,11 +483,11 @@ func FreeCameraProcess(id CameraId, event *app.Event) {
 }
 
 // FreeCameraUpdate ...
-func FreeCameraUpdate(id CameraId, deltaTime f64) {
+func FreeCameraUpdate(id CameraId, deltaTime f64, rotationSpeed f32, translationSpeed f32) {
     panicIfNot(CameraIsValid(id), "")
 
-    var rotationSpeed f32 = 0.5
-    var translationSpeed f32 = 30.0
+    rotationSpeed = 0.5 * rotationSpeed
+    translationSpeed = 30.0 * translationSpeed
 
     var dt f32 = f64.f32(deltaTime)
 

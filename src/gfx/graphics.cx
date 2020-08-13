@@ -128,10 +128,16 @@ var g_fxStencil EffectId = EffectInvalid()
 var g_fxEdge EffectId = EffectInvalid()
 var g_fxSky EffectId = EffectInvalid()
 
+
+
+var g_linearWrap SamplerState = SamplerStateCreate(gl.LINEAR_MIPMAP_LINEAR, gl.LINEAR, gl.REPEAT, gl.REPEAT, gl.REPEAT)
+var g_linearClamp SamplerState = SamplerStateCreate(gl.LINEAR_MIPMAP_LINEAR, gl.LINEAR, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE)
+var g_nearestClamp SamplerState = SamplerStateCreate(gl.NEAREST_MIPMAP_NEAREST, gl.NEAREST, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE)
+
 var g_linear0Wrap SamplerState = SamplerStateCreate(gl.LINEAR, gl.LINEAR, gl.REPEAT, gl.REPEAT, gl.REPEAT)
-var g_linearWrap SamplerState = SamplerStateCreate(gl.LINEAR_MIPMAP_NEAREST, gl.LINEAR, gl.REPEAT, gl.REPEAT, gl.REPEAT)
-var g_linearClamp SamplerState = SamplerStateCreate(gl.LINEAR_MIPMAP_NEAREST, gl.LINEAR, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE)
-var g_nearestClamp SamplerState = SamplerStateCreate(gl.NEAREST, gl.NEAREST, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE)
+var g_linear0Clamp SamplerState = SamplerStateCreate(gl.LINEAR, gl.LINEAR, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE)
+var g_nearest0Clamp SamplerState = SamplerStateCreate(gl.NEAREST, gl.NEAREST, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE)
+
 
 
 var g_vertexLayout []VertexAttribute

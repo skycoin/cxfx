@@ -63,10 +63,10 @@ type Application struct {
     prfUIResize fps.ProfileId
     prfRender fps.ProfileId
 
+    hasOnParse i32 // TODO : issues with bool
+    currentArgIsValid i32 // TODO : issues with bool
     currentArg str
-    currentArgIsValid bool
     userHelp str
-    hasOnParse bool
     onParse func_i32_i32_id
 }
 
@@ -272,12 +272,12 @@ func Destroy()() {
 
 // SetParseCallback ...
 func SetParseCallback(packageName str, functionName str) {
-    g_app.hasOnParse = false
+    g_app.hasOnParse = 0
     var onParse func_i32_i32_id = func_i32_i32(packageName, functionName)
     panicIfNot(onParse.index >= 0, "invalid function")
     if onParse.index >= 0 {
         g_app.onParse = onParse
-        g_app.hasOnParse = true
+        g_app.hasOnParse = 1
     }
 }
 
@@ -292,7 +292,7 @@ func GetCurrentArg() (out str) {
 }
 
 // SetCurrentArgIsValid ...
-func SetCurrentArgIsValid(value bool) {
+func SetCurrentArgIsValid(value i32) {
     g_app.currentArgIsValid = value
 }
 
@@ -359,7 +359,6 @@ func parse() {
 
 	for a := 0; a < argc; a++ {
 		arg := os.Args[a]
-
 		if args.Bool(arg, "help", &help, &helpMatch) {
 			Help("", 0)
 		}
@@ -406,10 +405,10 @@ func parse() {
 			continue
 		}
 
-        if g_app.hasOnParse {
+        if g_app.hasOnParse == 1 {
             g_app.currentArg = arg
             call_i32_i32(g_app.onParse, a, argc)
-            if g_app.currentArgIsValid {
+            if g_app.currentArgIsValid  == 1{
                 continue
             }
         }
@@ -423,7 +422,7 @@ func Init() {
 	printf("app start : %s...\n", g_app.name)
 
 	glfw.Init() // ##0 terminate
-   
+
     var resizable i32 = glfw.False
 	if (g_app.options.hints & APP_HINT_RESIZABLE) == APP_HINT_RESIZABLE {
 		resizable = glfw.True

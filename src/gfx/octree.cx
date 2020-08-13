@@ -264,9 +264,9 @@ func octreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, proje
             lastEffect = effect.effect
 
             EffectUse(effect)
-	        EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearWrap)
-            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linear0Wrap)
-		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Wrap) // TODO : use gltf sampler
+	        EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearClamp)
+            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linear0Clamp)
+		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Clamp) // TODO : use gltf sampler
 
             EffectAssignM44(effect, UNIFORM_WORLD, world, false)
             EffectAssignM44(effect, UNIFORM_VIEW, view, false)
