@@ -34,6 +34,8 @@ type Octree struct {
     min mat.v3
     max mat.v3
     maxLevel i32
+    world mat.m44
+    transforms []mat.m44
     centers []mat.v3
     sizes []mat.v3
     corners []mat.v3
@@ -65,16 +67,27 @@ func OctreeIsValid(id OctreeId) (out bool) {
 }
 
 // OctreeCreate ...
-func OctreeCreate(min mat.v3, max mat.v3, maxLevel i32) (out OctreeId) {
+func OctreeCreate(model ModelId, world mat.m44, maxLevel i32) (out OctreeId) {
     out.octree = len(g_octrees)
+
+
+    var min mat.v3 = ModelGetMin(model)
+    var max mat.v3 = ModelGetMax(model)
+
+    min = v3.transform_point(min, world)
+    max = v3.transform_point(max, world)
+
+    var newMin mat.v3 = v3.min(min, max)
+    var newMax mat.v3 = v3.max(min, max)
 
     var octree Octree
     octree.debugMesh = MeshCreate(LINES, UNSIGNED_SHORT, 10 * 8192 * 3, g_vertexLayout, 10 * 8192 * 3)
-    octree.size = v3.mulf(v3.sub(max, min), 0.5)
-    octree.center = v3.add(min, octree.size)
-    octree.min = min
-    octree.max = max
+    octree.size = v3.mulf(v3.sub(newMax, newMin), 0.5)
+    octree.center = v3.add(newMin, octree.size)
+    octree.min = newMin
+    octree.max = newMax
     octree.maxLevel = maxLevel
+    octree.world = world
     g_octrees = append(g_octrees, octree)
 
     var totalCount i32 = resetOffsets(out)
@@ -94,6 +107,72 @@ func OctreeCreate(min mat.v3, max mat.v3, maxLevel i32) (out OctreeId) {
     g_octreeCells = append(g_octreeCells, v3.make(-1.0, -1.0, -1.0))
 
     var root i32 = octreeUpdateCells(out, 0, g_octrees[out.octree].center, g_octrees[out.octree].size)
+
+    var modelTransforms []m44 = g_models[model.model].transforms
+    var transformCount i32 = len(modelTransforms)
+    var transforms []m44
+    for i := 0; i < transformCount; i++ {
+        transforms = append(transforms, m44.mulISSUE(modelTransforms[i], world))
+    }
+    g_octrees[out.octree].transforms = transforms
+
+    var cellCount i32 = resetOffsets(out)
+    for i := 0; i < cellCount; i++ {
+        cells[i].transparentPrimitives = resize(cells[i].transparentPrimitives, 0)
+        cells[i].opaquePrimitives = resize(cells[i].opaquePrimitives, 0)
+    }
+    var primitives [] Primitive = g_models[model.model].primitives
+
+    var primitiveCount i32 = len(primitives)
+    var mins []mat.v3 = g_octrees[out.octree].mins
+    var maxs []mat.v3 = g_octrees[out.octree].maxs
+
+    mins = resize(mins, 0)
+    maxs = resize(maxs, 0)
+    for i := 0; i < primitiveCount; i++ {
+        var nodeIndex i32 = primitives[i].nodeIndex
+        var transform mat.m44 = transforms[nodeIndex] // ISSUE : can't use transforms[primitives[i].nodeIndex]
+
+        var primMin mat.v3 = v3.transform_point(primitives[i].min, transform)
+        var primMax mat.v3 = v3.transform_point(primitives[i].max, transform)
+
+        var newPrimMin mat.v3 = v3.min(primMin, primMax)
+        var newPrimMax mat.v3 = v3.max(primMin, primMax)
+
+        mins = append(mins, newPrimMin)
+        maxs = append(maxs, newPrimMax)
+
+        //mins = append(mins, v3.min(newMin, newMax))
+        //maxs = append(maxs, v3.max(newMin, newMax))
+    }
+
+    g_octrees[out.octree].mins = mins
+    g_octrees[out.octree].maxs = maxs
+
+    octreeSplitModel(out, model, 0, g_models[model.model].opaqueMeshes, g_models[model.model].transparentMeshes)
+
+    var asset AssetId = g_models[model.model].asset
+    for i := 0; i < cellCount; i++ {
+        printf("Splitting cell %d/%d...\n", i, cellCount)
+        //if cells[i].level == maxLevel {
+            //printf("MIN %f, %f, %f, MAX %f, %f, %f\n", cellMin.x, cellMin.y, cellMin.y,
+        //            cellMax.x, cellMax.y, cellMax.z)
+            cells[i].opaques = octreeSplitMeshes(out, cells[i].opaquePrimitives,
+                asset, primitives, transforms, cells, i, cells[i].opaques)
+            cells[i].transparents = octreeSplitMeshes(out, cells[i].transparentPrimitives,
+                asset, primitives, transforms, cells, i, cells[i].transparents)
+       // }
+    }
+
+    var octreePrimitives []Primitive = g_octrees[out.octree].primitives
+    var octreePrimitiveCount i32 = len(octreePrimitives)
+    for primitiveIndex := 0; primitiveIndex < octreePrimitiveCount; primitiveIndex++ {
+        var hash0 ui64
+        var hash1 ui64
+        hash0, hash1 = PrimitiveComputeHash(octreePrimitives[primitiveIndex])
+        octreePrimitives[primitiveIndex].hash0 = hash0
+        octreePrimitives[primitiveIndex].hash1 = hash1
+    }
 }
 
 func resetOffsets(id OctreeId) (count i32) {
@@ -477,76 +556,6 @@ func lerpVertex(attributeCount i32, positionAttribute i32, channels []channelInf
         }
     }
 
-}
-
-var splitMeshCount i32
-// OctreeSplitModel ...
-func OctreeSplitModel(id OctreeId, model ModelId) {
-    panicIfNot(OctreeIsValid(id), "invalid id")
-    panicIfNot(ModelIsValid(model), "invalid model")
-
-    var cells []OctreeCell  = g_octrees[id.octree].cells
-    var cellCount i32 = resetOffsets(id)
-    for i := 0; i < cellCount; i++ {
-        cells[i].transparentPrimitives = resize(cells[i].transparentPrimitives, 0)
-        cells[i].opaquePrimitives = resize(cells[i].opaquePrimitives, 0)
-    }
-    var primitives [] Primitive = g_models[model.model].primitives
-    var transforms []m44 = g_models[model.model].transforms
-
-    var primitiveCount i32 = len(primitives)
-    splitMeshCount = primitiveCount
-    var mins []mat.v3 = g_octrees[id.octree].mins
-    var maxs []mat.v3 = g_octrees[id.octree].maxs
-
-    mins = resize(mins, 0)
-    maxs = resize(maxs, 0)
-    for i := 0; i < primitiveCount; i++ {
-        var nodeIndex i32 = primitives[i].nodeIndex
-        var transform mat.m44 = transforms[nodeIndex] // ISSUE : can't use transforms[primitives[i].nodeIndex]
-
-        var newMin mat.v3 = primitives[i].min
-        newMin = v3.transform_point(newMin, transform)
-
-        var newMax mat.v3 = primitives[i].max
-        newMax = v3.transform_point(newMax, transform)
-
-        mins = append(mins, newMin)
-        maxs = append(maxs, newMax)
-
-        //mins = append(mins, v3.min(newMin, newMax))
-        //maxs = append(maxs, v3.max(newMin, newMax))
-    }
-
-    g_octrees[id.octree].mins = mins
-    g_octrees[id.octree].maxs = maxs
-
-    octreeSplitModel(id, model, 0, g_models[model.model].opaqueMeshes, g_models[model.model].transparentMeshes)
-
-    var maxLevel i32 = g_octrees[id.octree].maxLevel
-    var asset AssetId = g_models[model.model].asset
-    for i := 0; i < cellCount; i++ {
-        printf("Splitting cell %d/%d...\n", i, cellCount)
-        //if cells[i].level == maxLevel {
-            //printf("MIN %f, %f, %f, MAX %f, %f, %f\n", cellMin.x, cellMin.y, cellMin.y,
-        //            cellMax.x, cellMax.y, cellMax.z)
-            cells[i].opaques = octreeSplitMeshes(id, cells[i].opaquePrimitives,
-                asset, primitives, transforms, cells, i, cells[i].opaques)
-            cells[i].transparents = octreeSplitMeshes(id, cells[i].transparentPrimitives,
-                asset, primitives, transforms, cells, i, cells[i].transparents)
-       // }
-    }
-
-
-    var octreePrimitives []Primitive = g_octrees[id.octree].primitives
-    var octreePrimitiveCount i32 = len(octreePrimitives)
-    for primitiveIndex := 0; primitiveIndex < octreePrimitiveCount; primitiveIndex++ {
-        var hash0 ui64
-        var hash1 ui64
-        hash0, hash1 = PrimitiveComputeHash(octreePrimitives[primitiveIndex])
-        octreePrimitives[primitiveIndex].hash0 = hash0
-        octreePrimitives[primitiveIndex].hash1 = hash1
-    }
 }
 
 func getPrimitiveIndex(octreePrimitives []Primitive,  attributes []VertexAttribute, cellPrimitives []i32, parent Primitive) (out i32) {

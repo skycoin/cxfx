@@ -6,15 +6,16 @@ import "fps"
 import "gam"
 import "gfx"
 import "gui"
+import "m44"
 import "mat"
-import "snd"
 import "phx"
+import "q4"
+import "snd"
+import "time"
 import "v1"
 import "v2"
 import "v3"
 import "v4"
-import "q4"
-import "m44"
 
 // TODO : can't navigate with keyboard at startup
 // TODO : dialog disapear if exit button is pushed with keyboard
@@ -33,6 +34,7 @@ type Level struct {
     scale f32
     world mat.m44
     model gfx.ModelId
+    octree gfx.OctreeId
 }
 
 
@@ -49,6 +51,7 @@ type Player struct {
     shoulderName str
     handName str
     loaded bool
+    visible bool
 
 	idle Anim
 	throw Anim
@@ -137,7 +140,9 @@ var players []Player
 var skies []Sky
 var levels []Level
 
-var debugSky bool
+var debugFrustum bool = false
+var debugOctree bool = false
+var debugSky bool = false
 var currentSky i32
 var currentLevel i32
 
@@ -160,10 +165,12 @@ var smokeTexture gfx.TextureId = gfx.InvalidTexture()
 
 var dollarMesh gfx.MeshId = gfx.InvalidMesh()
 
+var skyWorld mat.m44 = m44.IDENTITY
 var skyMesh gfx.MeshId = gfx.InvalidMesh()
 var brdf gfx.TextureId = gfx.InvalidTexture()
 
 var camera gam.CameraId
+var frustum gfx.FrustumId
 
 var worldPosY f32 = -10.0
 
@@ -188,13 +195,13 @@ var GAME_MODE_LIGHT      i32 = 4
 var GAME_MODE_DEBUG      i32 = 8
 
 var gameMode i32
-var gameModeMatch bool
+var gameModeMatch bool = false
 var gameModeNames []str
 var gameModeValues []i32
-var hasModeMenu bool
-var hasModeGame bool
-var isModeLight bool
-var isModeDebug bool
+var hasModeMenu bool = false
+var hasModeGame bool = false
+var isModeLight bool = false
+var isModeDebug bool = false
 //var voiceId snd.VoiceId
 
 var TAG_GROUND i32 = 1
@@ -428,7 +435,15 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 			if action == app.KEY_PRESS {
 				players[currentPlayer].weapon = WEAPON_SKYNOTE
 			}
-		}
+		} else if key == app.KEYCODE_9 {
+            if action == app.KEY_PRESS {
+                debugFrustum = debugFrustum == false
+            }
+        } else if key == app.KEYCODE_8 {
+            if action == app.KEY_PRESS {
+                debugOctree = debugOctree == false
+            }
+        }
 	}
 
 	var mouseAction i32 = gui.CurrentEvent.mouse.action
@@ -550,6 +565,7 @@ func updatePlayers(dt f32)() {
 
 
 		var radius mat.v3 = v3.makef(9.8)//(3.8, 9.8, 3.8)
+        players[i].visible = gfx.FrustumIntersectsSphere(frustum, t, 9.8) <= 0
 		phx.SetObjectSize(phxPlayer, radius)
 		//phx.SetObjectSize(phxPlayer, v3.make(ffx, ffy, ffz))
 		//t = v3.sub(t, v3.make(ffx, ffy, ffz))
@@ -838,6 +854,10 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
     }
 
 
+    if debugFrustum == false {
+        gfx.FrustumUpdate(frustum, gam.CameraGetInvViewProj(camera))
+    }
+
     //gfx.ModelUpdate(levels[currentLevel].model, gfx.InvalidAnim()
 
 	var scaleBox f32 = 50.0
@@ -855,10 +875,6 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	updateAnimations(dt)
 	updatePositions(dt)
 
-    var levelScale f32 = levels[currentLevel].scale
-    levels[currentLevel].world = m44.makef_SAT(
-            levelScale, levelScale, levelScale,
-            0.0, 0.0, 1.0, v1.PI/2.0, 0.0, 0.0, 0.0)
 	//-------------------------------------------------------------------------
 	// PhxUpdate
 	//-------------------------------------------------------------------------
@@ -978,6 +994,13 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	gfx.ParticleUpdate(dt)
 	fps.StopProfile(prfParticleUpdate)
 	fps.StopProfile(prfGameOnUpdate)
+
+    if isModeLight == false {
+        gfx.OctreeUpdate(levels[currentLevel].octree, frustum)
+    }
+
+    var cameraPosition mat.v3 = gam.CameraGetPosition(camera)
+    skyWorld = m44.make_translate(cameraPosition.x, cameraPosition.y, cameraPosition.z)
 }
 
 //-----------------------------------------------------------------------------
@@ -1020,7 +1043,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
         skySampler = gfx.g_linear0Clamp
     }
 	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skyTexture, skySampler)
-	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
+	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, skyWorld, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
 	gfx.MeshRender(skyMesh)
@@ -1049,7 +1072,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	if isModeLight == false {
         var levelModel gfx.ModelId = levels[currentLevel].model
 	    gfx.ModelUpdate(levelModel, gfx.AnimationInvalid(), 0.0, true)
-	    gfx.ModelSetWorld(levelModel, levels[currentLevel].world)
+	    gfx.ModelSetWorld(levelModel, m44.IDENTITY)
 	    gfx.ModelSetView(levelModel, view)
 	    gfx.ModelSetProjection(levelModel, projection)
 	    gfx.ModelSetEnvironmentSpecular(levelModel, skies[currentSky].specular)
@@ -1057,8 +1080,15 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	    gfx.ModelSetBRDF(levelModel, brdf)
 	    gfx.ModelSetCameraPosition(levelModel, cameraPosition)
         gfx.ModelSetExposure(levelModel, 1.0)
-	    gfx.ModelRender(levelModel)
+	    //gfx.ModelRender(levelModel)
+        gfx.OctreeSetDebug(levels[currentLevel].octree, debugOctree)
+        gfx.OctreeRender(levels[currentLevel].octree, levelModel, /*levels[currentLevel].world*/ m44.IDENTITY, view, projection)
+        if debugFrustum {
+            gfx.FrustumRender(frustum, m44.IDENTITY, view, projection)
+        }
     }
+
+
 
 	//-------------------------------------------------------------------------
 	// PhxRender
@@ -1071,19 +1101,23 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	// RenderPlayers
 	//-------------------------------------------------------------------------
 	prfRenderPlayers = fps.CreateStartProfile(prfRenderPlayers, "RenderPlayers")
+    var renderPlayerCount i32 = 0
 	for i := 0; i < len(players); i++ {
 		var player Player = players[i]
-		var currentModel gfx.ModelId = player.idle.model
-		gfx.ModelSetView(currentModel, view)
-		gfx.ModelSetProjection(currentModel, projection)
-		gfx.ModelSetEnvironmentSpecular(currentModel, skies[currentSky].specular)
-		gfx.ModelSetEnvironmentDiffuse(currentModel, skies[currentSky].diffuse)
-		gfx.ModelSetBRDF(currentModel, brdf)
-		gfx.ModelSetCameraPosition(currentModel, cameraPosition)
-		gfx.ModelSetWorld(currentModel, player.world)
-        gfx.ModelSetExposure(currentModel, 1.0)
-        gfx.ModelRender(currentModel)
-	}
+        if player.visible == true {
+    		var currentModel gfx.ModelId = player.idle.model
+	    	gfx.ModelSetView(currentModel, view)
+		    gfx.ModelSetProjection(currentModel, projection)
+		    gfx.ModelSetEnvironmentSpecular(currentModel, skies[currentSky].specular)
+		    gfx.ModelSetEnvironmentDiffuse(currentModel, skies[currentSky].diffuse)
+		    gfx.ModelSetBRDF(currentModel, brdf)
+		    gfx.ModelSetCameraPosition(currentModel, cameraPosition)
+		    gfx.ModelSetWorld(currentModel, player.world)
+            gfx.ModelSetExposure(currentModel, 1.0)
+            gfx.ModelRender(currentModel)
+            renderPlayerCount++
+	    }
+    }
 	fps.StopProfile(prfRenderPlayers)
 
 	//-------------------------------------------------------------------------
@@ -1542,7 +1576,7 @@ func loadGame()() {
     characterCreate("dmux", 5.0,"mixamorig:Hips_01", "mixamorig:Spine_02", "mixamorig:RightShoulder_012", "mixamorig:RightHand_00", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
     characterCreate("bouffet", 5.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
 
-    levelCreate("skyminer/high", "scene.gltf", 50.0)
+    levelCreate("skyminer/high", "scene.gltf", 25.0)
 
     skyCreate("doge2")
     skyCreate("footprint_court")
@@ -1562,6 +1596,7 @@ func loadGame()() {
     skyminerModel = loadModel("skyminer/low", "skyminer_low_test.gltf", gfx.MODEL_GEOMETRY)
 
     camera = gam.CameraCreate()
+    frustum = gfx.FrustumCreate()
 	/*gam.CameraSetProjection(camera, 0.5, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y, true)
 	gam.CameraSetPosition(camera, v3.make(0.0, worldPosY + 1.0, 0.0), true)
 	gam.CameraSetYawPitch(camera, 0.0, 0.0, true)*/
@@ -1575,8 +1610,21 @@ func loadLevel()() {
         var levelCount i32 = len(levels)
         currentLevel = i32.rand(0, levelCount) % levelCount
         if levels[currentLevel].loaded == false {
-            levels[currentLevel].model = loadModel(levels[currentLevel].name, levels[currentLevel].scene, gfx.MODEL_GEOMETRY)
+            var levelModel gfx.ModelId = loadModel(levels[currentLevel].name, levels[currentLevel].scene, gfx.MODEL_GEOMETRY)
+            gfx.ModelUpdate(levelModel, gfx.AnimationInvalid(), 0.0, true)
+
+            var levelScale f32 = levels[currentLevel].scale
+            var levelWorld mat.m44 = m44.makef_SAT(levelScale, levelScale, levelScale,
+                0.0, 0.0, 1.0, 3.0 * v1.PI/2.0, 0.0, 0.0, 0.0)
+
+            var t0 i64 = time.UnixNano()
+            var levelOctree gfx.OctreeId = gfx.OctreeCreate(levelModel, levelWorld, 2)
+            printf("Octree model split in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
+
             levels[currentLevel].loaded = true
+            levels[currentLevel].model = levelModel
+            levels[currentLevel].octree = levelOctree
+            levels[currentLevel].world = levelWorld
         }
     }
 

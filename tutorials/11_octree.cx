@@ -237,7 +237,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 
 	// model
 	var model gfx.ModelId = models[currentModel]
-	gfx.ModelSetWorld(model, world)
+	//gfx.ModelSetWorld(model, world)
 	gfx.ModelSetView(model, view)
 	gfx.ModelSetProjection(model, projection)
 	gfx.ModelSetEnvironmentSpecular(model, skySpeculars[currentSky])
@@ -364,13 +364,12 @@ func gameOnStart(window str) {
     var skyminerIndex i32 = len(models) - 1
     currentModel = skyminerIndex
     var octreeModel gfx.ModelId = models[skyminerIndex]
-    var octreeMin mat.v3 = v3.mulf(gfx.ModelGetMin(octreeModel), scales[skyminerIndex])
-    var octreeMax mat.v3 = v3.mulf(gfx.ModelGetMax(octreeModel), scales[skyminerIndex])
-    octree = gfx.OctreeCreate(octreeMin, octreeMax, 2)
 	gfx.ModelUpdate(octreeModel, gfx.AnimationInvalid(), 0.0, true)
 
+    var octreeScale f32 = scales[skyminerIndex]
+    var octreeWorld mat.m44 = m44.makef_SAT(octreeScale, octreeScale, octreeScale, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     var t0 i64 = time.UnixNano()
-    gfx.OctreeSplitModel(octree, octreeModel)
+    octree = gfx.OctreeCreate(octreeModel, octreeWorld, 2)
     printf("Octree model split in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
 
     frustum = gfx.FrustumCreate()

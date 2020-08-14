@@ -252,7 +252,8 @@ func AABBIntersectsPlane(min v3, max v3, plane v4) (out i32) {
 func AABBIntersectsPlanes(min v3, max v3, planes []v4) (out i32) {
     out = -1
     var intersect bool
-    for i := 0; i < 6; i++ {
+    var planeCount i32 = len(planes)
+    for i := 0; i < planeCount; i++ {
         var inter i32 = AABBIntersectsPlane(min, max, planes[i])
         if inter == 1 {
             out = 1
@@ -264,4 +265,38 @@ func AABBIntersectsPlanes(min v3, max v3, planes []v4) (out i32) {
     }
 }
 
+// SphereIntersectsPlane ...
+func SphereIntersectsPlane(center v3, radius f32, plane v4, point v3) (out i32) {
+    out = -1
+
+    var dx f32 = center.x - point.x
+    var dy f32 = center.y - point.y
+    var dz f32 = center.z - point.z
+
+    var d f32 = -dx * plane.x + -dy * plane.y + -dz * plane.z
+    if d > radius {
+        out = 1
+    } else if d < -radius {
+        out = -1
+    } else {
+        out = 0
+    }
+}
+
+// SphereIntersectsPlanes ...
+func SphereIntersectsPlanes(center v3, radius f32, planes []v4, points []v3) (out i32) {
+    out = -1
+    var intersect bool
+    var planeCount i32 = len(planes)
+    for i := 0; i < planeCount; i++ {
+        var inter i32 = SphereIntersectsPlane(center, radius, planes[i], points[i])
+        if inter == 1 {
+            out = 1
+            return
+        } else if inter == 0 {
+            out = 0
+        } else if inter == -1 {
+        }
+    }
+}
 
