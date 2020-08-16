@@ -53,6 +53,7 @@ type Player struct {
     loaded bool
     visible bool
 
+    color mat.v4
 	idle Anim
 	throw Anim
 	jump Anim
@@ -513,13 +514,7 @@ func emitSmoke(aimPosition mat.v3, player i32) {
 	gfx.EmitterSetAngularVelocity(emitter, v4.make(0.0, 0.0, 0.0, 0.3), v4.make_v31(v3.ZERO, 0.6))
 	gfx.EmitterSetLife(emitter, 7.0, 1.0)
 	gfx.EmitterSetPuff(emitter, 1, 0)
-	if player == currentPlayer {
-		gfx.EmitterSetColor(emitter, v4.mul(gui.g_blue, v4.make(1.0, 1.0, 1.0, 0.1)), v4.makef(0.1))
-	} else if player == currentCPU {
-		gfx.EmitterSetColor(emitter, v4.make(0.9, 0.0, 0.9, 0.1), v4.makef(0.1))
-	} else if player == currentCPU2 {
-		gfx.EmitterSetColor(emitter, v4.mul(gui.g_gold, v4.make(1.0, 1.0, 1.0, 0.1)), v4.makef(0.1))
-	}
+	gfx.EmitterSetColor(emitter, v4.mul(players[player].color, v4.make(1.0, 1.0, 1.0, 0.1)), v4.makef(0.1))
 	gfx.EmitterSetTexture(emitter, smokeTexture)
 	gfx.EmitterInit(emitter, 256, 10.0, 0.2, 0.2)
 }
@@ -1416,6 +1411,7 @@ func playerCreate(characterIndex i32) {
 	        player.tmpAnim2 = gfx.AnimationCreate()
 	        gfx.AnimationSetRuntime(player.tmpAnim2, true)
 
+            player.color = v4.make(f32.rand(), f32.rand(), f32.rand(), 1.0)
 
 	        player.phxObject = phx.AddObject(phx.TYPE_ELLIPSE, TAG_PLAYER, len(players),
 	        	phx.STATE_TRANSLATE,// | phx.STATE_DEBUG,
@@ -1562,6 +1558,7 @@ func loadGame()() {
 		v3.make(groundRight, 0.0, 0.0), v3.GREEN, v3.make(0.0, 0.0, groundBack),
 		0.0, 1.0, v4.make(0.0, 1.0, 0.0, 0.0), v4.ONE)
 
+	smokeTexture = gfx.TextureCreate(sprintf("%s/textures/smoke.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
 	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
 	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
 
@@ -1573,7 +1570,7 @@ func loadGame()() {
     characterCreate("bugd", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
     characterCreate("npc", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
     characterCreate("darkz", 6.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
-    characterCreate("dmux", 5.0,"mixamorig:Hips_01", "mixamorig:Spine_02", "mixamorig:RightShoulder_012", "mixamorig:RightHand_00", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("dmux", 5.5,"mixamorig:Hips_01", "mixamorig:Spine_02", "mixamorig:RightShoulder_012", "mixamorig:RightHand_00", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
     characterCreate("bouffet", 5.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
 
     levelCreate("skyminer/high", "scene.gltf", 25.0)
@@ -1615,7 +1612,7 @@ func loadLevel()() {
 
             var levelScale f32 = levels[currentLevel].scale
             var levelWorld mat.m44 = m44.makef_SAT(levelScale, levelScale, levelScale,
-                0.0, 0.0, 1.0, 3.0 * v1.PI/2.0, 0.0, 0.0, 0.0)
+                0.0, 0.0, 1.0, 3.0 * v1.PI/2.0, 0.0, 250.0, 200.0)
 
             var t0 i64 = time.UnixNano()
             var levelOctree gfx.OctreeId = gfx.OctreeCreate(levelModel, levelWorld, 2)
