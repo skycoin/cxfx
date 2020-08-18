@@ -134,6 +134,8 @@ var title_time f32
 var title_size f32
 var scroll_horiz f32//Background image scrolling
 var scroll_horiz2 f32//Background clouds scrolling
+var scroll_horiz3 f32//Background clouds scrolling portrait
+
 var pumpscale f32//moving icons
 var pumpscalePor f32//moving portraits
 var pumpcolor f32//change color
@@ -175,6 +177,10 @@ var deltatime_title f32
 var deltatime_scroll f32
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 //UPDATING THE SCREEN
 func CharaOnUpdate(controlIndex i32, controlAction i32) {
 	gui.ControlSetBounds(BackGRPicture.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
@@ -206,22 +212,22 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 	true_height=gfx.gfx_height-(bande_noire)
 	Nbre_Portrait=12
 
-	gui.ControlSetBounds(CloudPicture6.base, v4.make((bande_horiz/2.0)+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
+	gui.ControlSetBounds(CloudPicture6.base, v4.make((bande_horiz/2.0)+scroll_horiz3, 0.0, true_width, gfx.gfx_height))
 	gui.PictureSetAlpha(CloudPicture6, true)
-	gui.ControlSetBounds(CloudPicture7.base, v4.make((bande_horiz/2.0)-true_width+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
+	gui.ControlSetBounds(CloudPicture7.base, v4.make((bande_horiz/2.0)-true_width+scroll_horiz3, 0.0, true_width, gfx.gfx_height))
 	gui.PictureSetAlpha(CloudPicture7, true)
-	gui.ControlSetBounds(CloudPicture9.base, v4.make((bande_horiz/2.0)-true_width*2.0+scroll_horiz2, 0.0, true_width, gfx.gfx_height))
+	gui.ControlSetBounds(CloudPicture9.base, v4.make((bande_horiz/2.0)-true_width*2.0+scroll_horiz3, 0.0, true_width, gfx.gfx_height))
 	gui.PictureSetAlpha(CloudPicture9, true)
 	dts_title = fps.DeltaSecond()
 	dt_title = f64.f32(dts_title)
-	deltatime_scroll = deltatime_scroll + dt_title
-	if deltatime_scroll>0.01 {///BACKGROUND SCROLLING SPEED REAL TIME
-		scroll_horiz2 = scroll_horiz2+0.1//scrolling clouds
-		if scroll_horiz2>true_width*2.0{
-			scroll_horiz2=0.0
+	//deltatime_scroll = deltatime_scroll + dt_title
+	//if deltatime_scroll>0.01 {///BACKGROUND SCROLLING SPEED REAL TIME
+		scroll_horiz3 = scroll_horiz3+6.0*dt_title//bef=0.1//scrolling clouds
+		if scroll_horiz3>true_width*2.0{
+			scroll_horiz3=0.0
 		}
-		deltatime_scroll=0.0
-	}
+		//deltatime_scroll=0.0
+	//}
 	//////////////////////////////////////////////
 	////PORTRAIT DISPLAY PARAMETERS
 	Porpic[0].coorx=(bande_horiz/2.0)+(0.075*true_width)
@@ -298,7 +304,7 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 	if deltatime > appear_time{////TIME WHEN EACH PORTRAITS ARE DISPLAYED IN SECONDS
 		timer++
 		deltatime = 0.0
-		appear_time=appear_time*0.89//ACCELERATE APPEAR TIME
+		appear_time=appear_time*50.0*dt//bef=0.89//ACCELERATE APPEAR TIME
 	}
 
 	if timer == 1 {
@@ -326,8 +332,8 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 			gui.ControlSetBounds(Porpic[i].name.base, v4.make(Porpic[i].coorx, Porpic[i].coory, Porpic[i].sizex*Porpic[i].disp_scale, Porpic[i].sizey))
 			gui.PictureSetAlpha(Porpic[i].name, true)
 			if Porpic[i].disp_scale<1.0 {
-				Porpic[i].disp_scale=Porpic[i].disp_scale*Porpic[i].flux///////SCALING SPEED
-				Porpic[i].flux=Porpic[i].flux*1.02//ZOOM SPEED ACCELERATION
+				Porpic[i].disp_scale=Porpic[i].disp_scale*70.0*dt///////SCALING SPEED
+				//Porpic[i].flux=Porpic[i].flux*68.0*dt//bef=1.02//ZOOM SPEED ACCELERATION
 			}	else {
 				Porpic[i].disp_scale=1.0
 				Porpic[i].flux=1.0
@@ -501,6 +507,10 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 		gui.ControlSetBounds(Icon_back.base, v4.make((bande_horiz/2.0)+(0.92*true_width),0.87*(true_height)+(bande_noire/2.0), 0.07*true_width*pumpscale, gfx.gfx_height))
 		gui.PictureSetAlpha(Icon_back, true)
 		gui.PictureSetOnState(Icon_back, "main", "onBackButton")
+
+
+		deltatime_scroll = deltatime_scroll + dt_title
+		if deltatime_scroll>0.01 {///BACKGROUND SCROLLING SPEED REAL TIME
 		if pumpmark==0 {
 			pumpscale=pumpscale*0.997
 		}
@@ -541,8 +551,13 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 				pumpmarkPor=0
 			}
 		}
+		deltatime_scroll=0.0
+		}
     }
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		//CALCULATING THE RATIO BETWEEN INITIAL SCREENSIZE AND REFRESHED SCREENSIZE
@@ -593,17 +608,18 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		dts_title = fps.DeltaSecond()
 		dt_title = f64.f32(dts_title)
 		deltatime_scroll = deltatime_scroll + dt_title
-		if deltatime_scroll>0.01{///BACKGROUND SCROLLING SPEED REAL TIME
-		scroll_horiz = scroll_horiz+0.1//scrolling speed
+		//if deltatime_scroll>0.01{///BACKGROUND SCROLLING SPEED REAL TIME
+		scroll_horiz = scroll_horiz+7.0*dt_title//scrolling speed (bef=0.1)
 		if scroll_horiz>true_width*2.0{
 		scroll_horiz=0.0
 		}
-		scroll_horiz2 = scroll_horiz2+0.8//scrolling clouds
+		scroll_horiz2 = scroll_horiz2+53.0*dt_title//scrolling clouds (bef=0.8)
 		if scroll_horiz2>true_width*2.0{
 		scroll_horiz2=0.0
 		}
-		deltatime_scroll=0.0
-		}
+		//deltatime_scroll=0.0
+		//}
+		printf("delta:",dt_title)
 
 ////DISPLAY MCAFEE + TITLE
 		
@@ -646,10 +662,10 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		gui.PictureSetColor(FacePicture, v4.make(1.0,1.0,1.0,g_mcaAlpha))
 
 
-		if deltatime_title > 1.0{
+		//if deltatime_title > 1.0{
 		if title_size < 1.0{
 		title_size=title_size*zoom_flux///TITLE ZOOM SPEED
-		zoom_flux=zoom_flux*1.008//accelerate zoom
+		zoom_flux=zoom_flux*61.0*dt_title//accelerate zoom (bef=1.008)
 		if title_size>1.0{
 			title_size=1.0
 			timer_title=3
@@ -657,7 +673,7 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 			}
 		deltatime=0.0
 			}
-		}
+		//}
 
 		
 		}
@@ -748,6 +764,8 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		gui.ControlSetBounds(Icon_single.base, v4.make((bande_horiz/2.0)+(0.40*true_width), 0.09*(true_height/2.0)+(bande_noire/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
 		gui.ControlSetBounds(Icon_multi.base, v4.make((bande_horiz/2.0)+(0.47*true_width), 0.09*(true_height/2.0)+(bande_noire/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
 		gui.ControlSetBounds(Icon_options.base, v4.make((bande_horiz/2.0)+(0.54*true_width), 0.09*(true_height/2.0)+(bande_noire/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
+		
+		if deltatime_title > 1.0{
 		if pumpmark==0{
 		pumpscale=pumpscale*0.995
 		}
@@ -764,6 +782,8 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 			if pumpmark==1{
 				pumpmark=0
 			}
+		deltatime=0.0
+			}
 		}
 
 
@@ -777,6 +797,9 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 	
 
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	
 
@@ -1076,7 +1099,7 @@ func loadMenu() {
 	    	initial_size=0.02//INITIAL SIZE OF PORTRAIT WHEN IT FIRST APPEARS - KEEP IT VERY LOW (0.01) TO AVOID GRAPHICAL BUGS
 	    	port_flux=1.01//INITIAL ZOOM SPEED
 	    	scroll_horiz=0.001
-	    	appear_time=0.3
+	    	appear_time=0.25
 	    	Portrait_select=-1
 	    	pumpmarkcol=0
 	    	pumpmarkPor=0
