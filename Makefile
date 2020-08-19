@@ -32,7 +32,7 @@ GLFWHINTS = ++hints=resizable
 ifeq ($FPS),)
 FPS = 60
 else
-FPS = 0
+FPS = 30
 endif
 
 CXFXOPTS = $(GLVERSION) $(DATA) $(GLFWHINTS)
