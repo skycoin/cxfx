@@ -73,7 +73,7 @@ func AudioCreate(path str)(out AudioId) {
 	} else if bitsPerSample == 16 {
 		bit8 = false
 	} else {
-		panicIf(true, "bitsPerSample")
+		panicIf(true, sprintf("bitsPerSample : %d\n", bitsPerSample))
 	}
 
 	var alFormat i32

@@ -194,6 +194,7 @@ var GAME_MODE_MENU       i32 = 1
 var GAME_MODE_GAME       i32 = 2
 var GAME_MODE_LIGHT      i32 = 4
 var GAME_MODE_DEBUG      i32 = 8
+var GAME_MODE_VIDEO      i32 = 16
 
 var gameMode i32
 var gameModeMatch bool = false
@@ -203,7 +204,7 @@ var hasModeMenu bool = false
 var hasModeGame bool = false
 var isModeLight bool = false
 var isModeDebug bool = false
-//var voiceId snd.VoiceId
+var isModeVideo bool = false
 
 var TAG_GROUND i32 = 1
 var TAG_PLAYER i32 = 2
@@ -1439,8 +1440,8 @@ func playerCreate(characterIndex i32) {
 //-----------------------------------------------------------------------------
 func gameOnParse(i i32, argc i32) {
     if len(gameModeNames) == 0 {
-        gameModeNames = []str {"menu", "game", "light", "debug"}
-        gameModeValues = []i32 {GAME_MODE_MENU, GAME_MODE_GAME, GAME_MODE_LIGHT, GAME_MODE_DEBUG}
+        gameModeNames = []str {"menu", "game", "light", "debug", "video"}
+        gameModeValues = []i32 {GAME_MODE_MENU, GAME_MODE_GAME, GAME_MODE_LIGHT, GAME_MODE_DEBUG, GAME_MODE_VIDEO}
         app.SetUserHelp("++gmode : Game Mode flag : menu, game, light, debug\n")
     }
 
@@ -1448,8 +1449,8 @@ func gameOnParse(i i32, argc i32) {
     var arg str = app.GetCurrentArg()
     if args.Flags(arg, "gmode", &gameMode, &gameModeMatch, gameModeNames, gameModeValues) {
         app.SetCurrentArgIsValid(1)
-        var allModes bool = (gameMode == 0) || (gameMode == GAME_MODE_LIGHT) || (gameMode == GAME_MODE_DEBUG)
-        if ((gameMode & GAME_MODE_MENU) != 0) || allModes {
+        var allModes bool = (gameMode == 0) || (gameMode == GAME_MODE_LIGHT) || (gameMode == GAME_MODE_DEBUG) || (gameMode == GAME_MODE_VIDEO)
+ if ((gameMode & GAME_MODE_MENU) != 0) || allModes {
             hasModeMenu = true
         }
         if ((gameMode & GAME_MODE_GAME) != 0) || allModes {
@@ -1460,6 +1461,9 @@ func gameOnParse(i i32, argc i32) {
         }
         if ((gameMode & GAME_MODE_DEBUG) != 0) {
             isModeDebug = true
+        }
+        if ((gameMode & GAME_MODE_VIDEO) != 0) {
+            isModeVideo = true
         }
     }
 }
@@ -1472,7 +1476,9 @@ func gameOnStart(window str) {
 	phx.Init(30U, -9.8 * 0.1)
 
     loadMenu()
-
+    if isModeVideo {
+        gameOnUpdate(0, 0)
+    }
     StopCPUProfile("skylight_init")
 }
 

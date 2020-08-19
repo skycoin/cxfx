@@ -29,7 +29,11 @@ OPTS_MEM = $(OPTS) --stack-size=128M --heap-initial=800M --heap-max=800M
 
 DATA = ++data=$(CXFX_SRC)/resources/
 GLFWHINTS = ++hints=resizable
-FPS = ++fps=30
+ifeq ($FPS),)
+FPS = 60
+else
+FPS = 0
+endif
 
 CXFXOPTS = $(GLVERSION) $(DATA) $(GLFWHINTS)
 
@@ -211,5 +215,5 @@ tuto11: $(COPY_TUTORIALS_ASSETS)
 .PHONY:skylight
 skylight: $(COPY_SKYLIGHT_ASSETS)
 	@echo $(STATE) skylight...
-	$(call runcx, $(SKYLIGHT)/menu.cx $(SKYLIGHT)/skylight.cx ++gmode=$(GMODE))
+	$(call runcx, $(SKYLIGHT)/menu.cx $(SKYLIGHT)/skylight.cx ++gmode=$(GMODE) ++fps=$(FPS))
 

@@ -153,6 +153,9 @@ var Iconmulticolor f32
 var Iconbackcolor f32
 var prevSelect i32
 
+var cxfxSnd snd.AudioId
+var cxfxVoice snd.VoiceId
+
 var characterSnd snd.AudioId
 var characterVoice snd.VoiceId
 
@@ -619,7 +622,6 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		}
 		//deltatime_scroll=0.0
 		//}
-		printf("delta:",dt_title)
 
 ////DISPLAY MCAFEE + TITLE
 		
@@ -803,6 +805,18 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 
 	
 
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+var firstCxfxScreenUpdate f32 = 0.0
+func cxfxOnUpdate(controlIndex i32, controlAction i32) {
+    if firstCxfxScreenUpdate >= 0.0 {
+        if firstCxfxScreenUpdate > 0.4 {
+            snd.VoicePlay(cxfxVoice)
+            firstCxfxScreenUpdate = -1.0
+        }
+        firstCxfxScreenUpdate = firstCxfxScreenUpdate + f64.f32(fps.DeltaSecond())
+    }
+}
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -835,6 +849,15 @@ func onPlayButton(controlIndex i32, controlAction i32) {
 	} else if controlAction != app.KEY_RELEASE && controlAction != app.KEY_REPEAT {
 		panicIfNot(false, "invalid action")
 	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func onCharacterClick(controlIndex i32, controlAction i32) {
+    var state i32 = gui.CurrentEvent.mouse.action
+    if state == app.MOUSE_PRESS {
+        gui.ScreenShow(gameScreen)
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -921,17 +944,17 @@ func loadMenu() {
     }
 
     if hasModeMenu {
+        cxfxSnd = snd.AudioCreate(sprintf("%s/audios/cxfx.wav", app.DataDir()))
+        cxfxVoice = snd.VoiceCreate(cxfxSnd)
+
         characterSnd = snd.AudioCreate(sprintf("%s/audios/character.wav", app.DataDir()))
         characterVoice = snd.VoiceCreate(characterSnd)
-        printf("CHAR %d, %d\n", characterSnd.audio, characterVoice.voice)
 
         titleSnd = snd.AudioCreate(sprintf("%s/audios/title.wav", app.DataDir()))
         titleVoice = snd.VoiceCreate(titleSnd)
-        printf("TITLE %d, %d\n", titleSnd.audio, titleVoice.voice)
 
         skycoinSnd = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
         skycoinVoice = snd.VoiceCreate(skycoinSnd)
-        printf("SKYCOIN %d, %d\n", skycoinSnd.audio, skycoinVoice.voice)
 
         skylightTexture = gfx.TextureCreate(sprintf("%s/textures/Title_Textures/Title_Back.png", app.DataDir()),
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
@@ -1260,6 +1283,7 @@ func loadMenu() {
 	    		gui.PictureSetAlign(Porpic[i].name, gui.ALIGN_CENTER)
 	    		gui.PictureSetAnimation(Porpic[i].name, Porpic[i].anim, false, 30)
 	    		gui.PictureSetAlpha(Porpic[i].name, true)
+                gui.PictureSetOnState(Porpic[i].name, "main", "onCharacterClick")
 	    		Porpic[i].voice = snd.VoiceCreate(characterSnd)
 	    	}
 
@@ -1396,7 +1420,6 @@ func loadMenu() {
 	        // cxfxScreen
 	        gui.ControlSetSkin(cxfxScreen.base, gui.g_bootSkin)//gui.g_goldBorderSkin)
 	        gui.ControlSetDock(cxfxScreen.base, gui.DOCK_FILL)
-	        gui.ScreenSetDuration(cxfxScreen, 2.0D)
 	        gui.ScreenSetOnUpdate(cxfxScreen, "main", "cxfxOnUpdate")
 	        gui.ScreenSetOnNext(cxfxScreen, titleScreen)
 	        {
@@ -1407,7 +1430,7 @@ func loadMenu() {
 	        	gui.ControlSetAutoscale(cxfxPicture.base, gui.AUTOSCALE)
 	        	gui.PictureSetAlign(cxfxPicture, gui.ALIGN_CENTER)
 	        	gui.PictureSetAnimation(cxfxPicture, cxfxAnim, false, 30)
-                gui.ScreenSetDuration(cxfxScreen, gui.PictureGetAnimationDuration(cxfxPicture))
+                gui.ScreenSetDuration(cxfxScreen, gui.PictureGetAnimationDuration(cxfxPicture) * 0.7D)
 	        }
         }
 
@@ -1415,7 +1438,7 @@ func loadMenu() {
 	    skycoinScreen = gui.ScreenId = gui.ScreenCreate("skycoinScreen")
 	    gui.ControlSetSkin(skycoinScreen.base, gui.g_blackSkin)
 	    gui.ControlSetDock(skycoinScreen.base, gui.DOCK_FILL)
-	    gui.ScreenSetDuration(skycoinScreen, 1.0D)
+	    gui.ScreenSetDuration(skycoinScreen, 2.0D)
 	    gui.ScreenSetOnUpdate(skycoinScreen, "main", "skycoinOnUpdate")
         if isModeLight {
         	gui.ScreenSetOnNext(skycoinScreen, titleScreen)
