@@ -3,6 +3,7 @@ package mat
 import "v1"
 import "v3"
 import "v4"
+import "fps"
 
 // ProjectPointsOnAxis ...
 func ProjectPointsOnAxis(points []v3, axis v3) (min f32, max f32) {
@@ -265,6 +266,541 @@ func AABBIntersectsPlanes(min v3, max v3, planes []v4) (out i32) {
     }
 }
 
+
+func triangleSign(p0 v3, p1 v3, p2 v3) (sign f32) {
+    sign = (p0.x - p2.x) * (p1.y - p2.y) - (p1.x - p2.x) * (p0.y - p2.y)
+}
+
+func pointInTriangle(p v3, t0 v3, t1 v3, t2 v3) (collision bool) {
+    var pt0 v3 = v3.normalize(v3.sub(t0, p))
+    var pt1 v3 = v3.normalize(v3.sub(t1, p))
+    var pt2 v3 = v3.normalize(v3.sub(t2, p))
+
+    var a f32 = v3.dot(pt0, pt1)
+    var b f32 = v3.dot(pt1, pt2)
+    var c f32 = v3.dot(pt2, pt0)
+
+
+    var angle f32 = f32.acos(a) + f32.acos(b) + f32.acos(c)
+
+//printf("POINT_IN_TRIANGLE p %s, t0 %s, t1 %s, t2 %s, a %f, b %f, c %f, %f\n", v3.to_str(p), v3.to_str(t0), v3.to_str(t1), v3.to_str(t2), a, b, c, f32.abs(angle - (v1._2PI)))
+    collision = f32.abs(angle - (v1._2PI)) < 0.01
+}
+
+
+
+func pointInTriangle2(p v3, t0 v3, t1 v3, t2 v3) (collision bool) {
+   // u=P2−P1
+    var u v3 = v3.sub(t1, t0)
+    var v v3 = v3.sub(t2, t0)
+    var n v3 = v3.cross(u, v)
+    var ndn f32 = v3.dot(n, n)
+    var gamma f32 = v3.dot(v3.cross(u, p), n)
+    gamma = gamma / ndn
+    var beta f32 = v3.dot(v3.cross(p, v), n)
+    beta = beta / ndn
+    var alpha f32 = 1.0 - gamma - beta
+    // The point P′ lies inside T if:
+    return ((0.0 <= alpha) && (alpha <= 1.0) &&
+            (0.0 <= beta)  && (beta  <= 1.0) &&
+            (0.0 <= gamma) && (gamma <= 1.0))
+}
+
+func  SameSide(p1 v3,p2 v3, a v3,b v3) (out bool) {
+    var cp1 v3 = v3.cross(v3.sub(b, a), v3.sub(p1, a))
+    var cp2 v3 = v3.cross(v3.sub(b, a), v3.sub(p2, a))
+    if v3.dot(cp1, cp2) >= 0.0 {
+        out = true
+    }
+}
+
+func pointInTriangle3(p v3, a v3, b v3, c v3) (out bool) {
+    if SameSide(p,a, b,c) {
+        if SameSide(p,b, a,c) {
+            if SameSide(p,c, a,b) {
+                out = true
+            }
+        }
+    }
+}
+
+func pointInTriangle4(P v3, A v3, B v3, C v3) (out bool) {
+    var v0 v3 = v3.sub(C, A)
+    var v1 v3 = v3.sub(B, A)
+    var v2 v3 = v3.sub(P, A)
+
+    var dot00 f32 = v3.dot(v0, v0)
+    var dot01 f32 = v3.dot(v0, v1)
+    var dot02 f32 = v3.dot(v0, v2)
+    var dot11 f32 = v3.dot(v1, v1)
+    var dot12 f32 = v3.dot(v1, v2)
+
+    var invDenom f32 = 1.0 / (dot00 * dot11 - dot01 * dot01)
+    var u f32 = (dot11 * dot02 - dot01 * dot12) * invDenom
+    var v f32 = (dot00 * dot12 - dot01 * dot02) * invDenom
+
+    out = (u >= 0.0) && (v >= 0.0) && (u + v < 1.0)
+}
+
+/*func pointInTriangle (pt v3, p1 v3, p2 v3, p3 v3) (inside bool) {
+    var d0 f32 = triangleSign(pt, p1, p2)
+    var d1 f32 = triangleSign(pt, p2, p3)
+    var d2 f32 = triangleSign(pt, p3, p1)
+    inside = (((d0 < 0.0) || (d1 < 0.0) || (d2 < 0.0)) && ((d0 > 0.0) || (d1 > 0.0) || (d2 > 0.0))) == false
+}*/
+
+func getLowestRoot(a f32, b f32, c f32) (out f32) {
+    out = v1.MAX
+    var det f32 = b*b - 4.0*a*c
+    if(det >= 0.0) {
+        var sqrtDet f32 = f32.sqrt(det)
+        var r1 f32 = (-b - sqrtDet) / (2.0*a)
+        var r2 f32 = (-b + sqrtDet) / (2.0*a)
+
+        if(r1 > r2) {
+            var tmp f32 = r2
+            r2 = r1
+            r1 = tmp
+        }
+
+        if(r1 > 0.0) {
+            out = r1
+        } else if (r2 > 0.0) {
+            out = r2
+        }
+    }
+}
+
+func testVertex(p v3, velSqrLen f32, start v3, vel v3) (out f32) {
+    out = v1.MAX
+    var v v3 = v3.sub(start, p)
+    var b f32 = 2.0*v3.dot(vel, v)
+    var c f32 = v3.sqlength(v) - 1.0
+    var newT f32 = getLowestRoot(velSqrLen, b, c)
+    if(newT <= 1.0) {
+        out = newT
+    }
+}
+
+func testEdge(index i32, pa v3, pb v3, velSqrLen f32, start v3, vel v3) (out f32, intersection v3) {
+    out = v1.MAX
+    var edge v3 = v3.sub(pb, pa)
+    var v v3 = v3.sub(pa, start)
+
+    var edgeSqrLen f32 = v3.sqlength(edge)
+    var edgeDotVel f32 = v3.dot(edge, vel)
+    var edgeDotSphereVert f32 = v3.dot(edge, v)
+
+    var a f32 = edgeSqrLen*(0.0-velSqrLen) + edgeDotVel*edgeDotVel
+    var b f32 = edgeSqrLen*(2.0*v3.dot(vel, v))-2.0*edgeDotVel*edgeDotSphereVert
+    var c f32 = edgeSqrLen*(1.0-v3.sqlength(v))+edgeDotSphereVert*edgeDotSphereVert
+
+    var newT f32 = getLowestRoot(a, b, c)
+    if (newT <= 1.0) {
+        var f f32 = (edgeDotVel*newT-edgeDotSphereVert)/edgeSqrLen
+        if (f >= 0.0 && f <= 1.0) {
+            v = v3.mulf(edge, f)
+            v = v3.add(v, pa)
+            out = newT
+            intersection = v
+        }
+    }
+}
+
+type TriangleIntersection struct {
+    distance f32
+    point v3
+    normal v3
+    base v3
+}
+
+type SphereCollision struct {
+    center v3
+    velocity v3
+    destination v3
+    radius v3
+    invRadius v3
+    velocityLength f32
+    unitVelocity v3
+    scaledVelocity v3
+    scaledVelocitySquareLength f32
+    scaledCenter v3
+    minTime f32
+    count i32
+    tag0 i32
+    tag1 i32
+    intersections []TriangleIntersection
+}
+
+func SphereCollisionCreate(center v3, velocity v3, radius v3) {
+    g_SphereCollision.center = center
+    g_SphereCollision.destination = v3.add(center, velocity)
+    g_SphereCollision.velocity = velocity
+    g_SphereCollision.radius = radius
+    g_SphereCollision.invRadius = v3.div(v3.ONE, radius)
+    g_SphereCollision.velocityLength = v3.length(velocity)
+    if (g_SphereCollision.velocityLength > 0.0) {
+       g_SphereCollision.unitVelocity = v3.divf(velocity, g_SphereCollision.velocityLength)
+    } else {
+        g_SphereCollision.unitVelocity = v3.ZERO
+    }
+    g_SphereCollision.scaledVelocity = v3.div(g_SphereCollision.velocity, radius)
+    g_SphereCollision.scaledVelocitySquareLength = v3.sqlength(g_SphereCollision.scaledVelocity)
+    g_SphereCollision.scaledCenter = v3.div(center, radius)
+    g_SphereCollision.intersections = resize(g_SphereCollision.intersections, 0)
+    g_SphereCollision.minTime = v1.MAX
+    g_SphereCollision.count = 0
+}
+
+
+func SphereCollisionAppendIntersection(distance f32, point v3, normal v3, base v3) (out bool) {
+    var inter TriangleIntersection
+
+    inter.distance = distance
+    inter.point = point
+    inter.normal = normal
+    inter.base = base
+    var intersections []TriangleIntersection = g_SphereCollision.intersections
+
+    var intersectionCount i32 = len(intersections)
+    if intersectionCount == 0 {
+        intersections = append(intersections, inter)
+        out = true
+        g_SphereCollision.count = g_SphereCollision.count + 1
+    } else if distance < intersections[0].distance {
+        intersections[0] = inter
+        out = true
+        g_SphereCollision.count = g_SphereCollision.count + 1
+    }
+    g_SphereCollision.intersections = intersections
+    g_SphereCollision.minTime = distance
+}
+
+var g_SphereCollision SphereCollision
+
+func SphereIntersectsPlane1(pt0 v3, normal v3) {
+
+    var nx f32 = normal.x
+    var ny f32 = normal.y
+    var nz f32 = normal.z
+
+    var ndn f32 = nx*nx + ny*ny + nz*nz
+    //printf("POSI %d, NDN %f\n", posI, ndn)
+    if ndn > 0.0 {
+        if (nx*g_SphereCollision.unitVelocity.x + ny*g_SphereCollision.unitVelocity.y + nz*g_SphereCollision.unitVelocity.z) < 0.0 {
+                //printf("NORMAL %s, VELOCITY %s, DOT %f\n", v3.to_str(normal), v3.to_str(g_SphereCollision.unitVelocity), v3.dot(normal, g_SphereCollision.unitVelocity))
+            var rx f32 = g_SphereCollision.invRadius.x
+            var ry f32 = g_SphereCollision.invRadius.y
+            var rz f32 = g_SphereCollision.invRadius.z
+
+            var scaledP0 v3
+            scaledP0.x = pt0.x * rx
+            scaledP0.y = pt0.y * ry
+            scaledP0.z = pt0.z * rz
+
+            var pD f32 = 0.0 - nx*scaledP0.x - ny*scaledP0.y - nz*scaledP0.z
+
+            var embedded bool = false
+
+            var distToPlane f32 = nx*g_SphereCollision.scaledCenter.x   + ny*g_SphereCollision.scaledCenter.y   + nz*g_SphereCollision.scaledCenter.z + pD
+            var normDotVel f32 = nx*g_SphereCollision.scaledVelocity.x + ny*g_SphereCollision.scaledVelocity.y + nz*g_SphereCollision.scaledVelocity.z
+
+            var t0 f32 = 0.0
+            var t1 f32 = 0.0
+            var tbreak bool = false
+            if normDotVel >= -0.000001 && normDotVel <= 0.000001 {
+                if distToPlane <= -1.0 || distToPlane >= 1.0 {
+                    tbreak = true
+                } else {
+                    embedded = true
+                    t0 = 0.0
+                    t1 = 1.0
+                }
+            } else {
+                t0 = (  1.0 - distToPlane) / normDotVel
+                t1 = (- 1.0 - distToPlane) / normDotVel
+                if (t0 > t1) {
+                    var temp f32 = t1
+                    t1 = t0
+                    t0 = temp
+                }
+
+                if (t0 > 1.0 || t1 < 0.0) {
+                    tbreak = true
+                }
+
+                if (t0 < 0.0) {
+                    t0 = 0.0
+                }
+                if (t1 > 1.0) {
+                    t1 = 1.0
+                }
+            }
+
+            if (tbreak == false) {
+                if embedded == false {
+                    var svx f32 = g_SphereCollision.scaledVelocity.x
+                    var svy f32 = g_SphereCollision.scaledVelocity.y
+                    var svz f32 = g_SphereCollision.scaledVelocity.z
+
+                    var planeIntersect v3
+                    planeIntersect.x = g_SphereCollision.scaledCenter.x - nx + svx * t0
+                    planeIntersect.y = g_SphereCollision.scaledCenter.y - ny + svy * t0
+                    planeIntersect.z = g_SphereCollision.scaledCenter.z - nz + svz * t0
+
+                    var collided bool = SphereCollisionAppendIntersection(t0, planeIntersect, normal, scaledP0)
+                }
+            }
+        }
+    }
+}
+
+func SphereIntersectsTriangle(positions []f32, normals []f32, debugTriangles []v3) (out []v3){
+    out = debugTriangles
+    var rx f32 = g_SphereCollision.invRadius.x
+    var ry f32 = g_SphereCollision.invRadius.y
+    var rz f32 = g_SphereCollision.invRadius.z
+
+    var svx f32 = g_SphereCollision.scaledVelocity.x
+    var svy f32 = g_SphereCollision.scaledVelocity.y
+    var svz f32 = g_SphereCollision.scaledVelocity.z
+
+    var nx f32
+    var ny f32
+    var nz f32
+    var ndn f32
+
+    var pD f32
+
+    var embedded bool
+
+
+    var scaledP0 v3
+    var scaledP1 v3
+    var scaledP2 v3
+
+    var tbreak bool
+    var planeIntersect v3
+
+    var posCount i32 = (len(positions) / 9) * 9
+    var posI i32
+    var posN i32
+
+    var disp f32
+    var inter v3
+
+    var t0 f32
+    var t1 f32
+
+    var distToPlane f32 
+    var normDotVel f32  
+
+    var temp f32
+
+    var v02x f32
+    var v02y f32
+    var v02z f32
+
+    var v01x f32
+    var v01y f32
+    var v01z f32
+
+    var v0Ix f32
+    var v0Iy f32
+    var v0Iz f32
+
+    var dot00 f32
+    var dot01 f32
+    var dot02 f32
+    var dot11 f32
+    var dot12 f32
+
+    var invDenom f32
+    var u f32
+    var v f32
+
+    var f f32
+    var b f32
+    var c f32
+
+    var v0x f32
+    var v0y f32
+    var v0z f32
+    var svv0 f32
+    var sqv0 f32
+    var newT f32
+    var normal v3
+    var debugNormal v3
+    //printf("POS_COUNT %d\n", posCount)
+    for posI < posCount {
+        nx = normals[posN]
+        ny = normals[posN+1]
+        nz = normals[posN+2]
+
+        normal = v3.make(nx, ny, nz)
+        debugNormal = v3.mulf(normal, 0.03)
+
+        ndn = nx*nx + ny*ny + nz*nz
+        //printf("POSI %d, NDN %f\n", posI, ndn)
+        if ndn > 0.0 {
+            if (nx*g_SphereCollision.unitVelocity.x + ny*g_SphereCollision.unitVelocity.y + nz*g_SphereCollision.unitVelocity.z) < 0.0 {
+                //printf("NORMAL %s, VELOCITY %s, DOT %f\n", v3.to_str(normal), v3.to_str(g_SphereCollision.unitVelocity), v3.dot(normal, g_SphereCollision.unitVelocity))
+                scaledP0.x = positions[posI] * rx
+                scaledP0.y = positions[posI+1] * ry
+                scaledP0.z = positions[posI+2] * rz
+
+                pD = 0.0 - nx*scaledP0.x - ny*scaledP0.y - nz*scaledP0.z
+
+                embedded = false
+
+                distToPlane = nx*g_SphereCollision.scaledCenter.x   + ny*g_SphereCollision.scaledCenter.y   + nz*g_SphereCollision.scaledCenter.z + pD
+                normDotVel = nx*g_SphereCollision.scaledVelocity.x + ny*g_SphereCollision.scaledVelocity.y + nz*g_SphereCollision.scaledVelocity.z
+
+                t0 = 0.0
+                t1 = 0.0
+                tbreak = false
+                if normDotVel >= -0.000001 && normDotVel <= 0.000001 {
+                    if distToPlane <= -1.0 || distToPlane >= 1.0 {
+                        tbreak = true
+                    } else {
+                        embedded = true
+                        t0 = 0.0
+                        t1 = 1.0
+                    }
+                } else {
+                    t0 = (  1.0 - distToPlane) / normDotVel
+                    t1 = (- 1.0 - distToPlane) / normDotVel
+                    if (t0 > t1) {
+                        temp = t1
+                        t1 = t0
+                        t0 = temp
+                    }
+
+                    if (t0 > 1.0 || t1 < 0.0) {
+                        tbreak = true
+                    }
+
+                    if (t0 < 0.0) {
+                        t0 = 0.0
+                    }
+                    if (t1 > 1.0) {
+                        t1 = 1.0
+                    }
+                }
+
+                if (tbreak == false) {
+                    scaledP1.x = positions[posI+3] * rx
+                    scaledP1.y = positions[posI+4] * ry
+                    scaledP1.z = positions[posI+5] * rz
+
+                    scaledP2.x = positions[posI+6] * rx
+                    scaledP2.y = positions[posI+7] * ry
+                    scaledP2.z = positions[posI+8] * rz
+
+                    if embedded == false {
+                        planeIntersect.x = g_SphereCollision.scaledCenter.x - nx + svx * t0
+                        planeIntersect.y = g_SphereCollision.scaledCenter.y - ny + svy * t0
+                        planeIntersect.z = g_SphereCollision.scaledCenter.z - nz + svz * t0
+
+                        if pointInTriangle4(planeIntersect, scaledP0, scaledP1, scaledP2) {
+                                if SphereCollisionAppendIntersection(t0, planeIntersect, normal, scaledP0) {
+                                out = append(out, v3.mul(v3.add(scaledP0, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP1, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP2, debugNormal), g_SphereCollision.radius))
+                                //printf("%d TRIANGLE DISTANCE %f, INTER %s NORMAL %s\n", posI / 9, t0, v3.to_str(planeIntersect), v3.to_str(v3.make(nx, ny, nz)))
+                                tbreak = true
+                            }
+                        }
+                    }
+
+                    if tbreak == false {
+                        disp = testVertex(scaledP0, g_SphereCollision.scaledVelocitySquareLength,
+                            g_SphereCollision.scaledCenter, g_SphereCollision.scaledVelocity)
+                        if disp != v1.MAX {
+                            if SphereCollisionAppendIntersection(disp, scaledP0, normal, scaledP0) {
+                                out = append(out, v3.mul(v3.add(scaledP0, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP1, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP2, debugNormal), g_SphereCollision.radius))
+                                //printf("%d VERTEX 0 DISTANCE %f, INTER %s NORMAL %s\n", posI / 9, disp, v3.to_str(scaledP0), v3.to_str(v3.make(nx, ny, nz)))
+                            }
+
+                        }
+
+                        disp = testVertex(scaledP1, g_SphereCollision.scaledVelocitySquareLength,
+                            g_SphereCollision.scaledCenter, g_SphereCollision.scaledVelocity)
+                        if disp != v1.MAX {
+                            if SphereCollisionAppendIntersection(disp, scaledP1, normal, scaledP0) {
+                                out = append(out, v3.mul(v3.add(scaledP0, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP1, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP2, debugNormal), g_SphereCollision.radius))
+                                //printf("%d VERTEX 1 DISTANCE %f, INTER %s NORMAL %s\n", posI / 9, disp, v3.to_str(scaledP1), v3.to_str(v3.make(nx, ny, nz)))
+                            }
+                        }
+
+                       disp = testVertex(scaledP2, g_SphereCollision.scaledVelocitySquareLength,
+                            g_SphereCollision.scaledCenter, g_SphereCollision.scaledVelocity)
+                        if disp != v1.MAX {
+                            if SphereCollisionAppendIntersection(disp, scaledP2, normal, scaledP0) {
+                                out = append(out, v3.mul(v3.add(scaledP0, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP1, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP2, debugNormal), g_SphereCollision.radius))
+                               // printf("%d VERTEX 2 DISTANCE %f, INTER %s NORMAL %s\n", posI / 9, disp, v3.to_str(scaledP2), v3.to_str(v3.make(nx, ny, nz)))
+                            }
+                        }
+
+                        disp, inter = testEdge(0, scaledP0, scaledP1, g_SphereCollision.scaledVelocitySquareLength,
+                            g_SphereCollision.scaledCenter, g_SphereCollision.scaledVelocity)
+                        if disp != v1.MAX {        
+                            if SphereCollisionAppendIntersection(disp, inter, normal, scaledP0) {
+                                out = append(out, v3.mul(v3.add(scaledP0, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP1, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP2, debugNormal), g_SphereCollision.radius))
+                                //printf("%d EDGE 0 DISTANCE %f, INTER %s NORMAL %s\n", posI / 9, disp, v3.to_str(inter), v3.to_str(v3.make(nx, ny, nz)))
+                            }
+                        }
+
+                        disp, inter = testEdge(1, scaledP1, scaledP2, g_SphereCollision.scaledVelocitySquareLength,
+                            g_SphereCollision.scaledCenter, g_SphereCollision.scaledVelocity)
+                        if disp != v1.MAX {
+                            if SphereCollisionAppendIntersection(disp, inter, normal, scaledP0) {
+                                out = append(out, v3.mul(v3.add(scaledP0, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP1, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP2, debugNormal), g_SphereCollision.radius))
+                                //printf("%d EDGE 1 DISTANCE %f, INTER %s NORMAL %s\n", posI / 9, disp, v3.to_str(inter), v3.to_str(v3.make(nx, ny, nz)))
+                            }
+                        }
+
+                        disp, inter = testEdge(2, scaledP2, scaledP0, g_SphereCollision.scaledVelocitySquareLength,
+                            g_SphereCollision.scaledCenter, g_SphereCollision.scaledVelocity)
+                        if disp != v1.MAX {
+                            if SphereCollisionAppendIntersection(disp, inter, normal, scaledP0) {
+                                out = append(out, v3.mul(v3.add(scaledP0, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP1, debugNormal), g_SphereCollision.radius))
+                                out = append(out, v3.mul(v3.add(scaledP2, debugNormal), g_SphereCollision.radius))
+                                //printf("%d EDGE 2 DISTANCE %f, INTER %s NORMAL %s\n", posI / 9, disp, v3.to_str(inter), v3.to_str(v3.make(nx, ny, nz)))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        posI = posI + 9
+        posN = posN + 3
+    }
+}
+
+var it0 fps.ProfileId = fps.InvalidProfile()
+var it1 fps.ProfileId = fps.InvalidProfile()
+var it2 fps.ProfileId = fps.InvalidProfile()
+var it3 fps.ProfileId = fps.InvalidProfile()
+var it4 fps.ProfileId = fps.InvalidProfile()
+var it5 fps.ProfileId = fps.InvalidProfile()
+var it6 fps.ProfileId = fps.InvalidProfile()
+var it7 fps.ProfileId = fps.InvalidProfile()
+var it8 fps.ProfileId = fps.InvalidProfile()
+var it9 fps.ProfileId = fps.InvalidProfile()
+
 // SphereIntersectsPlane ...
 func SphereIntersectsPlane(center v3, radius f32, plane v4, point v3) (out i32) {
     out = -1
@@ -297,6 +833,57 @@ func SphereIntersectsPlanes(center v3, radius f32, planes []v4, points []v3) (ou
             out = 0
         } else if inter == -1 {
         }
+    }
+}
+
+// SphereIntersectsAABB ...
+func SphereIntersectsAABB(center v3, radius f32, min v3, max v3) (out i32) {
+    out = 1
+    var dmin f32
+    var dmax f32
+    var r2 f32 = radius * radius
+
+    var minx f32 = center.x - min.x
+    var miny f32 = center.y - min.y
+    var minz f32 = center.z - min.z
+
+    var maxx f32 = center.x - max.x
+    var maxy f32 = center.y - max.y
+    var maxz f32 = center.z - max.z
+
+    var sqminx f32 = minx * minx
+    var sqminy f32 = miny * miny
+    var sqminz f32 = minz * minz
+
+    var sqmaxx f32 = maxx * maxx
+    var sqmaxy f32 = maxy * maxy
+    var sqmaxz f32 = maxz * maxz
+
+    if minx < 0.0 {
+        dmin = dmin + sqminx
+    } else if maxx > 0.0 {
+        dmin = dmin + sqmaxx
+    }
+    dmax = dmax + f32.max(sqminx, sqmaxx)
+
+    if miny < 0.0 {
+        dmin = dmin + sqminy
+    } else if maxy > 0.0 {
+        dmin = dmin + sqmaxy
+    }
+    dmax = dmax + f32.max(sqminy, sqmaxy)
+
+    if minz < 0.0 {
+        dmin = dmin + sqminz
+    } else if maxz > 0.0 {
+        dmin = dmin + sqmaxz
+    }
+    dmax = dmax + f32.max(sqminz, sqmaxz)
+
+    if dmax <= r2 {
+        out = -1
+    } else if dmin <= r2 {
+        out = 0
     }
 }
 

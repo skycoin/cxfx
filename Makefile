@@ -25,7 +25,7 @@ DEBUG := --debug-profile=$(PPROF)
 endif
 
 OPTS = $(DEBUG)
-OPTS_MEM = $(OPTS) --stack-size=128M --heap-initial=800M --heap-max=800M
+OPTS_MEM = $(OPTS) --stack-size=128M --heap-initial=1024M --heap-max=1024M
 
 DATA = ++data=$(CXFX_SRC)/resources/
 GLFWHINTS = ++hints=resizable
@@ -82,12 +82,12 @@ SRC = $(CX_SRC)/lib/args.cx\
 	  $(CXFX_SRC)/src/mat/v4f.cx\
 	  $(CXFX_SRC)/src/mat/q4f.cx\
 	  $(CXFX_SRC)/src/mat/m44f.cx\
-      $(CXFX_SRC)/src/mat/intersect.cx\
 	  $(CXFX_SRC)/src/app/application.cx\
 	  $(CXFX_SRC)/src/app/callback.cx\
 	  $(CXFX_SRC)/src/app/event.cx\
 	  $(CXFX_SRC)/src/fps/profiler.cx\
 	  $(CXFX_SRC)/src/fps/framerate.cx\
+          $(CXFX_SRC)/src/mat/intersect.cx\
 	  $(CXFX_SRC)/src/gfx/batch.cx\
 	  $(CXFX_SRC)/src/gfx/graphics.cx\
 	  $(CXFX_SRC)/src/gfx/state.cx\

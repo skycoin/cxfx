@@ -10,10 +10,12 @@ import "v4"
 import "q4"
 import "m44"
 // Constants ...
-var TYPE_BOX i32     = 1
-var TYPE_ELLIPSE i32 = 2
-var TYPE_PLANE i32   = 3
-var TYPE_CUSTOM i32  = 4
+var TYPE_BOX      i32 = 1
+var TYPE_ELLIPSE  i32 = 2
+var TYPE_PLANE    i32 = 3
+var TYPE_CUSTOM   i32 = 4
+var TYPE_OCTREE   i32 = 5
+var TYPE_TRIANGLE i32 = 6
 
 var STATE_NONE        i32 = 0
 var STATE_ACTIVE      i32 = 1
@@ -25,13 +27,18 @@ var STATE_DEBUG_COLOR i32 = 32
 
 // Globals ...
 var g_objectCount i32
+
+// Object ...
 var g_states []i32
 var g_types []i32
 var g_tags []i32
 var g_tags2 []i32
-var g_collisions []Collision
 var g_frictions []f32
 var g_positions []v3
+var g_positions1 []v3
+var g_positions2 []v3
+var g_maxVelocities []v3
+var g_maxAccelerations []v3
 var g_velocities []v3
 var g_displacements []v3
 var g_accelerations []v3
@@ -40,33 +47,44 @@ var g_rights []v3
 var g_tops []v3
 var g_backs []v3
 var g_normals []v3
+var g_oldPositions []v3
 var g_radiuses []f32
 var g_sqRadiuses []f32
 var g_rotations []v4
-var g_angularVelocities []v4
-var g_angularAccelerations []v4
 var g_masses []f32
-var g_collided []i32
-var g_colLengths []f32
 var g_colors []mat.v4
+var g_objects []i32
+var g_gravityScales []f32
+var g_voidCount []i32
+var g_collided []i32
+var g_airFrictions []f32
+
+
 
 var g_currentTime i64
 var g_deltaTime i64
 var g_lockStep i64
 var g_gforce f32
 
-
-var g_fixed []i32
-var g_mobiles []i32
-var g_rotates []i32
-var g_translates []i32
+var g_debugColors []mat.v4
 
 var g_actives []i32
 var g_passives []i32
 
 var g_debugObjects []i32
 
+var g_theCell []i32
+var g_theColor []i32
+var g_playerCell i32 = -1
+var g_phxOctrees []gfx.OctreeId
 //var g_freeObjects []i32
+
+var g_debugTriangles []mat.v3
+
+var g_scratch0 []f32
+var g_scratch1 []f32
+var g_collisions []Collision
+
 
 // Types ...
 type Collision struct {
@@ -77,6 +95,7 @@ type Collision struct {
     RightTag i32
     RightTag2 i32
     Position mat.v3
+    Normal mat.v3
     Distance f32
 }
 
@@ -87,7 +106,7 @@ var g_debugMeshWire gfx.MeshId
 
 // Init ...
 func Init(targetFPS ui32, gforce f32) {
-	g_lockStep = fps.SecondToNano(1.0D) / ui32.i64(30U)//targetFPS)
+    g_lockStep = fps.SecondToNano(1.0D) / ui32.i64(targetFPS)
 	g_gforce = gforce
 
 	if g_debug {
@@ -96,252 +115,485 @@ func Init(targetFPS ui32, gforce f32) {
 
 		g_debugMeshWire = gfx.MeshCreate(gfx.LINES, gfx.UNSIGNED_SHORT, 8192 * 3, gfx.g_vertexLayout, 8192 * 3)
 	}
+    for i := 0; i < 32; i++ {
+        g_debugColors = append(g_debugColors, v4.make_v31(v3.rand(), 1.0))
+    }
 }
 
-var COLLIDED bool
+var phA fps.ProfileId = fps.InvalidProfile()
+var phB fps.ProfileId = fps.InvalidProfile()
+var phC fps.ProfileId = fps.InvalidProfile()
+var phD fps.ProfileId = fps.InvalidProfile()
+var phE fps.ProfileId = fps.InvalidProfile()
+var phF fps.ProfileId = fps.InvalidProfile()
+var phG fps.ProfileId = fps.InvalidProfile()
+var phH fps.ProfileId = fps.InvalidProfile()
+var phI fps.ProfileId = fps.InvalidProfile()
+var phJ fps.ProfileId = fps.InvalidProfile()
+var phK fps.ProfileId = fps.InvalidProfile()
+var phL fps.ProfileId = fps.InvalidProfile()
+var phM fps.ProfileId = fps.InvalidProfile()
+var phN fps.ProfileId = fps.InvalidProfile()
+
+
+func addCollision(i i32, ii i32, position v3, normal v3, distance f32) {
+    var found i32 = -1
+    var collisionCount i32 = len(g_collisions)
+    for index := 0; index < collisionCount; index++ {
+        if g_collisions.LeftIndex == i && g_collisions.RightIndex == ii && g_collisions.Distance < distance {
+            found = index
+            g_collisions[found].Position = position
+            g_collisions[found].Normal = normal
+            g_collisions[found].Distance = distance
+        }
+    }
+
+    if found < 0 {
+        var col Collision
+        col.LeftIndex = i
+        col.RightIndex = ii
+        col.LeftTag = g_tags[i]
+        col.RightTag = g_tags[ii]
+        col.LeftTag2 = g_tags2[i]
+        col.RightTag2 = g_tags2[ii]
+        col.Position = position
+        col.Distance = distance
+        col.Normal = normal
+        g_collisions = append(g_collisions, col)        
+    }
+}
+
 // Update ...
 func Update(deltaTime i64) {
-	g_deltaTime = g_deltaTime + deltaTime // ISSUE : g_deltaTime += deltaTime : physics.cx:36 'deltaTime' redeclared
-	var debugScale f32 = 0.1
+    //("PHX_UPDATE\n")
+    g_scratch0 = resize(g_scratch0, 0)
+    g_scratch1 = resize(g_scratch1, 0)
+    g_collisions = resize(g_collisions, 0)
 
-	var dt f32 = f64.f32(fps.NanoToMilli(g_lockStep)) * debugScale
+    g_debugTriangles = resize(g_debugTriangles, 0)
+
+    phA = fps.CreateStartProfile(phA, "PHX_UPDATE A")
+    phB = fps.CreateStartProfile(phB, "PHX_UPDATE B")
+
+    g_deltaTime = g_deltaTime + deltaTime // ISSUE : g_deltaTime += deltaTime : physics.cx:36 'deltaTime' redeclared
+	var debugScale f32 = 0.1
+    var lockStep i64 = g_lockStep//i64.max(g_deltaTime / 3L, g_lockStep)
+    //var dt f32 = f64.f32(fps.NanoToMilli(g_lockStep)) * debugScale
+    var dt f32 = f64.f32(fps.NanoToMilli(deltaTime)) * debugScale
 	var sqdt f32 = dt * dt
 
 	var accCoef f32 = 0.5 * sqdt
 	var velCoef f32 = dt
 	var gforce f32 = g_gforce * accCoef
-	var dforce f32 = 0.001
+	var dforce f32 = 1.0
 
 	g_actives = resize(g_actives, 0)
 	g_passives = resize(g_passives, 0)
-	g_fixed = resize(g_fixed, 0)
-	g_mobiles = resize(g_mobiles, 0)
-	g_rotates = resize(g_rotates, 0)
-	g_translates = resize(g_translates, 0)
 
 	var count i32 = g_objectCount
 	for i := 0; i < count; i++ {
 		var state i32 = g_states[i]
+        g_collided[i] = 0
 		if (state & STATE_ACTIVE) != 0 {
 			g_actives = append(g_actives, i)
 		} else {
 			g_passives = append(g_passives, i)
 		}
-
-		var rotate bool = (state & STATE_ROTATE) != 0
-		var translate bool = (state & STATE_TRANSLATE) != 0
-
-		if rotate && translate {
-			g_mobiles = append(g_mobiles, i)
-			g_translates = append(g_translates, i)
-			g_rotates = append(g_rotates, i)
-		} else if rotate {
-			g_mobiles = append(g_mobiles, i)
-			g_rotates = append(g_rotates, i)
-		} else if translate {
-			g_mobiles = append(g_mobiles, i)
-			g_translates = append(g_translates, i)
-		} else {
-			g_fixed = append(g_fixed, i)
-		}
-
 		g_normals[i] = v3.transform_vector(g_tops[i], GetObjectTransform(i))
 	}
 
-	var mobileCount i32 = len(g_mobiles)
-	var translateCount i32 = len(g_translates)
-	var rotateCount i32 = len(g_rotates)
 
-	COLLIDED = false
-	g_collisions = resize(g_collisions, 0)
-	for g_deltaTime > g_lockStep {
-		for k := 0; k < translateCount; k++ {
-			var i i32 = g_translates[k]
-			var vel v3 = g_velocities[i]
-			var acc v3 = g_accelerations[i]
+    fps.StopProfile(phB)
+    phC = fps.CreateStartProfile(phC, "PHX_UPDATE C")
 
-			var displacement v3
-			displacement.x = (vel.x * velCoef + acc.x * accCoef) * debugScale
-			displacement.y = (vel.y * velCoef + acc.y * accCoef) * debugScale
-			displacement.z = (vel.z * velCoef + acc.z * accCoef) * debugScale
+    var updateCount i32
+    var activeCount i32 = g_objectCount;
+    var passiveCount i32 = len(g_passives)
+    g_theCell = resize(g_theCell, 0)
+    g_theColor = resize(g_theColor, 0)
 
-			g_displacements[i] = displacement
-		}
+    for k := 0; k < passiveCount; k++ {
+        var i i32 = g_passives[k]
 
-		var activeCount i32 = g_objectCount;
-		var passiveCount i32 = len(g_passives)
-		for k := 0; k < passiveCount; k++ {
-			var i i32 = g_passives[k]
-			var passiveType i32 = g_types[i]
-			var passivePos mat.v3 = g_positions[i]
-			var passiveDisp mat.v3 = g_displacements[i]
-			var passiveDest mat.v3 = v3.add(passivePos, passiveDisp)
-			var passiveRadius f32 = g_radiuses[i] * 0.5 // TODO : radius * 0.5
-			var passiveTag i32 = g_tags[i]
-			g_collided = resize(g_collided, 0)
-			for kk := 0; kk < activeCount; kk++ {
-				var ii i32 = kk//g_actives[kk]
-				var activeType i32 = g_types[ii]
-				var activePos mat.v3 = g_positions[ii]
-				var activeTop mat.v3 = g_normals[ii]
-				var activeTag i32 = g_tags[ii]
-				if passiveType == TYPE_ELLIPSE && activeType == TYPE_PLANE {
-					var distance mat.v3 = v3.sub(passiveDest, activePos)
-					var length f32 = v3.dot(distance, activeTop) / v3.length(activeTop)
-					if length < passiveRadius {
-						var collisionCount i32 = len(g_collided)
-						for cc := 0; cc < collisionCount; cc++ {
-							if length < g_colLengths[i] {
-								g_colLengths = insert(g_colLengths, cc, length)
-								g_collided = insert(g_collided, cc, ii)
-							}
-						}
-						if collisionCount == len(g_collided) {
-							g_colLengths = append(g_colLengths, length)
-							g_collided = append(g_collided, ii)
-						}
-					}
-				} else if passiveType == TYPE_ELLIPSE && activeType == TYPE_ELLIPSE && passiveTag != activeTag{
-					if i != ii {
-						var activeRadius f32 = g_radiuses[ii] * 0.5
-						var distance mat.v3 = v3.sub(passiveDest, activePos)
-						var length f32 = v3.length(distance)
-						if length < (activeRadius + passiveRadius) {
-							var collisionCount i32 = len(g_collided)
-							for cc := 0; cc < collisionCount; cc++ {
-								if length < g_colLengths[i] {
-									g_colLengths = insert(g_colLengths, cc, length)
-									g_collided = insert(g_collided, cc, ii)
-								}
-							}
-							if collisionCount == len(g_collided) {
-								g_colLengths = append(g_colLengths, length)
-								g_collided = append(g_collided, ii)
-							}
-						}
-					}
-				}
-			}
+        if g_voidCount[i] > 2 {
+            g_gravityScales[i] = 1.0
+        }
 
-			var collidedCount i32 = len(g_collided)
-			for kk := 0; kk < collidedCount; kk++ {
-				var ii i32 = g_collided[kk]
-				var activeType i32 = g_types[ii]
-				var activePos mat.v3 = g_positions[ii]
-				var activeTop mat.v3 = v3.normalize(g_normals[ii])
+        var passiveType i32 = g_types[i]
+        var passiveTag i32 = g_types[i]
+        var passiveState i32 = g_states[i]
+        if passiveType == TYPE_ELLIPSE || passiveType == TYPE_BOX {
 
-				passiveDisp = g_displacements[i]
-				passiveDest = v3.add(passivePos, passiveDisp)
+            if (passiveState & STATE_TRANSLATE) != 0 {
+                g_oldPositions[i] = g_positions[i]
 
-				if passiveType == TYPE_ELLIPSE && activeType == TYPE_PLANE {
-					var distance mat.v3 = v3.sub(passiveDest, activePos)
-					var length f32 = v3.dot(distance, activeTop)
+                var vel v3 = g_velocities[i]
+                var acc v3 = g_accelerations[i]
 
-					if length < passiveRadius {
+                //var passiveMaxVel v3 = g_maxVelocities[i]
+                var maxVel f32 = g_maxVelocities[i].x
 
-						var maxT f32 = (passiveRadius + v3.dot(activeTop, v3.sub(activePos, passiveDest))) / v3.dot(distance, activeTop)
-						var maxDisp mat.v3 = v3.mulf(passiveDisp, maxT)
-						//printf("DISP %s, MAX DISP %s, MAX T %f\n", v3.to_str(passiveDisp), v3.to_str(maxDisp), maxT)
-						var maxDest mat.v3 = v3.add(passivePos, maxDisp)
+                var lenVel f32 = v3.length(vel)
+                if lenVel > maxVel {
+                    vel = v3.mulf(vel, maxVel / lenVel)
+                }
+
+                //var passiveMaxAcc v3 = g_maxAccelerations[i]
+                var maxAcc f32 = g_maxAccelerations[i].x
+
+                var lenAcc f32 = v3.length(acc)
+                if lenAcc > maxAcc {
+                    acc = v3.mulf(acc, maxAcc / lenAcc)
+                }
 
 
-						var addDisp mat.v3 = v3.mulf(activeTop, passiveRadius - length)
-						passiveDisp = v3.add(passiveDisp, addDisp)
-						passiveDest = v3.add(passivePos, passiveDisp)
+                var displacement v3
+                displacement.x = (vel.x * velCoef + acc.x * accCoef)
+                displacement.y = (vel.y * velCoef + acc.y * accCoef)
+                displacement.z = (vel.z * velCoef + acc.z * accCoef)
 
-						passiveDisp = v3.sub(passiveDest, maxDest)
-						passiveDisp = v3.mulf(passiveDisp, 0.5)
-						passiveDisp = v3.add(passiveDisp, maxDisp)
 
-						g_displacements[i] = passiveDisp
-						var col Collision
-						col.LeftIndex = i
-						col.RightIndex = ii
-						col.LeftTag = g_tags[i]
-						col.RightTag = g_tags[ii]
-						col.LeftTag2 = g_tags2[i]
-						col.RightTag2 = g_tags2[ii]
-						col.Position = v3.sub(v3.add(passivePos, passiveDisp), v3.mulf(activeTop, passiveRadius))
-						g_collisions = append(g_collisions, col)
-						COLLIDED = true
-					}
-				} else if passiveType == TYPE_ELLIPSE && activeType == TYPE_ELLIPSE {
-					var col Collision
-					col.LeftIndex = i
-					col.RightIndex = ii
-					col.LeftTag = g_tags[i]
-					col.RightTag = g_tags[ii]
-					col.LeftTag2 = g_tags2[i]
-					col.RightTag2 = g_tags2[ii]
-					col.Position = v3.add(v3.mulf(activePos, 0.5), v3.mulf(v3.add(passivePos, passiveDisp), 0.5))
-					g_collisions = append(g_collisions, col)
-					COLLIDED = true
-				}
-			}
-		}
+                g_displacements[i] = displacement
+            }
+        }
+    }
+	//for g_deltaTime > lockStep {
+        updateCount = updateCount + 1
+        phD = fps.CreateStartProfile(phD, "PHX_UPDATE D")
 
-		for k := 0; k < translateCount; k++ {
-			var i i32 = g_translates[k]
-			var vel v3 = g_velocities[i]
-			var acc v3 = g_accelerations[i]
-			var pos v3 = g_positions[i]
-			var mass f32 = g_masses[i]
-			var disp v3 = g_displacements[i]
+        fps.StopProfile(phD)
+        phE = fps.CreateStartProfile(phE, "PHX_UPDATE E")
 
-			var newPos v3
-			newPos.x = pos.x + disp.x
-			newPos.y = pos.y + disp.y
-			newPos.z = pos.z + disp.z
+        //var sphereCollision mat.SphereCollision
+        for k := 0; k < passiveCount; k++ {
+            var i i32 = g_passives[k]
+            var passiveType i32 = g_types[i]
+            var passiveRadius f32 = g_radiuses[i] * 0.5 // TODO : radius * 0.5
+            var passiveSqRadius f32 = passiveRadius * passiveRadius
+            var passiveTag i32 = g_tags[i]
+            var passiveTag2 i32 = g_tags2[i]
 
-			vel.x = disp.x / (dt * debugScale)
-			vel.y = disp.y / (dt * debugScale)
-			vel.z = disp.z / (dt * debugScale)
+//            for axis := 0; axis < 2; axis++ {
 
-			var newAcc v3
-			newAcc.x = 0.0	  - 0.5 * dforce * vel.x / mass//* f32.abs(vel.x) / mass
-			newAcc.y = gforce - 0.5 * dforce * vel.y / mass// * f32.abs(vel.y) / mass
-			newAcc.z = 0.0	  - 0.5 * dforce * vel.z / mass//* f32.abs(vel.z) / mass
-			newAcc.x = newAcc.x * 0.1
-			newAcc.y = newAcc.y * 0.1
-			newAcc.z = newAcc.z * 0.1
+                var contCol bool = true
+                var contCount i32 = 0
+                for contCol == true {
+                    contCol = false
+                    phG = fps.CreateStartProfile(phG, "PHX_UPDATE G")
 
-			var newVel v3
-			newVel.x = vel.x + (acc.x + newAcc.x) * 0.5 * dt
-			newVel.y = vel.y + (acc.y + newAcc.y) * 0.5 * dt
-			newVel.z = vel.z + (acc.z + newAcc.z) * 0.5 * dt
-			newVel.x = newVel.x * 0.8
-			newVel.y = newVel.y * 0.8
-			newVel.z = newVel.z * 0.8
+                    var passivePos mat.v3 = g_positions[i]
+                    var passiveDisp mat.v3 = g_displacements[i]
+                    var passiveDest mat.v3 = v3.add(passivePos, passiveDisp)
+                    if passiveType == TYPE_ELLIPSE {
+                        mat.SphereCollisionCreate(passivePos, passiveDisp, v3.makef(passiveRadius))
+                    }
 
-			var friction f32 = g_frictions[i]
-			newVel = v3.mulf(newVel, friction)
-			newAcc = v3.mulf(newAcc, friction)
+                    for kk := 0; kk < activeCount; kk++ {
+                        var ii i32 = kk//g_actives[kk]
+                        var activeType i32 = g_types[ii]
+                        var activePos mat.v3 = g_positions[ii]
+                        var activeTop mat.v3 = g_normals[ii]
+                        var activeTag i32 = g_tags[ii]
+                        if passiveType == TYPE_ELLIPSE && activeType == TYPE_PLANE {
+                            var oldCollisionCount i32 = mat.g_SphereCollision.count
+                            mat.SphereIntersectsPlane1(activePos, activeTop)
+                            if mat.g_SphereCollision.count > oldCollisionCount {
+                                addCollision(i, ii, v3.mul(mat.g_SphereCollision.intersections[0].point, mat.g_SphereCollision.radius),
+                                activeTop, mat.g_SphereCollision.intersections[0].distance)
+                            }
+                        } else if passiveType == TYPE_ELLIPSE && activeType == TYPE_TRIANGLE {
+                            //if passiveTag2 == 0 {
+                                var p0 mat.v3 = g_positions[ii]
+                                var p1 mat.v3 = g_positions1[ii]
+                                var p2 mat.v3 = g_positions2[ii]
+                                var tnormal mat.v3 = v3.normalize(v3.cross(v3.sub(p1, p0), v3.sub(p2, p0)))
+                                g_scratch0 = resize(g_scratch0, 0)
+                                g_scratch1 = resize(g_scratch1, 0)
+                                g_scratch0 = append(g_scratch0, p0.x)
+                                g_scratch0 = append(g_scratch0, p0.y)
+                                g_scratch0 = append(g_scratch0, p0.z)
+                                g_scratch0 = append(g_scratch0, p1.x)
+                                g_scratch0 = append(g_scratch0, p1.y)
+                                g_scratch0 = append(g_scratch0, p1.z)
+                                g_scratch0 = append(g_scratch0, p2.x)
+                                g_scratch0 = append(g_scratch0, p2.y)
+                                g_scratch0 = append(g_scratch0, p2.x)
+                                g_scratch1 = append(g_scratch1, tnormal.x)
+                                g_scratch1 = append(g_scratch1, tnormal.y)
+                                g_scratch1 = append(g_scratch1, tnormal.z)
 
-			g_positions[i] = newPos
-			g_velocities[i] = newVel
-			g_accelerations[i] = newAcc
+                                var oldCollisionCount i32 = mat.g_SphereCollision.count
+                                g_debugTriangles = mat.SphereIntersectsTriangle(g_scratch0, g_scratch1, g_debugTriangles)
+                                if mat.g_SphereCollision.count > oldCollisionCount {
+                                    addCollision(i, ii, v3.mul(mat.g_SphereCollision.intersections[0].point, mat.g_SphereCollision.radius),
+                                    tnormal, mat.g_SphereCollision.intersections[0].distance)
+                                }
+                            //}
+                        } else if passiveType == TYPE_ELLIPSE && activeType == TYPE_OCTREE {
+                            //if passiveTag == 2 /*&& passiveTag2 == 0*/ {
+                                phI = fps.CreateStartProfile(phI, "PHX_UPDATE I")
+                                var objectI i32 = g_objects[ii]
+                                var octree gfx.OctreeId = g_phxOctrees[objectI] // ISSUE : g_phxOctrees[g_objects[ii]]
+                                var cellCount i32 = len(g_theCell)
+                                g_theCell = gfx.OctreeIntersectsSphere(octree, passivePos, passiveRadius, g_theCell)
+                                g_theCell = gfx.OctreeIntersectsSphere(octree, v3.add(passivePos, passiveDisp), passiveRadius, g_theCell)
+                                g_theColor = resize(g_theColor, len(g_theCell))
+                                var newCellCount i32 = len(g_theCell)
+                                if newCellCount > cellCount {
+                                    //if passiveTag2 == 0 {
+                                        for cellIndex := cellCount; cellIndex < newCellCount; cellIndex++ {
 
-			g_displacements[i] = disp
-		}
+                                            phJ = fps.CreateStartProfile(phJ, "PHX_UPDATE J")
+                                            var cell i32 = g_theCell[cellIndex]
+                                            g_theColor[cellIndex] = i
+                                            var positions []f32 = gfx.OctreeGetCellPositions(octree, cell)
+                                            var normals []f32 = gfx.OctreeGetCellNormals(octree, cell)
+                                            fps.StopProfile(phJ)
 
-		for k := 0; k < rotateCount; k++ {
-			var i i32 = g_rotates[k]
+                                            phK = fps.CreateStartProfile(phK, "PHX_UPDATE K")
+ 
+                                            var oldCollisionCount i32 = mat.g_SphereCollision.count
+                                            g_debugTriangles = mat.SphereIntersectsTriangle(positions, normals, g_debugTriangles)
+                                            if mat.g_SphereCollision.count > oldCollisionCount {
+                                                addCollision(i, ii, v3.mul(mat.g_SphereCollision.intersections[0].point, mat.g_SphereCollision.radius),
+                                                mat.g_SphereCollision.intersections[0].normal, mat.g_SphereCollision.intersections[0].distance)
+                                            }
 
-			var rotation mat.v4 = g_rotations[i]
-			rotation.w = rotation.w + dt
-			g_rotations[i] = rotation
-		}
+                                            fps.StopProfile(phK)
+                                        }
+                                    //}
+                                }
+                                fps.StopProfile(phI)
+                            //}
+                        } else if passiveType == TYPE_ELLIPSE && activeType == TYPE_ELLIPSE && passiveTag != activeTag{
+                            /*if i != ii {
+                                var activeRadius f32 = g_radiuses[ii] * 0.5
+                                var distance mat.v3 = v3.sub(passiveDest, activePos)
+                                var length f32 = v3.length(distance)
+                                if length < (activeRadius + passiveRadius) {
+                                    var collisionCount i32 = len(g_collided)
+                                    for cc := 0; cc < collisionCount; cc++ {
+                                        if length < g_colLengths[cc] {
+                                            g_colLengths = insert(g_colLengths, cc, length)
+                                            g_collided = insert(g_collided, cc, ii)
+                                            cc = collisionCount
+                                        }
+                                    }
+                                    if collisionCount == len(g_collided) {
+                                        g_colLengths = append(g_colLengths, length)
+                                        g_collided = append(g_collided, ii)
+                                    }
+                                }
+                            }*/
+                        }
+                    }
 
-		g_deltaTime = g_deltaTime - g_lockStep // ISSUE : g_deltaTime -= g_lockStep : physics.cx:41 'g_lockStep' redeclared
-		g_currentTime = g_currentTime + g_lockStep // ISSUE : g_currentTime += g_lockStep : physics.cx:42 'g_lockStep' redeclared
-	}
+                    fps.StopProfile(phG)
+                    phH = fps.CreateStartProfile(phH, "PHX_UPDATE H")
 
-	var activeCount i32 = len(g_actives)
+                    if passiveType == TYPE_ELLIPSE {
+                        var intersections []TriangleIntersection = mat.g_SphereCollision.intersections
+                        var intersectionCount i32 = len(intersections)
+                        if intersectionCount > 0 {
+
+
+
+                            var smallDistance f32 = 0.05
+//                            var planePoint v3 = intersections[0].base
+
+                            /*var colNormal v3 = intersections[0].normal
+
+
+                            //printf("SCALED_CENTER %s, SCALED_VELOCITY %s\n",
+                              //  v3.to_str(mat.g_SphereCollision.scaledCenter), v3.to_str(mat.g_SphereCollision.scaledVelocity))
+
+                            var eOldDest v3 = v3.add(mat.g_SphereCollision.scaledCenter, mat.g_SphereCollision.scaledVelocity)
+
+                            var eOldDestToPlane f32 = v3.dot(v3.sub(eOldDest, planePoint), colNormal)
+                            var tmp00 v3 = v3.sub(eOldDest, planePoint)
+                            //printf("OUESOTNHUSNTH %s, NORMAL %s DISTANCE %f\n", v3.to_str(tmp00), v3.to_str(colNormal), v3.dot(tmp00, colNormal))
+                            //printf("OLD_DEST_TO_PLANE %f, OLDDEST %s, PLANEPOINT %s, OLDDESTDIR %s\n", eOldDestToPlane,
+                              //  v3.to_str(eOldDest), v3.to_str(planePoint), v3.to_str(v3.sub(eOldDest, planePoint)))
+                            var eNewPosition v3 = v3.add(eOldDest, v3.mulf(colNormal, 1.0 - eOldDestToPlane + smallDistance))
+
+
+                            var colPoint v3 = v3.sub(eNewPosition, v3.mulf(colNormal, 1.0 - smallDistance))
+                            //("COLLEN %f\n", colLength)
+
+                            var scaledCenter v3 = mat.g_SphereCollision.scaledCenter;
+                            var eOldCenterToPlane v3 = v3.sub(scaledCenter, v3.mulf(colNormal, 1.0 - smallDistance))
+                            var newVel v3 = v3.sub(colPoint, eOldCenterToPlane)*/
+
+
+                            var colLength f32 = intersections[0].distance
+                            var colPoint v3 = intersections[0].point
+                            //var colNormal v3 = intersections[0].normal
+                            //var colDisp v3 = intersections[0].displacement
+
+                            var eOldDest v3 = v3.add(mat.g_SphereCollision.scaledCenter, mat.g_SphereCollision.scaledVelocity)
+                            var eNewPosition v3 = mat.g_SphereCollision.scaledCenter
+
+                            //("COLLEN %f\n", colLength)
+                            var velLength f32 = v3.length(mat.g_SphereCollision.scaledVelocity)
+                            var colNormal v3 = v3.normalize(v3.sub(eNewPosition, colPoint))
+                            //printf("OLD_COL_NORMAL %s\n", v3.to_str(colNormal))
+                            //printf("VEL_LENGTH %f, COL_LENGTH %f\n", velLength, colLength)
+                            if velLength > smallDistance {
+                              //  printf("MOVING BACK %f\n", v3.dot(v3.sub(eNewPosition, colPoint), colNormal))
+                                var normVel v3 = v3.divf(mat.g_SphereCollision.scaledVelocity, velLength)
+                                var tmpVel v3 = v3.mulf(normVel, velLength * colLength - smallDistance)
+                                eNewPosition = v3.add(eNewPosition, tmpVel)
+                                //printf("AFTER BACK %f\n", v3.dot(v3.sub(eNewPosition, colPoint), colNormal))
+                                colPoint = v3.sub(colPoint, v3.mulf(normVel, smallDistance))
+                            }
+
+                            colNormal = v3.normalize(v3.sub(eNewPosition, colPoint))
+//                            printf("NEW_COL_NORMAL %s\n", v3.to_str(colNormal))
+
+
+                            var planeD f32 = 0.0-v3.dot(colNormal, colPoint)
+
+                            var oldDestPlaneDistance f32 = v3.dot(eOldDest, colNormal) + planeD
+
+
+                            var newDest mat.v3 = v3.sub(eOldDest, v3.mulf(colNormal, oldDestPlaneDistance))
+
+                            var newVel mat.v3 = v3.mulf(v3.sub(newDest, colPoint), 0.5)
+                            var newDispLen f32 = v3.length(newVel)
+                           // printf("NEWDEST %s, NEWVEL %s, DIPSLEN %f\n", v3.to_str(newDest), v3.to_str(newVel), newDispLen)
+                            
+                            if newDispLen >= smallDistance {
+                                contCol = true
+                                if contCount < 5 {
+                                    contCol = true
+                                } else {
+                                    contCol = false
+                                }
+                            } else {
+                                contCol = false
+                                //printf("KILLING...\n")
+                            }
+                            contCount = contCount + 1
+                            //printf("LEN %f, COUNT %d NORM %s, POS %s, DISP %s\n", newDispLen, contCount, v3.to_str(colNormal), v3.to_str(eNewPosition), v3.to_str(newVel))
+
+                            g_collided[i] = 1
+
+                            g_positions[i] = v3.mul(eNewPosition, mat.g_SphereCollision.radius)
+                            //var newDistanceToPlane f32 = v3.dot(v3.sub(eNewPosition, planePoint), colNormal)
+                            //var newRadius f32 = mat.g_SphereCollision.radius.x
+                            //printf("NEW_DISTANCE %f, RADIUS %f\n", newDistanceToPlane, newRadius)
+                            g_displacements[i] = v3.mul(newVel, mat.g_SphereCollision.radius)
+                            g_gravityScales[i] = v1.sat(1.0 - 2.0 * f32.abs(v3.dot(colNormal, v3.GREEN)))
+                            //printf("COLNORMAL %s, DOT %f, GRAVITY %f\n", v3.to_str(colNormal), v3.dot(colNormal, v3.GREEN), gravityScale)
+                        } else {
+                            //printf("MOVING %s, %s\n", v3.to_str(passivePos), v3.to_str(passiveDisp))
+                            g_positions[i] = v3.add(passivePos, passiveDisp)
+                            g_displacements[i] = v3.ZERO
+                        }
+                    } else if passiveType == TYPE_ELLIPSE && activeType == TYPE_ELLIPSE {
+                        /*var col Collision
+                        col.LeftIndex = i
+                        col.RightIndex = ii
+                        col.LeftTag = g_tags[i]
+                        col.RightTag = g_tags[ii]
+                        col.LeftTag2 = g_tags2[i]
+                        col.RightTag2 = g_tags2[ii]
+                        col.Position = v3.add(v3.mulf(activePos, 0.5), v3.mulf(v3.add(passivePos, passiveDisp), 0.5))
+                        g_collisions = append(g_collisions, col)
+                        COLLIDED = true*/
+                    }
+
+                    //g_displacements[i] = passiveDisp
+                    //g_positions[i] = v3.add(passivePos, passiveDisp)
+                    fps.StopProfile(phH)
+                }
+
+
+
+            //}
+
+            //g_velocities[i] = v3.divf(passiveDisp, dt)
+
+        }
+
+        fps.StopProfile(phE)
+        phF = fps.CreateStartProfile(phF, "PHX_UPDATE F")
+
+		g_deltaTime = g_deltaTime - lockStep // ISSUE : g_deltaTime -= g_lockStep : physics.cx:41 'g_lockStep' redeclared
+		g_currentTime = g_currentTime + lockStep // ISSUE : g_currentTime += g_lockStep : physics.cx:42 'g_lockStep' redeclared
+        fps.StopProfile(phF)
+	//}
+    //}
+
+        for k := 0; k < passiveCount; k++ {
+            var i i32 = g_passives[k]
+            var passiveType i32 = g_types[i]
+            var passiveTag i32 = g_types[i]
+            var passiveState i32 = g_states[i]
+            var passiveGravityScale f32 = g_gravityScales[i]
+            //printf("GRAVITY_SCALE %f, VOID_COUNT %d\n", passiveGravityScale, g_voidCount[i])
+            if g_collided[i] == 0 {
+                g_voidCount[i] = g_voidCount[i] + 1
+            } else {
+                g_voidCount[i] = 0
+            }
+
+            if passiveType == TYPE_ELLIPSE || passiveType == TYPE_BOX {
+                if (passiveState & STATE_TRANSLATE) != 0 {
+                    var vel v3 = g_velocities[i]
+                    var acc v3 = g_accelerations[i]
+                    var newPos v3 = g_positions[i]
+                    var mass f32 = g_masses[i]
+
+                    var disp v3 = v3.sub(g_positions[i], g_oldPositions[i])
+
+                    vel.x = disp.x / dt
+                    vel.y = passiveGravityScale * disp.y / dt
+                    vel.z = disp.z / dt
+
+                    var newAcc v3
+                    newAcc.x = 0.0    - 0.5 * dforce * vel.x / mass//* f32.abs(vel.x) / mass
+                    newAcc.y = gforce * g_airFrictions[i] - 0.5 * dforce * vel.y / mass// * f32.abs(vel.y) / mass
+                    newAcc.z = 0.0    - 0.5 * dforce * vel.z / mass//* f32.abs(vel.z) / mass
+                    newAcc.x = newAcc.x * 0.1
+                    newAcc.y = newAcc.y * 0.1 * passiveGravityScale
+                    newAcc.z = newAcc.z * 0.1
+
+                    var newVel v3
+                    newVel.x = vel.x + (acc.x + newAcc.x) * 0.5 * dt
+                    newVel.y = vel.y + (acc.y + newAcc.y) * 0.5 * dt
+                    newVel.z = vel.z + (acc.z + newAcc.z) * 0.5 * dt
+                    newVel.x = newVel.x * 0.8
+                    newVel.y = newVel.y * 0.8
+                    newVel.z = newVel.z * 0.8
+
+                    var friction f32 = g_frictions[i]
+                    newVel = v3.mulf(newVel, friction)
+                    newAcc = v3.mulf(newAcc, friction)
+
+                    g_positions[i] = newPos
+                    g_velocities[i] = newVel
+                    g_accelerations[i] = newAcc
+
+                    g_displacements[i] = disp
+                }
+
+                if (passiveState & STATE_ROTATE) != 0 {
+                    var rotation mat.v4 = g_rotations[i]
+                    rotation.w = rotation.w + dt
+                    g_rotations[i] = rotation
+                }
+                //printf("ACC %s, VEL %s, DISP %s\n", v3.to_str(newAcc), v3.to_str(newVel), v3.to_str(disp))
+            }
+        }
+    //}
+    fps.StopProfile(phC)
+    fps.StopProfile(phA)
 }
 
 // Render ...
 func Render(world mat.m44, view mat.m44, projection mat.m44) {
-	if g_debug {
+	if g_debug == false {
 		g_debugObjects = resize(g_debugObjects, 0)
 		var count i32 = g_objectCount
 		for i := 0; i < count; i++ {
@@ -356,9 +608,19 @@ func Render(world mat.m44, view mat.m44, projection mat.m44) {
 			gfx.MeshBegin(g_debugMesh)
 			gfx.MeshBegin(g_debugMeshWire)
 
+
+            for t := 0; t < len(g_debugTriangles) / 3; t ++ {
+                var toff i32 = t * 3
+                    gfx.MeshAppendTriangle(g_debugMesh, false, false, g_debugTriangles[toff], g_debugTriangles[toff+1], g_debugTriangles[toff+2],
+                            v4.GREEN)
+                    gfx.MeshAppendTriangle(g_debugMeshWire, true, true, g_debugTriangles[toff], g_debugTriangles[toff+1], g_debugTriangles[toff+2],
+                            v4.PINK)
+
+            }
 			for k := 0; k < debugCount; k++ {
 				var i i32 = g_debugObjects[k]
 				var state i32 = g_states[i]
+                //printf("DEBUG %d/%d, %d\n", k, debugCount, i)
 
 				var debugWire bool = false
 				var debugMesh gfx.MeshId = g_debugMesh
@@ -387,14 +649,38 @@ func Render(world mat.m44, view mat.m44, projection mat.m44) {
 						gfx.MeshAppendPlane(debugMesh, debugWire, false, position, right, top, back, 4, 4, v4.GREEN, v4.PINK)
 					}
 				} else if objType == TYPE_ELLIPSE {
+                    //printf("POS %d : %s\n", i, v3.to_str(g_positions[i]))
+                    //printf("SIZ %d : %s\n", i, v3.to_str(g_sizes[i]))
+                    //printf("ROT %d : %s\n", i, v4.to_str(g_rotations[i]))
 					gfx.MeshAppendEllipseGizmoUI16(g_debugMeshWire, GetObjectTransform(i), v3.ZERO, v3.ONE, 32)
-				}
+                } else if objType == TYPE_TRIANGLE {
+                    gfx.MeshAppendTriangle(g_debugMesh, false, false, g_positions[i], g_positions1[i],
+                            g_positions2[i], g_colors[i])
+                    gfx.MeshAppendTriangle(g_debugMeshWire, true, true, g_positions[i], g_positions1[i],
+                            g_positions2[i], v4.PINK)
+				} else if objType == TYPE_OCTREE {
+                    /*var cellCount i32 = len(g_theCell)
+                    for cell := 0; cell < cellCount; cell++ {
+                        var objectI i32 = g_objects[i]
+                        var cellOffset i32 = g_theCell[cell]
+                        var cellColor i32 = g_theColor[cell]
+                        var octree gfx.OctreeId = g_phxOctrees[objectI]// ISSUE : can't use g_phxOctrees[g_objects[i]]
+                        var cellCenter mat.v3 = gfx.OctreeGetCellCenter(octree, cellOffset)
+                        var cellMin mat.v3 = gfx.OctreeGetCellMin(octree, cellOffset)
+                        var cellMax mat.v3 = gfx.OctreeGetCellMax(octree, cellOffset)
+                        gfx.MeshAppendBox(debugMesh, debugWire, true, cellCenter,
+                                v3.make((cellMax.x - cellMin.x) * 0.5, 0.0, 0.0),
+                                v3.make(0.0, (cellMax.y - cellMin.y) * 0.5, 0.0),
+                                v3.make(0.0, 0.0, (cellMax.z - cellMin.z) * 0.5),
+                                g_colors[cellColor])
+                    }*/
+                }
 			}
 
 			gfx.MeshEnd(g_debugMeshWire)
 			gfx.MeshEnd(g_debugMesh)
 
-			gfx.DepthState(true, gfx.LESS, false)
+			gfx.DepthState(true, gfx.LESS, true)
 			gfx.EffectUse(gfx.g_fxVertexColor3D)
 			gfx.EffectAssignM44(gfx.g_fxVertexColor3D, gfx.UNIFORM_WORLD, world, false)
 			gfx.EffectAssignM44(gfx.g_fxVertexColor3D, gfx.UNIFORM_VIEW, view, false)
@@ -440,11 +726,6 @@ func GetObjectPosition(id i32) (out v3) {
 	out = g_positions[id]
 }
 
-// GetCollisions
-func GetCollisions() (out []Collision) {
-	out = g_collisions
-}
-
 // GetObjectAt ...
 func GetObjectAt(id i32) (out v3) {
 	panicIfNot(IsValidObject(id), "invalid object")
@@ -465,6 +746,24 @@ func GetObjectRight(id i32) (out v3) {
 func GetObjectRotation(id i32) (out v4) {
 	panicIfNot(IsValidObject(id), "invalid object")
 	out = g_rotations[id]
+}
+
+// SetObjectAirFriction ...
+func SetObjectAirFriction(id i32, value f32) {
+    panicIfNot(IsValidObject(id), "invalid object")
+    g_airFrictions[id] = value
+}
+
+// SetObjectMaxVelocity ...
+func SetObjectMaxVelocity(id i32, velocity mat.v3) {
+	panicIfNot(IsValidObject(id), "invalid object")
+	g_maxVelocities[id] = velocity
+}
+
+// SetObjectMaxAcceleration ...
+func SetObjectMaxAcceleration(id i32, acceleration mat.v3) {
+	panicIfNot(IsValidObject(id), "invalid object")
+	g_maxAccelerations[id] = acceleration
 }
 
 // SetObjectRotation ...
@@ -501,6 +800,12 @@ func SetObjectSize(id i32, velocity mat.v3) {
 	g_radiuses[id] = f32.sqrt(sqRadius)
 }
 
+// GetObjectVoidCount ...
+func GetObjectVoidCount(id i32) (out i32) {
+    panicIfNot(IsValidObject(id), "invalid object")
+    out = g_voidCount[id]
+}
+
 // GetObjectVelocity ...
 func GetObjectVelocity(id i32) (out mat.v3) {
 	panicIfNot(IsValidObject(id), "invalid object")
@@ -532,6 +837,24 @@ func PrintObject(id i32) {
 			g_masses[id])
 }
 
+// AddTriangle ...
+func AddTriangle(objectTag i32, objectTag2 i32, state i32, p0 mat.v3, p1 mat.v3, p2 mat.v3, color mat.v4) (out i32) {
+    out = AddObject(TYPE_TRIANGLE, objectTag, objectTag2, state, v3.ZERO, v3.ZERO, v3.ZERO,
+            v3.RED, v3.GREEN, v3.BLUE, 0.0, 1.0, v4.make(0.0, 1.0, 0.0, 0.0), color)
+    var ll i32 = len(g_positions)
+    g_positions[ll - 1] = p0
+    g_positions1[ll - 1] = p1
+    g_positions2[ll - 1] = p2
+}
+
+// AddOctree ...
+func AddOctree(objectTag i32, objectTag2 i32, state i32, octree gfx.OctreeId) (out i32) {
+    out = AddObject(TYPE_OCTREE, objectTag, objectTag2, state, v3.ZERO, v3.ZERO, v3.ZERO,
+            v3.RED, v3.GREEN, v3.BLUE, 0.0, 1.0, v4.make(0.0, 1.0, 0.0, 0.0), v4.ONE)
+    g_objects[len(g_objects) - 1] = len(g_phxOctrees)
+    g_phxOctrees = append(g_phxOctrees, octree)
+}
+
 // AddObject ...
 func AddObject(objectType i32, objectTag i32, objectTag2 i32, state i32,  position v3, velocity v3, acceleration v3, right v3, top v3, back v3, mass f32, friction f32, orientation mat.v4, color mat.v4) (out i32) {
 	g_states = append(g_states, state)
@@ -540,11 +863,15 @@ func AddObject(objectType i32, objectTag i32, objectTag2 i32, state i32,  positi
 	g_tags2 = append(g_tags2, objectTag2)
 	g_frictions = append(g_frictions, friction)
 	g_positions = append(g_positions, position)
-	g_velocities = append(g_velocities, velocity)
+	g_positions1 = append(g_positions1, position)
+    g_positions2 = append(g_positions2, position)
+    g_maxVelocities = append(g_maxVelocities, v3.ZERO)
+    g_maxAccelerations = append(g_maxAccelerations, v3.ZERO)
+    g_velocities = append(g_velocities, velocity)
 	g_displacements = append(g_displacements, v3.ZERO)
 	g_accelerations = append(g_accelerations, acceleration)
 	g_colors = append(g_colors, color)
-
+    g_objects = append(g_objects, -1)
 	var size mat.v3 = v3.make(v3.length(right), v3.length(top), v3.length(back))
 	g_sizes = append(g_sizes, size)
 
@@ -557,10 +884,18 @@ func AddObject(objectType i32, objectTag i32, objectTag2 i32, state i32,  positi
 	g_rights = append(g_rights, v3.make_x(right)) // ISSUE : can't use right.x
 	g_tops = append(g_tops, v3.make_y(top))
 	g_normals = append(g_normals, v3.make_y(top))
+    g_oldPositions = append(g_oldPositions, v3.ZERO)
 	g_backs = append(g_backs, v3.make_z(back))
 
 	g_rotations = append(g_rotations, orientation)
 	g_masses = append(g_masses, mass)
+
+    g_gravityScales = append(g_gravityScales, 1.0)
+    g_voidCount = append(g_voidCount, 0)
+
+    g_collided = append(g_collided, 0)
+
+    g_airFrictions = append(g_airFrictions, 1.0)
 
 	out = g_objectCount
 	g_objectCount = g_objectCount + 1
@@ -572,14 +907,11 @@ func RemoveObject(id i32) {
 	panicIfNot(IsValidObject(id), "invalid object")
 	g_objectCount = g_objectCount - 1
 
-	g_colors[id] = g_colors[g_objectCount]
-	g_colors = resize(g_colors, g_objectCount)
+    g_states[id] = g_states[g_objectCount]
+    g_states = resize(g_states, g_objectCount)
 
-	g_states[id] = g_states[g_objectCount]
-	g_states = resize(g_states, g_objectCount)
-
-	g_types[id] = g_types[g_objectCount]
-	g_types = resize(g_types, g_objectCount)
+    g_types[id] = g_types[g_objectCount]
+    g_types = resize(g_types, g_objectCount)
 
 	g_tags[id] = g_tags[g_objectCount]
 	g_tags = resize(g_tags, g_objectCount)
@@ -593,17 +925,44 @@ func RemoveObject(id i32) {
 	g_positions[id] = g_positions[g_objectCount]
 	g_positions = resize(g_positions, g_objectCount)
 
-	g_velocities[id] = g_velocities[g_objectCount]
-	g_velocities = resize(g_velocities, g_objectCount)
+    g_positions1[id] = g_positions1[g_objectCount]
+    g_positions1 = resize(g_positions1, g_objectCount)
 
-	g_displacements[id] = g_displacements[g_objectCount]
-	g_displacements = resize(g_displacements, g_objectCount)
+    g_positions2[id] = g_positions2[g_objectCount]
+    g_positions2 = resize(g_positions2, g_objectCount)
 
-	g_accelerations[id] = g_accelerations[g_objectCount]
-	g_accelerations = resize(g_accelerations, g_objectCount)
+    g_maxVelocities[id] = g_maxVelocities[g_objectCount]
+    g_maxVelocities = resize(g_maxVelocities, g_objectCount)
 
-	g_sizes[id] = g_sizes[g_objectCount]
-	g_sizes = resize(g_sizes, g_objectCount)
+    g_maxAccelerations[id] = g_maxAccelerations[g_objectCount]
+    g_maxAccelerations = resize(g_maxAccelerations, g_objectCount)
+
+    g_velocities[id] = g_velocities[g_objectCount]
+    g_velocities = resize(g_velocities, g_objectCount)
+
+    g_displacements[id] = g_displacements[g_objectCount]
+    g_displacements = resize(g_displacements, g_objectCount)
+
+    g_accelerations[id] = g_accelerations[g_objectCount]
+    g_accelerations = resize(g_accelerations, g_objectCount)
+
+    g_sizes[id] = g_sizes[g_objectCount]
+    g_sizes = resize(g_sizes, g_objectCount)
+
+    g_rights[id] = g_rights[g_objectCount]
+    g_rights = resize(g_rights, g_objectCount)
+
+    g_tops[id] = g_tops[g_objectCount]
+    g_tops = resize(g_tops, g_objectCount)
+
+    g_backs[id] = g_backs[g_objectCount]
+    g_backs = resize(g_backs, g_objectCount)
+
+    g_normals[id] = g_normals[g_objectCount]
+    g_normals = resize(g_normals, g_objectCount)
+
+    g_oldPositions[id] = g_oldPositions[g_objectCount]
+    g_oldPositions = resize(g_oldPositions, g_objectCount)
 
 	g_radiuses[id] = g_radiuses[g_objectCount]
 	g_radiuses = resize(g_radiuses, g_objectCount)
@@ -617,6 +976,23 @@ func RemoveObject(id i32) {
 	g_masses[id] = g_masses[g_objectCount]
 	g_masses = resize(g_masses, g_objectCount)
 
+    g_colors[id] = g_colors[g_objectCount]
+    g_colors = resize(g_colors, g_objectCount)
+
+    g_objects[id] = g_objects[g_objectCount]
+    g_objects = resize(g_objects, g_objectCount)
+
+    g_gravityScales[id] = g_gravityScales[g_objectCount]
+    g_gravityScales = resize(g_gravityScales, g_objectCount)
+
+    g_voidCount[id] = g_voidCount[g_objectCount]
+    g_voidCount = resize(g_voidCount, g_objectCount)
+
+    g_collided[id] = g_collided[g_objectCount]
+    g_collided = resize(g_collided, g_objectCount)
+
+    g_airFrictions[id] = g_airFrictions[g_objectCount]
+    g_airFrictions = resize(g_airFrictions, g_objectCount)
 }
 
 
