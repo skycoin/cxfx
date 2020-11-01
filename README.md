@@ -59,6 +59,7 @@ make skylight TARGET=android
 
 ##### WIP :
 
+<img style="max-width:100%" src="games/skylight/screenshots/skylight_98.png">
 <img style="max-width:100%" src="games/skylight/screenshots/skylight_81.png">
 <img style="max-width:100%" src="games/skylight/screenshots/skylight_80.png">
 <img style="max-width:100%" src="screenshots/cxfx_76.png">

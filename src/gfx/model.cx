@@ -1072,10 +1072,10 @@ func modelInstance(id ModelId, options i32) (success bool) {
 			var nodeMatrix mat.m44 = gltf.NodeGetMatrix(asset, node)
 			var determinant f32 = m44.determinant(nodeMatrix)
 			determinants = append(determinants, determinant)
-			/*var cullFace i32 = gl.BACK
+			var cullFace i32 = gl.BACK
 			if determinant < 0.0 {
 				cullFace = gl.FRONT
-			}*/
+			}
 			matrixStack = m44.push(matrixStack, nodeMatrix)
 
 			var last m44 = matrixStack[len(matrixStack) - 1]
