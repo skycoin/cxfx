@@ -354,7 +354,7 @@ func dot(a v3, b v3) (out f32) {
 
 // sqlength ...
 func sqlength(a v3) (out f32) {
-	out = a.x*a.x + a.y*a.y
+	out = a.x*a.x + a.y*a.y + a.z*a.z
 	//panicIf(f32.isnan(out), "NAN sqlength")
 }
 
@@ -375,7 +375,7 @@ func normalize(a v3) (out v3) {
 
 // transform_vector_x ...
 func transform_vector_x(x f32, m m44) (out v3) {
-	//panicIf(isnan(x), "NAN transform_vector_x #0")
+	//panicIf(f32.isnan(x), "NAN transform_vector_x #0")
 	//panicIf(m44.isnan(m), "NAN transform_vector_x #1")
 	out.x = x * m.v00
 	out.y = x * m.v01
@@ -385,7 +385,7 @@ func transform_vector_x(x f32, m m44) (out v3) {
 
 // transform_vector_y ...
 func transform_vector_y(y f32, m m44) (out v3) {
-	//panicIf(isnan(x), "NAN transform_vector_y #0")
+	//panicIf(f32.isnan(y), "NAN transform_vector_y #0")
 	//panicIf(m44.isnan(m), "NAN transform_vector_y #1")
 	out.x = y * m.v10
 	out.y = y * m.v11
@@ -395,7 +395,7 @@ func transform_vector_y(y f32, m m44) (out v3) {
 
 // transform_vector_x ...
 func transform_vector_z(z f32, m m44) (out v3) {
-	//panicIf(isnan(x), "NAN transform_vector_z #0")
+	//panicIf(f32.isnan(z), "NAN transform_vector_z #0")
 	//panicIf(m44.isnan(m), "NAN transform_vector_z #1")
 	out.x = z * m.v20
 	out.y = z * m.v21
@@ -405,9 +405,9 @@ func transform_vector_z(z f32, m m44) (out v3) {
 
 // transform_vectorf ...
 func transform_vectorf(x f32, y f32, z f32, m m44) (out v3) {
-	//panicIf(isnan(x), "NAN transform_vectorf #0")
-	//panicIf(isnan(y), "NAN transform_vectorf #1")
-	//panicIf(isnan(z), "NAN transform_vectorf #2")
+	//panicIf(f32.isnan(x), "NAN transform_vectorf #0")
+	//panicIf(f32.isnan(y), "NAN transform_vectorf #1")
+	//panicIf(f32.isnan(z), "NAN transform_vectorf #2")
 	//panicIf(m44.isnan(m), "NAN transform_vector #1")
 	out.x = x * m.v00 + y * m.v10 + z * m.v20
 	out.y = x * m.v01 + y * m.v11 + z * m.v21

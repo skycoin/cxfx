@@ -249,7 +249,7 @@ func Init(width i32, height i32, dataDir str) {
 
 
 	// textures
-	g_skycoinTexture = gfx.TextureCreate(sprintf("%stextures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", dataDir), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true)
+	g_skycoinTexture = gfx.TextureCreate(sprintf("%stextures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", dataDir), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true, false)
 
 	g_synthAnim = AnimationCreateFromPath(sprintf("%stextures/synth.gif", dataDir))
 	g_skycoinAnim = AnimationCreateFromTexture(g_skycoinTexture)
@@ -608,8 +608,8 @@ func Render() () {
 		gfx.DisableBlending()
 		gfx.EffectUse(gfx.g_fxFade_0)
 		gfx.EffectAssignFloat(gfx.g_fxFade_0, gfx.UNIFORM_TIME, f64.f32(g_transitionTime / g_transitionDuration))
-		gfx.EffectAssignTexture(gfx.g_fxFade_0, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(target0, 0), gfx.g_nearestClamp)
-		gfx.EffectAssignTexture(gfx.g_fxFade_0, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(target1, 0), gfx.g_nearestClamp)
+		gfx.EffectAssignTexture(gfx.g_fxFade_0, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(target0, 0), gfx.g_nearest0Clamp)
+		gfx.EffectAssignTexture(gfx.g_fxFade_0, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(target1, 0), gfx.g_nearest0Clamp)
 		gfx.MeshRender(gfx.g_fullscreenQuad)
 		fps.StopProfile(g_profileRenderScreenEffect)
 
@@ -627,8 +627,8 @@ func Render() () {
 			gfx.DisableBlending()
 			gfx.EffectUse(gfx.g_fxFade_1)
 			gfx.EffectAssignFloat(gfx.g_fxFade_1, gfx.UNIFORM_TIME, 1.0)
-			gfx.EffectAssignTexture(gfx.g_fxFade_1, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(target2, 0), gfx.g_nearestClamp)
-			gfx.EffectAssignTexture(gfx.g_fxFade_1, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(target, 0), gfx.g_nearestClamp)
+			gfx.EffectAssignTexture(gfx.g_fxFade_1, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(target2, 0), gfx.g_nearest0Clamp)
+			gfx.EffectAssignTexture(gfx.g_fxFade_1, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(target, 0), gfx.g_nearest0Clamp)
 			gfx.MeshRender(gfx.g_fullscreenQuad)
 			if renderEx == false {
 				unlockTarget(target)
@@ -649,7 +649,7 @@ func Render() () {
 	gfx.DisableStencil()
 	gfx.DisableBlending()
 	gfx.EffectUse(gfx.g_fxTexture2D)
-	gfx.EffectTryAssignTexture(gfx.g_fxTexture2D, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(target2, 0), gfx.g_nearestClamp)
+	gfx.EffectTryAssignTexture(gfx.g_fxTexture2D, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(target2, 0), gfx.g_nearest0Clamp)
 	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 	if renderEx0 == false {
@@ -695,12 +695,12 @@ func lockTarget() (out TargetId) {
 		//gfx.TargetBind(out)
 	} else {
 		out = gfx.TargetCreate(1, app.Width(), app.Height(), 1, true)
-		var color TextureId  = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, app.Width(), app.Height(), 0, true)
-		gfx.TextureSamplerState(color, gfx.g_nearestClamp)
+		var color TextureId  = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, app.Width(), app.Height(), 0, true, false)
+		gfx.TextureSamplerState(color, gfx.g_nearest0Clamp)
 		gfx.TargetAttachColor(out, color, 0)
 		var test TextureId = gfx.TargetGetColor(out, 0)
-		var depthTexture TextureId  = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, app.Width(), app.Height(), 0, true)
-		gfx.TextureSamplerState(depthTexture, gfx.g_nearestClamp)
+		var depthTexture TextureId  = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, app.Width(), app.Height(), 0, true, false)
+		gfx.TextureSamplerState(depthTexture, gfx.g_nearest0Clamp)
 		gfx.TargetAttachDepth(out, depthTexture)
 		g_allTargets = append(g_allTargets, out)
 	}

@@ -27,7 +27,7 @@ type Label struct {
 	textPosition mat.v2
 	color_0 mat.v4
 	color_1 mat.v4
-	onState func_i32_i32_id
+	onState app.func_i32_i32_id
 }
 
 // NewLabelId ...
@@ -58,7 +58,7 @@ func LabelCreate(name str) (out LabelId) {
 	label.textPosition = v2.ZERO
 	label.color_0 = g_red
 	label.color_1 = g_green
-	label.onState = invalid_func_i32_i32()
+	label.onState = app.invalid_func_i32_i32()
 
 	g_labels = append(g_labels, label)
 	panicIfNot(IsValidLabel(out), "invalid id")
@@ -106,8 +106,8 @@ func LabelSetColor(id LabelId, color mat.v4) {
 // LabelSetOnState ...
 func LabelSetOnState(i_id LabelId, packageName str, functionName str) {
 	panicIfNot(IsValidLabel(i_id), "invalid id")
-	g_labels[i_id.label].onState = func_i32_i32(packageName, functionName)
-	var onState func_i32_i32_id = g_labels[i_id.label].onState
+	g_labels[i_id.label].onState = app.func_i32_i32(packageName, functionName)
+	var onState app.func_i32_i32_id = g_labels[i_id.label].onState
 	panicIfNot(onState.index >= 0, "invalid function")
 }
 
@@ -147,10 +147,10 @@ func LabelProcessEvent(id LabelId, event *app.Event) (out i32) {
 			}
 
 			if (call == true) {
-				var function func_i32_i32_id = g_labels[id.label].onState
+				var function app.func_i32_i32_id = g_labels[id.label].onState
 				var functionIndex i32 = function.index
 				if functionIndex >= 0 {
-					call_i32_i32(function, index, callAction)
+					app.call_i32_i32(function, index, callAction)
 					out = app.EVENT_CONSUMED
 				}
 			}

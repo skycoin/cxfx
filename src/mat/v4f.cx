@@ -2,9 +2,8 @@ package v4
 
 import "mat"
 import "v1"
-/*import "v2"
+import "v2"
 import "v3"
-import "m44"*/
 
 var ZERO v4 = makef(0.0)
 var ONE v4 = makef(1.0)

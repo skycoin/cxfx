@@ -99,7 +99,7 @@ func ShaderDefineGetHeader(flags i64) (out str) {
     var glVersion i32 = GetGLVersion()
 
     if glVersion == GL_VERSION_DS_3_2 {
-	    out = "#version 150\n"
+	    out = "#version 330\n"
 	    out = str.concat(out, "#define texture2D texture\n")
 	    out = str.concat(out, "#define textureCube texture\n")
 	    out = str.concat(out, "#define textureCubeLod textureLod\n")

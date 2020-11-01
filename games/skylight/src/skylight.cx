@@ -1,22 +1,48 @@
 package main
 
 import "app"
+import "args"
 import "fps"
 import "gam"
 import "gfx"
 import "gui"
+import "m44"
 import "mat"
-import "snd"
 import "phx"
+import "q4"
+import "snd"
+import "time"
 import "v1"
 import "v2"
 import "v3"
 import "v4"
-import "q4"
-import "m44"
 
 // TODO : can't navigate with keyboard at startup
 // TODO : dialog disapear if exit button is pushed with keyboard
+
+type Sky struct {
+    name str
+    loaded bool
+    diffuse gfx.TextureId
+    specular gfx.TextureId
+}
+
+type Level struct {
+    gfxName str
+    gfxScene str
+    gfxWorld mat.m44
+    gfxModel gfx.ModelId
+    gfxOctree gfx.OctreeId
+    phxName str
+    phxScene str
+    phxWorld mat.m44
+    phxModel gfx.ModelId
+    phxOctree gfx.OctreeId
+    loaded bool
+    physic i32
+    debug i32
+}
+
 
 // Types
 type Anim struct {
@@ -25,6 +51,15 @@ type Anim struct {
 }
 
 type Player struct {
+    name str
+    spineName str
+    torsoName str
+    shoulderName str
+    handName str
+    loaded bool
+    visible bool
+
+    color mat.v4
 	idle Anim
 	throw Anim
 	jump Anim
@@ -80,6 +115,9 @@ type Player struct {
 	fireAnimLength f32
 	fireAnimThresh f32
 	fireAnimThrow f32
+
+	oldPhxPosition mat.v3
+	oldVoidCount i32
 }
 
 // Globals ...
@@ -107,10 +145,16 @@ var prfParticleUpdate fps.ProfileId = fps.InvalidProfile()
 var prfAlphaFull fps.ProfileId = fps.InvalidProfile()
 var prfAlphaHalf fps.ProfileId = fps.InvalidProfile()
 
+var characters []Player
 var players []Player
+var skies []Sky
+var levels []Level
 
-var gameScreen gui.ScreenId
-var exitScreen gui.ScreenId
+var debugFrustum bool = false
+var debugOctree bool = false
+var debugSky bool = false
+var currentSky i32
+var currentLevel i32
 
 var skyminerModel gfx.ModelId = gfx.ModelInvalid()
 var skyminerScale f32 = 0.1
@@ -124,12 +168,6 @@ var alphaFullTarget gfx.TargetId
 var mergeTarget gfx.TargetId
 var edgeTarget gfx.TargetId
 
-var cxfxAnim gui.AnimationId = gui.InvalidAnimation()
-var skylightTexture gfx.TextureId = gui.InvalidTexture()
-var skylightAnim gui.AnimationId = gui.InvalidAnimation()
-var charactersTexture gfx.TextureId = gui.InvalidTexture()
-var charactersAnim gui.AnimationId = gui.InvalidAnimation()
-
 var groundMesh gfx.MeshId = gfx.InvalidMesh()
 var texture gfx.TextureId = gfx.InvalidTexture()
 var dollar gfx.TextureId = gfx.InvalidTexture()
@@ -137,16 +175,12 @@ var smokeTexture gfx.TextureId = gfx.InvalidTexture()
 
 var dollarMesh gfx.MeshId = gfx.InvalidMesh()
 
+var skyWorld mat.m44 = m44.IDENTITY
 var skyMesh gfx.MeshId = gfx.InvalidMesh()
-var skyDiffuses []gfx.TextureId
-var skySpeculars []gfx.TextureId
-var currentSky i32
-var currentSkybox i32
 var brdf gfx.TextureId = gfx.InvalidTexture()
 
-var world m44
-
 var camera gam.CameraId
+var frustum gfx.FrustumId
 
 var worldPosY f32 = -10.0
 
@@ -165,13 +199,28 @@ var groundBack f32 = worldSizeZ / groundScale
 var groundWidth i32 = 16
 var groundHeight i32 = 16
 
-//var voiceId snd.VoiceId
+var GAME_MODE_MENU       i32 = 1
+var GAME_MODE_GAME       i32 = 2
+var GAME_MODE_LIGHT      i32 = 4
+var GAME_MODE_DEBUG      i32 = 8
+var GAME_MODE_VIDEO      i32 = 16
+
+var gameMode i32
+var gameModeMatch bool = false
+var gameModeNames []str
+var gameModeValues []i32
+var hasModeMenu bool = false
+var hasModeGame bool = false
+var isModeLight bool = false
+var isModeDebug bool = false
+var isModeVideo bool = false
 
 var TAG_GROUND i32 = 1
 var TAG_PLAYER i32 = 2
 var TAG_MINER i32 = 3
 var TAG_DOLLAR i32 = 4
 var TAG_AIM i32 = 5
+var TAG_LEVEL i32 = 6
 
 var CAMERA_FREE i32 = 0
 var CAMERA_TPS i32 = 1
@@ -199,8 +248,10 @@ var ffr f32
 var ffs f32 = 0.01
 
 var currentPlayer i32
+var playerCount i32 = 3
 var currentCPU i32 = 1
 var currentCPU2 i32 = 2
+
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func gameOnEvent(controlIndex i32, controlAction i32) {
@@ -254,6 +305,32 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 				} else if MOVE_ == MOVE_R {
 					printf("-----------ROTATE\n")
 				}
+			}
+        }
+	} else if mods == app.MOD_ALT && isModeDebug {
+		if action == app.KEY_PRESS {
+			if key == app.KEYCODE_LEFT {
+				if action == app.KEY_PRESS {
+					currentSky = currentSky - 1
+					if currentSky < 0 {
+						currentSky = len(skies) - 1
+					}
+				}
+			} else if key == app.KEYCODE_RIGHT {
+				if action == app.KEY_PRESS {
+					currentSky = currentSky + 1
+					if currentSky >= len(skies) {
+						currentSky = 0
+					}
+				}
+			} else if key == app.KEYCODE_UP {
+                if action == app.KEY_PRESS {
+                    debugSky = debugSky == false
+                }
+			} else if key == app.KEYCODE_DOWN {
+                if action == app.KEY_PRESS {
+                    debugSky = debugSky == false
+                }
 			}
 		}
 	} else if mods == app.MOD_SHIFT {
@@ -358,9 +435,15 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 				//fireWeapon = 0
 			}
 		} else if key == app.KEYCODE_V {
-			if phx.COLLIDED == true {
+			if action == app.KEY_PRESS {
 				players[currentPlayer].ydir = 1.0
 				players[currentPlayer].jumpingState = true
+			} else if action == app.KEY_REPEAT {
+				players[currentPlayer].ydir = 1.0
+				players[currentPlayer].jumpingState = true
+			} else if action == app.KEY_RELEASE {
+				players[currentPlayer].ydir = 0.0
+				players[currentPlayer].jumpingState = false
 			}
 		} else if key == app.KEYCODE_1 {
 			if action == app.KEY_PRESS {
@@ -370,7 +453,20 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 			if action == app.KEY_PRESS {
 				players[currentPlayer].weapon = WEAPON_SKYNOTE
 			}
-		}
+		} else if key == app.KEYCODE_9 {
+            if action == app.KEY_PRESS {
+                debugFrustum = debugFrustum == false
+            }
+        } else if key == app.KEYCODE_8 {
+            if action == app.KEY_PRESS {
+                debugOctree = debugOctree == false
+            }
+        } else if key == app.KEYCODE_7 {
+            if action == app.KEY_PRESS {
+                var phxPlayer i32 = players[0].phxObject
+                phx.SetObjectPosition(phxPlayer, v3.make(-786.0, 3000.0, -409.0))
+            }
+        }
 	}
 
 	var mouseAction i32 = gui.CurrentEvent.mouse.action
@@ -410,7 +506,7 @@ func fireSkyminer(position mat.v3, direction mat.v3, playerIndex i32) {
 	var axis mat.v3 = v3.normalize(v3.rand())
 
 	var mass f32 = 5.0
-	var force f32 = 400.0
+	var force f32 = 200.0
 
 	var radius mat.v3 = v3.mulf(v3.sub(gfx.ModelGetMax(skyminerModel), gfx.ModelGetMin(skyminerModel)), skyminerScale * 0.1)
 	var right mat.v3
@@ -427,10 +523,13 @@ func fireSkyminer(position mat.v3, direction mat.v3, playerIndex i32) {
 	var miner i32 = phx.AddObject(phx.TYPE_ELLIPSE, TAG_MINER, playerIndex,
 		phx.STATE_TRANSLATE | phx.STATE_ROTATE/* | phx.STATE_DEBUG*/, position, acceleration, v3.ZERO,
 		right, top, back, mass, 0.96, v4.make(axis.x, axis.y, axis.z, f32.rand() * 10.0), v4.ONE)
+            phx.SetObjectMaxVelocity(miner, v3.make(4000.0, 4000.0, 4000.0))
+            phx.SetObjectMaxAcceleration(miner, v3.make(1500.0, 1.0, 1500.0))
+    phx.SetObjectAirFriction(miner, 0.3)
 }
 
 
-func emitSmoke(aimPosition mat.v3, player i32) {
+func emitSmoke(aimPosition mat.v3, normal mat.v3, player i32) {
 	var emitter gfx.EmitterId = gfx.ParticleGetEmitter(256)
 	gfx.EmitterSetPosition(emitter, aimPosition, v3.makef(3.0))
 	gfx.EmitterSetVelocity(emitter, v3.makef(6.0), 0.5)
@@ -440,13 +539,7 @@ func emitSmoke(aimPosition mat.v3, player i32) {
 	gfx.EmitterSetAngularVelocity(emitter, v4.make(0.0, 0.0, 0.0, 0.3), v4.make_v31(v3.ZERO, 0.6))
 	gfx.EmitterSetLife(emitter, 7.0, 1.0)
 	gfx.EmitterSetPuff(emitter, 1, 0)
-	if player == currentPlayer {
-		gfx.EmitterSetColor(emitter, v4.mul(gui.g_blue, v4.make(1.0, 1.0, 1.0, 0.1)), v4.makef(0.1))
-	} else if player == currentCPU {
-		gfx.EmitterSetColor(emitter, v4.make(0.9, 0.0, 0.9, 0.1), v4.makef(0.1))
-	} else if player == currentCPU2 {
-		gfx.EmitterSetColor(emitter, v4.mul(gui.g_gold, v4.make(1.0, 1.0, 1.0, 0.1)), v4.makef(0.1))
-	}
+	gfx.EmitterSetColor(emitter, v4.mul(players[player].color, v4.make(1.0, 1.0, 1.0, 0.1)), v4.makef(0.1))
 	gfx.EmitterSetTexture(emitter, smokeTexture)
 	gfx.EmitterInit(emitter, 256, 10.0, 0.2, 0.2)
 }
@@ -477,6 +570,17 @@ func fireSkynotes(position mat.v3, direction mat.v3, playerIndex i32) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
+func updatePlayersVisibility(dt f32)() {
+	for i := 0; i < len(players); i++ {
+		var phxPlayer i32 = players[i].phxObject
+		var t mat.v3 = phx.GetObjectPosition(phxPlayer)
+		var phxScale mat.v3 = phx.GetObjectScale(phxPlayer)
+        players[i].visible = gfx.FrustumIntersectsSphere(frustum, t, phxScale.x) <= 0
+	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 func updatePlayers(dt f32)() {
 	prfUpdatePlayers = fps.CreateStartProfile(prfUpdatePlayers, "updatePlayers")
 
@@ -488,13 +592,11 @@ func updatePlayers(dt f32)() {
 		var phxPlayer i32 = players[i].phxObject
 		var t mat.v3 = phx.GetObjectPosition(phxPlayer)
 		var r mat.v4 = phx.GetObjectRotation(phxPlayer)
-		var s f32 = players[i].scale
+		var phxScale mat.v3 = phx.GetObjectScale(phxPlayer)
+        var renderScale f32 = players[i].scale
 
 
-		var radius mat.v3 = v3.makef(9.8)//(3.8, 9.8, 3.8)
-		phx.SetObjectSize(phxPlayer, radius)
-		//phx.SetObjectSize(phxPlayer, v3.make(ffx, ffy, ffz))
-		//t = v3.sub(t, v3.make(ffx, ffy, ffz))
+        players[i].visible = gfx.FrustumIntersectsSphere(frustum, t, phxScale.x) <= 0
 
 		players[i].position = t
 		players[i].rotation = r
@@ -507,8 +609,7 @@ func updatePlayers(dt f32)() {
 		var q mat.v4
 		q = q4.from_axis_angle(r.x, r.y, r.z, r.w)
 		q = q4.mul(q, q4.from_axis_angle(0.0, 1.0, 0.0, v1.PI))
-		players[i].world = m44.makef_SQT(s, s, s, q.x, q.y, q.z, q.w, t.x, t.y - radius.y + 1.3, t.z)
-
+		players[i].world = m44.makef_SQT(renderScale, renderScale, renderScale, q.x, q.y, q.z, q.w, t.x, t.y - phxScale.y + 1.3, t.z)
 		players[i].handTransform = m44.mulISSUE(
 			m44.makef_SAT(skyminerScale, skyminerScale, skyminerScale, 1.0, 0.0, 0.0, -0.94, -1.4, 22.6, 3.6),
 			m44.mulISSUE(gfx.ModelGetNodeTransform(players[i].idle.model, players[i].hand), players[i].world))
@@ -519,8 +620,8 @@ func updatePlayers(dt f32)() {
 
 		var playerYaw mat.v4 = q4.from_axis_angle(players[i].rotation.x, players[i].rotation.y, players[i].rotation.z, players[i].rotation.w)
 		var targetYaw mat.v4
+		var weaponAt mat.v3
 		if i == currentPlayer {
-			var weaponAt mat.v3
 			if currentCamera == CAMERA_FREE {
 				weaponAt = players[i].at
 				targetYaw = playerYaw
@@ -537,11 +638,22 @@ func updatePlayers(dt f32)() {
 				targetYaw = gam.CameraGetYawQuaternion(camera)
 			}
 		} else {
-			weaponAt = v3.normalize(v3.sub(players[currentPlayer].camera, players[i].camera))
+			weaponAt = v3.sub(players[currentPlayer].camera, players[i].camera)
+			var weaponAtLen f32 = v3.length(weaponAt)
+			if weaponAtLen <= 0.0 {
+				weaponAt = v3.GREEN
+			} else {
+				weaponAt = v3.divf(weaponAt, weaponAtLen)
+			}
 			weaponAt = v3.transform_vector(weaponAt, m44.make_rotate_x(ffx))
 			var aimDir mat.v3 = v3.sub(players[i].position, players[currentPlayer].position)
-			aimDir.y = 0.0
-			aimDir = v3.normalize(aimDir)
+			var aimDirLen f32 = v3.length(aimDir)
+			if aimDirLen <= 0.0 {
+				aimDir = v3.GREEN
+			} else {
+				aimDir.y = 0.0
+				aimDir = v3.divf(aimDir, aimDirLen)
+			}
 			targetYaw = q4.from_vectors(v3.BLUE/*players[i].at*/, aimDir, v3.GREEN)
 		}
 
@@ -650,12 +762,21 @@ func updatePositions(dt f32)() {
 		}
 
 		var acceleration mat.v3
-		acceleration = v3.add(acceleration, v3.mulf(at, dt * 60.0 * xdir))
-		acceleration = v3.add(acceleration, v3.mulf(right, dt * 60.0 * zdir))
-		acceleration.y = players[i].ydir * dt * 500.0
-		players[i].ydir = 0.0
+		var dirlen f32 = xdir*xdir + zdir*zdir
+		if dirlen > 0.0 {
+			dirlen = f32.sqrt(dirlen)
+			var nxdir f32 = xdir / dirlen
+			var nzdir f32 = zdir / dirlen
+
+			acceleration = v3.add(acceleration, v3.mulf(at, 0.2 * nxdir))
+			acceleration = v3.add(acceleration, v3.mulf(right, 0.2 * nzdir))
+		}
+		acceleration.y = players[i].ydir * 0.5
 
 		var phxPlayer i32 = players[i].phxObject
+        //phx.SetObjectVelocity(phxPlayer, acceleration)
+        phx.SetObjectMaxVelocity(phxPlayer, v3.make(200.0, 10000.0, 10000.0))
+        phx.SetObjectMaxAcceleration(phxPlayer, v3.make(200.0, 100.0, 100.0))
 		phx.SetObjectAcceleration(phxPlayer, acceleration)
 		//var playerVelocity mat.v3 = players[i].velocity
 		//var playerVelocityLength f32 = v3.length(playerVelocity)
@@ -704,9 +825,37 @@ func updateAnimations(dt f32)() {
 			player.fireAnimTime = -1.0
 		}
 
-		if player.jumpingState {
+		var newPlayerPosition mat.v3 = phx.GetObjectPosition(player.phxObject)
+		var oldPlayerPosition mat.v3 = player.oldPhxPosition
+
+		var newVoidCount i32 = phx.GetObjectVoidCount(player.phxObject)
+		var oldVoidCount i32 = player.oldVoidCount
+
+		var jumping bool = newVoidCount > 5 && oldVoidCount >= 5
+
+		var animLoop bool = true
+		var animMax f32 = -1
+
+		if newVoidCount > 5 {
 			player.currentAnim = player.jump.anim
+			animLoop = false
+			animMax = gfx.AnimationGetMax(player.currentAnim)
+			if newPlayerPosition.y > oldPlayerPosition.y {
+				if jumping {
+					animMax = 0.5 * animMax
+//					gfx.AnimationSetTime(player.currentAnim, 0.0)
+					//player.switchAnimTime = 0.0
+				}
+			} else if newPlayerPosition.y < oldPlayerPosition.y {
+				if jumping {
+				//	gfx.AnimationSetTime(player.currentAnim, 0.5 * animMax)
+					//player.switchAnimTime = 0.0
+				}
+			}
 		}
+
+		player.oldPhxPosition = newPlayerPosition
+		player.oldVoidCount = newVoidCount
 
 		if previousAnim.animation != player.currentAnim.animation {
 			gfx.AnimationSetTime(player.currentAnim, 0.0)
@@ -717,7 +866,11 @@ func updateAnimations(dt f32)() {
 		}
 
 		if player.switchAnimTime >= 0.0 {
-			var animMax f32 = f32.max(gfx.AnimationGetMax(player.currentAnim), gfx.AnimationGetMax(player.runtimeAnim))
+			/*var newAnimMax f32 = animMax
+			if newAnimMax < 0.0 {
+				newAnimMax = gfx.AnimationGetMax(player.currentAnim)
+			}
+			newAnimMax = f32.max(newAnimMax, gfx.AnimationGetMax(player.runtimeAnim))*/
 			var tmpAnim gfx.AnimationId = player.tmpAnim0
 			if tmpAnim.animation == player.currentAnim.animation || player.tmpAnim0.animation == player.runtimeAnim.animation {
 				tmpAnim = player.tmpAnim1
@@ -725,7 +878,7 @@ func updateAnimations(dt f32)() {
 			if player.tmpAnim1.animation == player.currentAnim.animation || player.tmpAnim1.animation == player.runtimeAnim.animation {
 				tmpAnim = player.tmpAnim2
 			}
-			gfx.AnimationUpdate(player.currentAnim, currentDt, true, -1.0)//animMax)
+			gfx.AnimationUpdate(player.currentAnim, currentDt, animLoop, -1.0)
 			if player.currentAnim.animation == backwardAnim.animation && i == 0 {
 				var q mat.v4 = gfx.AnimationGetJointRotation(player.currentAnim, player.spine)
 				q = q4.mul(q, player.backwardQuat)
@@ -733,7 +886,7 @@ func updateAnimations(dt f32)() {
 			}
 
 			if gfx.AnimationGetRuntime(player.runtimeAnim) == false {
-				gfx.AnimationUpdate(player.runtimeAnim, dt, true, -1.0)//animMax)
+				gfx.AnimationUpdate(player.runtimeAnim, dt, animLoop, -1.0)
 			}
 			if player.runtimeAnim.animation == backwardAnim.animation && i == 0{
 				var q mat.v4 = gfx.AnimationGetJointRotation(player.runtimeAnim, player.spine)
@@ -745,7 +898,7 @@ func updateAnimations(dt f32)() {
 			player.switchAnimTime = player.switchAnimTime + dt * 5.0
 			player.runtimeAnim = tmpAnim
 		} else {
-			gfx.AnimationUpdate(player.currentAnim, currentDt, true, -1.0)
+			gfx.AnimationUpdate(player.currentAnim, currentDt, animLoop, animMax)
 			if player.currentAnim.animation == backwardAnim.animation && i == 0 {
 				var q mat.v4 = gfx.AnimationGetJointRotation(player.currentAnim, player.spine)
 				q = q4.mul(q, player.backwardQuat)
@@ -764,9 +917,38 @@ func updateAnimations(dt f32)() {
 	fps.StopProfile(prfUpdateAnimations)
 }
 
-var firstUpdate bool = false
+var firstGameUpdate bool = true
+var firstLevelUpdate bool = true
 func gameOnUpdate(controlIndex i32, controlAction i32) {
-	prfGameOnUpdate = fps.CreateStartProfile(prfGameOnUpdate, "gameOnUpdate")
+    prfGameOnUpdate = fps.CreateStartProfile(prfGameOnUpdate, "gameOnUpdate")
+
+    if firstGameUpdate {
+        firstGameUpdate = false
+        loadGame()
+    }
+
+    if firstLevelUpdate {
+        firstLevelUpdate = false
+        loadLevel()
+    }
+
+	var dts f64 = fps.DeltaSecond()
+	var dt f32 = f64.f32(dts)
+
+	updatePositions(dt)
+	updateAnimations(dt)
+	//-------------------------------------------------------------------------
+	// PhxUpdate
+	//-------------------------------------------------------------------------
+	prfPhxUpdate = fps.CreateStartProfile(prfPhxUpdate, "PhxUpdate")
+	phx.Update(fps.DeltaNano())
+	//if phx.COLLIDED { // TODO : remove hardcode
+	//	players[currentPlayer].jumpingState = false
+	//}
+	fps.StopProfile(prfPhxUpdate)
+
+
+    //gfx.ModelUpdate(levels[currentLevel].model, gfx.InvalidAnim()
 
 	var scaleBox f32 = 50.0
 	for i:= aimCount; i < aimMax; i++ {
@@ -775,30 +957,15 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 		aimCount = aimCount + 1
 	}
 
-	var dts f64 = fps.DeltaSecond()
-	var dt f32 = f64.f32(dts)
-
 	updatePlayers(dt)
 	updateWeapons(dt)
-	updateAnimations(dt)
-	updatePositions(dt)
-
-	//-------------------------------------------------------------------------
-	// PhxUpdate
-	//-------------------------------------------------------------------------
-	prfPhxUpdate = fps.CreateStartProfile(prfPhxUpdate, "PhxUpdate")
-	phx.Update(fps.DeltaNano())
-	if phx.COLLIDED { // TODO : remove hardcode
-		players[currentPlayer].jumpingState = false
-	}
-	fps.StopProfile(prfPhxUpdate)
 
 	//-------------------------------------------------------------------------
 	// CameraUpdate
 	//-------------------------------------------------------------------------
 	prfCameraUpdate = fps.CreateStartProfile(prfCameraUpdate, "CameraUpdate")
 	if currentCamera == CAMERA_FREE {
-		gam.FreeCameraUpdate(camera, dts)
+		gam.FreeCameraUpdate(camera, dts, 1.0, 3.0)
 	} else if currentCamera == CAMERA_FPS {
 		gam.FpsCameraUpdate(camera, dts, players[currentPlayer].camera)
 	} else if currentCamera == CAMERA_TPS {
@@ -806,25 +973,34 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	}
 	fps.StopProfile(prfCameraUpdate)
 
+    if debugFrustum == false {
+        gfx.FrustumUpdate(frustum, gam.CameraGetInvViewProj(camera))
+    }
+
+    updatePlayersVisibility(dt)
+
 	//-------------------------------------------------------------------------
 	// PhxRemove
 	//-------------------------------------------------------------------------
     prfPhxEmit = fps.CreateStartProfile(prfPhxEmit, "PhxEmit")
 	phxRemoveList = resize(phxRemoveList, 0)
 
-	var collisions []phx.Collision = phx.GetCollisions()
+	var collisions []phx.Collision = phx.g_collisions
 	var collisionCount i32 = len(collisions)
     for colIndex := 0; colIndex < collisionCount; colIndex++ {
 		var col phx.Collision = collisions[colIndex]
-		if col.LeftTag == TAG_MINER && col.RightTag == TAG_MINER {
+		if col.LeftTag == TAG_MINER && (col.RightTag == TAG_LEVEL || col.RightTag == TAG_GROUND) {
 			phxRemoveList = append(phxRemoveList, col.LeftIndex)
-			emitSmoke(col.Position, col.LeftTag2)
+			emitSmoke(col.Position, col.Normal, col.LeftTag2)
+		} else if col.LeftTag == TAG_MINER && col.RightTag == TAG_MINER {
+			phxRemoveList = append(phxRemoveList, col.LeftIndex)
+			emitSmoke(col.Position, col.Normal, col.LeftTag2)
 			phxRemoveList = append(phxRemoveList, col.RightIndex)
-			emitSmoke(col.Position, col.RightTag2)
+			emitSmoke(col.Position, col.Normal, col.RightTag2)
 		} else if col.LeftTag == TAG_MINER && col.RightTag == TAG_PLAYER {
 			if col.LeftTag2 != col.RightTag2 {
 				phxRemoveList = append(phxRemoveList, col.LeftIndex)
-				emitSmoke(col.Position, col.LeftTag2)
+				emitSmoke(col.Position, col.Normal, col.LeftTag2)
 				var rightTag2 i32 = col.RightTag2
 				if rightTag2 == currentCPU || rightTag2 == currentCPU2 {
 					phx.SetObjectPosition(col.RightIndex, v3.add(players[rightTag2].position, v3.make(v1.srand() * 50.0, 0.0, v1.srand() * 50.0)))
@@ -833,7 +1009,7 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 		} else if col.LeftTag == TAG_PLAYER && col.RightTag == TAG_MINER {
 			if col.LeftTag2 != col.RightTag2 {
 				phxRemoveList = append(phxRemoveList, col.RightIndex)
-				emitSmoke(col.Position, col.RightTag2)
+				emitSmoke(col.Position, col.Normal, col.RightTag2)
 				var leftTag2 i32 = col.LeftTag2
 				if leftTag2 == currentCPU || leftTag2 == currentCPU2{
 					phx.SetObjectPosition(col.LeftIndex, v3.add(players[leftTag2].position, v3.make(v1.srand() * 50.0, 0.0, v1.srand() * 50.0)))
@@ -841,10 +1017,10 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 			}
 		} else if col.LeftTag == TAG_MINER {
 			phxRemoveList = append(phxRemoveList, col.LeftIndex)
-			emitSmoke(col.Position, col.LeftTag2)
+			emitSmoke(col.Position, col.Normal, col.LeftTag2)
 		} else if col.RightTag == TAG_MINER {
 			phxRemoveList = append(phxRemoveList, col.RightIndex)
-			emitSmoke(col.Position, col.RightTag2)
+			emitSmoke(col.Position, col.Normal, col.RightTag2)
 		}
 	}
 	fps.StopProfile(prfPhxEmit)
@@ -902,6 +1078,14 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	gfx.ParticleUpdate(dt)
 	fps.StopProfile(prfParticleUpdate)
 	fps.StopProfile(prfGameOnUpdate)
+
+    if isModeLight == false {
+        gfx.OctreeUpdate(levels[currentLevel].gfxOctree, frustum, 2)
+        gfx.OctreeUpdate(levels[currentLevel].phxOctree, frustum, 2)
+    }
+
+    var cameraPosition mat.v3 = gam.CameraGetPosition(camera)
+    skyWorld = m44.make_translate(cameraPosition.x, cameraPosition.y, cameraPosition.z)
 }
 
 //-----------------------------------------------------------------------------
@@ -937,10 +1121,17 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	prfRenderSky = fps.CreateStartProfile(prfRenderSky, "sky")
 	gfx.DepthState(false, gfx.LESS, false)
 	gfx.EffectUse(gfx.g_fxSky)
-	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skySpeculars[currentSky], gfx.g_linearWrap)
-	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
+    var skyTexture gfx.TextureId = skies[currentSky].specular
+    var skySampler gfx.SamplerState = gfx.g_linearClamp
+    if debugSky {
+        skyTexture = skies[currentSky].diffuse
+        skySampler = gfx.g_linear0Clamp
+    }
+	gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skyTexture, skySampler)
+	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, skyWorld, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
+	gfx.EffectAssignV4(gfx.g_fxSky, gfx.UNIFORM_CAMERA_POSITION, v4.make_v31(cameraPosition, 1.0))
 	gfx.MeshRender(skyMesh)
 	fps.StopProfile(prfRenderSky)
 
@@ -962,29 +1153,58 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	fps.StopProfile(prfRenderGround)
 
 	//-------------------------------------------------------------------------
+    // LevelRender
+	//-------------------------------------------------------------------------
+	if isModeLight == false {
+        var levelModel gfx.ModelId = levels[currentLevel].gfxModel
+        var levelOctree gfx.OctreeId = levels[currentLevel].gfxOctree
+	    gfx.ModelUpdate(levelModel, gfx.AnimationInvalid(), 0.0, true)
+	    gfx.ModelSetWorld(levelModel, m44.IDENTITY)
+	    gfx.ModelSetView(levelModel, view)
+	    gfx.ModelSetProjection(levelModel, projection)
+	    gfx.ModelSetEnvironmentSpecular(levelModel, skies[currentSky].specular)
+	    gfx.ModelSetEnvironmentDiffuse(levelModel, skies[currentSky].diffuse)
+	    gfx.ModelSetBRDF(levelModel, brdf)
+	    gfx.ModelSetCameraPosition(levelModel, cameraPosition)
+        gfx.ModelSetExposure(levelModel, 1.0)
+	    //gfx.ModelRender(levelModel)
+        gfx.OctreeSetDebug(levelOctree, debugOctree)
+        gfx.OctreeRender(levelOctree, levelModel, /*levels[currentLevel].world*/ m44.IDENTITY, view, projection)
+        if debugFrustum {
+            gfx.FrustumRender(frustum, m44.IDENTITY, view, projection)
+        }
+    }
+
+
+
+	//-------------------------------------------------------------------------
 	// PhxRender
 	//-------------------------------------------------------------------------
 	prfPhxRender = fps.CreateStartProfile(prfPhxRender, "PhxRender")
-	//phx.Render(m44.IDENTITY, view, projection)
+	phx.Render(m44.IDENTITY, view, projection)
 	fps.StopProfile(prfPhxRender)
 
 	//-------------------------------------------------------------------------
 	// RenderPlayers
 	//-------------------------------------------------------------------------
 	prfRenderPlayers = fps.CreateStartProfile(prfRenderPlayers, "RenderPlayers")
+    var renderPlayerCount i32 = 0
 	for i := 0; i < len(players); i++ {
 		var player Player = players[i]
-		var currentModel gfx.ModelId = player.idle.model
-		gfx.ModelSetView(currentModel, view)
-		gfx.ModelSetProjection(currentModel, projection)
-		gfx.ModelSetEnvironmentSpecular(currentModel, skySpeculars[currentSky])
-		gfx.ModelSetEnvironmentDiffuse(currentModel, skyDiffuses[currentSky])
-		gfx.ModelSetBRDF(currentModel, brdf)
-		gfx.ModelSetCameraPosition(currentModel, cameraPosition)
-		gfx.ModelSetWorld(currentModel, player.world)
-        gfx.ModelSetExposure(currentModel, 1.0)
-		gfx.ModelRender(currentModel)
-	}
+        if player.visible == true {
+    		var currentModel gfx.ModelId = player.idle.model
+	    	gfx.ModelSetView(currentModel, view)
+		    gfx.ModelSetProjection(currentModel, projection)
+		    gfx.ModelSetEnvironmentSpecular(currentModel, skies[currentSky].specular)
+		    gfx.ModelSetEnvironmentDiffuse(currentModel, skies[currentSky].diffuse)
+		    gfx.ModelSetBRDF(currentModel, brdf)
+		    gfx.ModelSetCameraPosition(currentModel, cameraPosition)
+		    gfx.ModelSetWorld(currentModel, player.world)
+            gfx.ModelSetExposure(currentModel, 1.0)
+            gfx.ModelRender(currentModel)
+            renderPlayerCount++
+	    }
+    }
 	fps.StopProfile(prfRenderPlayers)
 
 	//-------------------------------------------------------------------------
@@ -993,8 +1213,8 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	prfRenderWeapons = fps.CreateStartProfile(prfRenderWeapons, "RenderWeapons")
    	gfx.ModelSetView(skyminerModel, view)
 	gfx.ModelSetProjection(skyminerModel, projection)
-	gfx.ModelSetEnvironmentSpecular(skyminerModel, skySpeculars[currentSky])
-	gfx.ModelSetEnvironmentDiffuse(skyminerModel, skyDiffuses[currentSky])
+	gfx.ModelSetEnvironmentSpecular(skyminerModel, skies[currentSky].specular)
+	gfx.ModelSetEnvironmentDiffuse(skyminerModel, skies[currentSky].diffuse)
 	gfx.ModelSetBRDF(skyminerModel, brdf)
 	gfx.ModelSetCameraPosition(skyminerModel, cameraPosition)
     gfx.ModelSetExposure(skyminerModel, 1.0)
@@ -1066,10 +1286,10 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	var effect gfx.EffectId = gfx.TemplateInstance(gfx.g_tfxPbr)
 
 	gfx.EffectUse(effect)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_COLOR_0, dollar, gfx.g_linear0Wrap)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_SPECULAR, skySpeculars[currentSky], gfx.g_linearWrap)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_DIFFUSE, skyDiffuses[currentSky], gfx.g_linearWrap)
-	gfx.EffectAssignTexture(effect, gfx.SAMPLER_BRDF, brdf, gfx.g_linear0Wrap)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_COLOR_0, dollar, gfx.g_linearWrap)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_SPECULAR, skies[currentSky].specular, gfx.g_linearClamp)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_ENV_DIFFUSE, skies[currentSky].diffuse, gfx.g_linear0Clamp)
+	gfx.EffectAssignTexture(effect, gfx.SAMPLER_BRDF, brdf, gfx.g_linear0Clamp)
 
 	gfx.EffectAssignV4(effect, gfx.UNIFORM_COLOR, v4.ONE)
 	gfx.EffectAssignV4(effect, gfx.UNIFORM_METAL_ROUGH, v4.make(0.0, 1.0, 0.0, 0.0))
@@ -1091,7 +1311,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	gfx.DisableBlending()
 	gfx.DisableStencil()
 	gfx.EffectUse(gfx.g_fxEdge)
-	gfx.EffectAssignTexture(gfx.g_fxEdge, gfx.SAMPLER_COLOR_3, gfx.TargetGetDepth(opaqueTarget), gfx.g_nearestClamp)
+	gfx.EffectAssignTexture(gfx.g_fxEdge, gfx.SAMPLER_COLOR_3, gfx.TargetGetDepth(opaqueTarget), gfx.g_nearest0Clamp)
 	gfx.EffectAssignV4(gfx.g_fxEdge, gfx.UNIFORM_TARGET_SIZE, gfx.TargetGetSize(opaqueTarget))
 	gfx.MeshRender(gfx.g_fullscreenQuad)
 
@@ -1161,19 +1381,19 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	writeEdges()
 
 	gfx.EffectUse(gfx.g_fxMerge)
-	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(opaqueTarget, 0), gfx.g_nearestClamp)
+	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(opaqueTarget, 0), gfx.g_nearest0Clamp)
 	gfx.EffectAssignV4(gfx.g_fxMerge, gfx.UNIFORM_DEBUG_0, v4.make(ffx, ffy, ffz, ffr))
 
 	gfx.ColorWrite(true, true, true, true)
 
 	gfx.StencilState(true, gfx.EQUAL, 1, 1, gfx.KEEP, gfx.KEEP, gfx.KEEP, 0)
-	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaFullTarget, 0), gfx.g_nearestClamp)
-	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaFullTarget, 1), gfx.g_nearestClamp)
+	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaFullTarget, 0), gfx.g_nearest0Clamp)
+	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaFullTarget, 1), gfx.g_nearest0Clamp)
 	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 	gfx.StencilState(true, gfx.EQUAL, 0, 1, gfx.KEEP, gfx.KEEP, gfx.KEEP, 0)
-	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaTarget, 0), gfx.g_nearestClamp)
-	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaTarget, 1), gfx.g_nearestClamp)
+	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_1, gfx.TargetGetColor(alphaTarget, 0), gfx.g_nearest0Clamp)
+	gfx.EffectAssignTexture(gfx.g_fxMerge, gfx.SAMPLER_COLOR_2, gfx.TargetGetColor(alphaTarget, 1), gfx.g_nearest0Clamp)
 	gfx.MeshRender(gfx.g_fullscreenQuad)
 
 	fps.StopProfile(prfGameOnRender)
@@ -1186,7 +1406,7 @@ func writeEdges()() {
 	gfx.StencilState(true, gfx.ALWAYS, 1, 1, gfx.KEEP, gfx.KEEP, gfx.REPLACE, 1)
 
 	gfx.EffectUse(gfx.g_fxStencil)
-	gfx.EffectAssignTexture(gfx.g_fxStencil, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(edgeTarget, 0), gfx.g_nearestClamp)
+	gfx.EffectAssignTexture(gfx.g_fxStencil, gfx.SAMPLER_COLOR_0, gfx.TargetGetColor(edgeTarget, 0), gfx.g_nearest0Clamp)
 	gfx.MeshRender(gfx.g_fullscreenQuad)
 }
 
@@ -1194,7 +1414,7 @@ func writeEdges()() {
 //-----------------------------------------------------------------------------
 func loadModel(path str, filename str, options i32) (out gfx.ModelId) {
 	printf("loading '%s/%s'\n", path, filename)
-	out = gfx.ModelCreateFromFile(sprintf("%s/models/skylight/%s/", app.DataDir(), path), filename, options)
+	out = gfx.ModelCreateFromFile(sprintf("%s/models/%s/", app.DataDir(), path), filename, options)
 }
 
 //-----------------------------------------------------------------------------
@@ -1204,64 +1424,168 @@ func animCreate(name str, options i32) (out Anim) {
 	out.anim = gfx.ModelGetAnimation(out.model, 0)
 }
 
-func playerCreate(pattern str, spine str, torso str, shoulder str, hand str) {
-	var player Player
-	player.idle = animCreate(sprintf("%s/idle", pattern), gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
-	player.jump = animCreate(sprintf("%s/jump", pattern), gfx.MODEL_ANIMATION)
-	player.throw = animCreate(sprintf("%s/throw", pattern), gfx.MODEL_ANIMATION)
-	player.forward = animCreate(sprintf("%s/forward", pattern), gfx.MODEL_ANIMATION)
-	player.backward = animCreate(sprintf("%s/backward", pattern), gfx.MODEL_ANIMATION)
-	player.left = animCreate(sprintf("%s/left", pattern), gfx.MODEL_ANIMATION)
-	player.right = animCreate(sprintf("%s/right", pattern), gfx.MODEL_ANIMATION)
-	player.cpuFire = f32.rand() * 2.0
-
-	var model gfx.ModelId = player.idle.model
-	player.spine = gfx.ModelGetNodeByName(model, spine)
-	player.torso = gfx.ModelGetNodeByName(model, torso)
-	player.shoulder = gfx.ModelGetNodeByName(model, shoulder)
-	player.hand = gfx.ModelGetNodeByName(model, hand)
-
-	player.scale = 0.1
-
-	player.yawTime = -1.0
-	player.backwardQuat = q4.from_axis_angle(0.0, 1.0, 0.0, v1.PI)
-	player.tmpAnim0 = gfx.AnimationCreate()
-	gfx.AnimationSetRuntime(player.tmpAnim0, true)
-
-	player.tmpAnim1 = gfx.AnimationCreate()
-	gfx.AnimationSetRuntime(player.tmpAnim1, true)
-
-	player.tmpAnim2 = gfx.AnimationCreate()
-	gfx.AnimationSetRuntime(player.tmpAnim2, true)
-
-
-	player.phxObject = phx.AddObject(phx.TYPE_ELLIPSE, TAG_PLAYER, len(players),
-		phx.STATE_TRANSLATE,// | phx.STATE_DEBUG,
-		v3.make(v1.srand() * 100.0, 4.0 + f32.rand() * 2.0, v1.srand() * 100.0), v3.ZERO, v3.ZERO,
-		v3.RED, v3.GREEN, v3.BLUE,
-		75.0 + f32.rand() * 50.0, 1.0, v4.make(0.0, 0.0, 1.0, 0.0), v4.ONE)
-
-	player.currentAnim = player.idle.anim
-	player.runtimeAnim = player.currentAnim
-	player.previousAnim = player.currentAnim
-
-	player.fireWeapon = 0
-	player.fireAnimTime = -1.0
-	player.fireAnimLength = -1.0
-	player.fireAnimThresh = 1.1
-	player.fireAnimThrow = 0.65
-
-	players = append(players, player)
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func skyCreate(name str) {
+    var sky Sky
+    sky.name = name
+    sky.specular = gfx.InvalidTexture()
+    sky.diffuse = gfx.InvalidTexture()
+    sky.loaded = false
+    skies = append(skies, sky)
 }
 
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func characterCreate(name str, scale f32, spine str, torso str, shoulder str, hand str, backwardQuat mat.v4) {
+    var character Player
+    character.name = name
+    character.scale = scale
+    character.spineName = spine
+    character.torsoName = torso
+    character.shoulderName = shoulder
+    character.handName = hand
+    character.backwardQuat = backwardQuat
+    characters = append(characters, character)
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func levelCreate(gfxName str, gfxScene str, gfxScale mat.v3, gfxRotate mat.v4, gfxTranslate mat.v3,
+        phxName str, phxScene str, phxScale mat.v3, phxRotate mat.v4, phxTanslate mat.v3) {
+    var level Level
+    level.gfxName = gfxName
+    level.gfxScene = gfxScene
+    level.gfxWorld = m44.makev_SAT(gfxScale, gfxRotate, gfxTranslate)
+    level.phxName = phxName
+    level.phxScene = phxScene
+    level.phxWorld = m44.makev_SAT(phxScale, phxRotate, phxTanslate)
+    levels = append(levels, level)
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func playerCreate(playerIndex i32, characterIndex i32) {
+    var characterName str = characters[characterIndex].name
+    var characterCount i32 = len(characters)
+    var loadedChar i32 = -1
+    for i := 0; i < characterCount; i++ {
+        if characters[i].name == characterName {
+            loadedChar = i
+            i = characterCount
+        }
+    }
+
+    if loadedChar != -1 {
+        if characters[loadedChar].loaded {
+            players = append(players, characters[loadedChar])
+        } else {
+	        var player Player = characters[characterIndex]
+	        player.idle = animCreate(sprintf("%s/idle", characterName), gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
+	        player.jump = animCreate(sprintf("%s/jump", characterName), gfx.MODEL_ANIMATION)
+	        player.throw = animCreate(sprintf("%s/throw", characterName), gfx.MODEL_ANIMATION)
+	        player.forward = animCreate(sprintf("%s/forward", characterName), gfx.MODEL_ANIMATION)
+	        player.backward = animCreate(sprintf("%s/backward", characterName), gfx.MODEL_ANIMATION)
+	        player.left = animCreate(sprintf("%s/left", characterName), gfx.MODEL_ANIMATION)
+	        player.right = animCreate(sprintf("%s/right", characterName), gfx.MODEL_ANIMATION)
+	        player.cpuFire = f32.rand() * 2.0
+
+	        var model gfx.ModelId = player.idle.model
+	        player.spine = gfx.ModelGetNodeByName(model, player.spineName)
+	        player.torso = gfx.ModelGetNodeByName(model, player.torsoName)
+	        player.shoulder = gfx.ModelGetNodeByName(model, player.shoulderName)
+	        player.hand = gfx.ModelGetNodeByName(model, player.handName)
+
+	        player.yawTime = -1.0
+	        player.tmpAnim0 = gfx.AnimationCreate()
+	        gfx.AnimationSetRuntime(player.tmpAnim0, true)
+
+	        player.tmpAnim1 = gfx.AnimationCreate()
+	        gfx.AnimationSetRuntime(player.tmpAnim1, true)
+
+	        player.tmpAnim2 = gfx.AnimationCreate()
+	        gfx.AnimationSetRuntime(player.tmpAnim2, true)
+
+            player.color = v4.make(f32.rand(), f32.rand(), f32.rand(), 1.0)
+
+            var playerSize f32 = 9.8
+	        player.phxObject = phx.AddObject(phx.TYPE_ELLIPSE, TAG_PLAYER, len(players),
+	        	phx.STATE_TRANSLATE | phx.STATE_DEBUG | phx.STATE_DEBUG_WIRE | phx.STATE_DEBUG_COLOR,
+	        	v3.make(v1.srand() * 100.0, 4.0 + f32.rand() * 2.0, v1.srand() * 100.0), v3.ZERO, v3.ZERO,
+	        	v3.make(playerSize, 0.0, 0.0), v3.make(0.0, playerSize, 0.0), v3.make(0.0, 0.0, playerSize),
+	        	75.0 + f32.rand() * 50.0, 1.0, v4.make(0.0, 0.0, 1.0, 0.0), player.color)
+
+            //phx.SetObjectMaxVelocity(player.phxObject, v3.make(1000.0, 3.0, 2.0))
+            //phx.SetObjectMaxAcceleration(player.phxObject, v3.make(1000.0, 15.0, 10.0))
+            if (playerIndex == currentPlayer) {
+                phx.SetObjectPosition(player.phxObject, v3.make(-786.0, 3000.0, -409.0))
+               }
+
+	        player.currentAnim = player.idle.anim
+	        player.runtimeAnim = player.currentAnim
+	        player.previousAnim = player.currentAnim
+
+	        player.fireWeapon = 0
+	        player.fireAnimTime = -1.0
+	        player.fireAnimLength = -1.0
+	        player.fireAnimThresh = 1.1
+	        player.fireAnimThrow = 0.65
+
+	        players = append(players, player)
+            characters[loadedChar] = player
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func gameOnParse(i i32, argc i32) {
+    if len(gameModeNames) == 0 {
+        gameModeNames = []str {"menu", "game", "light", "debug", "video"}
+        gameModeValues = []i32 {GAME_MODE_MENU, GAME_MODE_GAME, GAME_MODE_LIGHT, GAME_MODE_DEBUG, GAME_MODE_VIDEO}
+        app.SetUserHelp("++gmode : Game Mode flag : menu, game, light, debug\n")
+    }
+
+    app.SetCurrentArgIsValid(0)
+    var arg str = app.GetCurrentArg()
+    if args.Flags(arg, "gmode", &gameMode, &gameModeMatch, gameModeNames, gameModeValues) {
+        app.SetCurrentArgIsValid(1)
+        var allModes bool = (gameMode == 0) || (gameMode == GAME_MODE_LIGHT) || (gameMode == GAME_MODE_DEBUG) || (gameMode == GAME_MODE_VIDEO)
+ if ((gameMode & GAME_MODE_MENU) != 0) || allModes {
+            hasModeMenu = true
+        }
+        if ((gameMode & GAME_MODE_GAME) != 0) || allModes {
+            hasModeGame = true
+        }
+        if ((gameMode & GAME_MODE_LIGHT) != 0) {
+            isModeLight = true
+        }
+        if ((gameMode & GAME_MODE_DEBUG) != 0) {
+            isModeDebug = true
+        }
+        if ((gameMode & GAME_MODE_VIDEO) != 0) {
+            isModeVideo = true
+        }
+    }
+}
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func gameOnStart(window str) {
     StartCPUProfile("skylight_init", 100)
     app.Init()
 
-	phx.Init(30U, -9.8 * 0.1)
+	phx.Init(30U, -0.98)
 
+    loadMenu()
+    if isModeVideo {
+        gameOnUpdate(0, 0)
+    }
+    StopCPUProfile("skylight_init")
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func loadGame()() {
 	var width i32 = app.Width()
 	var height i32 = app.Height()
 
@@ -1271,44 +1595,43 @@ func gameOnStart(window str) {
 	var halfHeight i32 = height / scale
 
 	edgeTarget = gfx.TargetCreate(1, width, height, scale, true)
-	var edgeTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_R8, halfWidth, halfHeight, 0, true)
-	gfx.TextureSamplerState(edgeTexture, gfx.g_nearestClamp)
+	var edgeTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_R8, halfWidth, halfHeight, 0, true, false)
+	gfx.TextureSamplerState(edgeTexture, gfx.g_nearest0Clamp)
 	gfx.TargetAttachColor(edgeTarget, edgeTexture, 0)
 
 	opaqueTarget = gfx.TargetCreate(1, width, height, 1, true)
-	var opaque0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true)
-	gfx.TextureSamplerState(opaque0, gfx.g_nearestClamp)
+	var opaque0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true, false)
+	gfx.TextureSamplerState(opaque0, gfx.g_nearest0Clamp)
 	gfx.TargetAttachColor(opaqueTarget, opaque0, 0)
-	var opaqueDepthTexture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, width, height, 0, true)
+	var opaqueDepthTexture gfx.TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24, width, height, 0, true, false)
 	gfx.TargetAttachDepth(opaqueTarget, opaqueDepthTexture)
 
 	alphaFullTarget = gfx.TargetCreate(2, width, height, 1, true)
-	var alphaFull0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true)
-	gfx.TextureSamplerState(alphaFull0, gfx.g_linearWrap)
+	var alphaFull0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true, false)
+	gfx.TextureSamplerState(alphaFull0, gfx.g_linear0Wrap)
 	gfx.TargetAttachColor(alphaFullTarget, alphaFull0, 0)
-	var alphaFull1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true)
-	gfx.TextureSamplerState(alphaFull1, gfx.g_linearWrap)
+	var alphaFull1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, width, height, 0, true, false)
+	gfx.TextureSamplerState(alphaFull1, gfx.g_linear0Wrap)
 	gfx.TargetAttachColor(alphaFullTarget, alphaFull1, 1)
-	var alphaFullStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true)
+	var alphaFullStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true, false)
 	gfx.TargetAttachStencil(alphaFullTarget, alphaFullStencilTexture)
 
 	alphaTarget = gfx.TargetCreate(2, width, height, scale, true)
-	var alpha0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true)
-	gfx.TextureSamplerState(alpha0, gfx.g_linearWrap)
+	var alpha0 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true, false)
+	gfx.TextureSamplerState(alpha0, gfx.g_linear0Wrap)
 	gfx.TargetAttachColor(alphaTarget, alpha0, 0)
-	var alpha1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true)
-	gfx.TextureSamplerState(alpha1, gfx.g_linearWrap)
+	var alpha1 TextureId = gfx.TextureCreate("", gfx.FORMAT_RGBA_16F, halfWidth, halfHeight, 0, true, false)
+	gfx.TextureSamplerState(alpha1, gfx.g_linear0Wrap)
 	gfx.TargetAttachColor(alphaTarget, alpha1, 1)
-	var alphaStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, halfWidth, halfHeight, 0, true)
+	var alphaStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, halfWidth, halfHeight, 0, true, false)
 	gfx.TargetAttachStencil(alphaTarget, alphaStencilTexture)
 
 	mergeTarget = gfx.TargetCreate(1, width, height, 1, true)
-	var merge0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true)
-	gfx.TextureSamplerState(merge0, gfx.g_nearestClamp)
+	var merge0 TextureId = gfx.TextureCreate("", gfx.FORMAT_R8_G8_B8_A8, width, height, 0, true, false)
+	gfx.TextureSamplerState(merge0, gfx.g_nearest0Clamp)
 	gfx.TargetAttachColor(mergeTarget, merge0, 0)
-	var mergeStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true)
+	var mergeStencilTexture TextureId = gfx.TextureCreate("", gfx.FORMAT_DEPTH24_STENCIL8, width, height, 0, true, false)
 	gfx.TargetAttachStencil(mergeTarget, mergeStencilTexture)
-
 
 	skyMesh = gfx.MeshCreate(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
 	gfx.MeshBegin(skyMesh)
@@ -1317,16 +1640,6 @@ func gameOnStart(window str) {
 		v3.make(5000.0, 0.0, 0.0), v3.make(0.0, 5000.0, 0.0), v3.make(0.0, 0.0, 5000.0),
 		v4.ONE)
 	gfx.MeshEnd(skyMesh)
-
-	playerCreate("synth", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-	playerCreate("metalic", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-	playerCreate("bw", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-    playerCreate("megafee", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-	playerCreate("bugd", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-	playerCreate("npc", "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014")
-	skyminerModel = loadModel("skyminer/low", "skyminer_low_test.gltf", gfx.MODEL_GEOMETRY)
-
-	currentPlayer = 0
 
 	dollarMesh = gfx.MeshCreate(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 8192 * 3, gfx.g_vertexLayout, 8192 * 3)
 	groundMesh = gfx.MeshCreate(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
@@ -1352,44 +1665,141 @@ func gameOnStart(window str) {
 		v3.make(groundRight, 0.0, 0.0), v3.GREEN, v3.make(0.0, 0.0, groundBack),
 		0.0, 1.0, v4.make(0.0, 1.0, 0.0, 0.0), v4.ONE)
 
-	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
-	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+	smokeTexture = gfx.TextureCreate(sprintf("%s/textures/smoke.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
+	dollar = gfx.TextureCreate(sprintf("%s/textures/skynote.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
+	texture = gfx.TextureCreate(sprintf("%s/textures/Skycoin-Cloud-BW-Vertical-on_black@2x.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
 
 
-    var skies []str
-    skies = append(skies, "doge2")
-    /*skies = append(skies, "ennis")
-    skies = append(skies, "field")
-    skies = append(skies, "footprint_court")
-    skies = append(skies, "helipad")
-    skies = append(skies, "papermill")
-    skies = append(skies, "pisa")
-    skies = append(skies, "studio_grey")
-    skies = append(skies, "studio_red_green")*/
-    for i := 0; i < len(skies); i++ {
-        skySpeculars = append(skySpeculars, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/specular/specular_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 32, false))
-	    skyDiffuses = append(skyDiffuses, gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/diffuse/diffuse_.hdr", app.DataDir(), skies[i]), gfx.FORMAT_RGB_16F, 0, 0, 0, false))
+    characterCreate("skylight/synth", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, v1.PI))
+    characterCreate("skylight/metalic", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("skylight/bw", 0.1, "mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("skylight/megafee", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("skylight/bugd", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("skylight/npc", 0.1,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("skylight/darkz", 6.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("skylight/dmux", 5.5,"mixamorig:Hips_01", "mixamorig:Spine_02", "mixamorig:RightShoulder_012", "mixamorig:RightHand_00", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("skylight/bouffet", 5.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+
+    levelCreate(
+            "skylight/skyminer/high", "scene.gltf", v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 3.0 * v1.PI/2.0), v3.make(0.0, 1500.0, 600.0),
+            "skylight/skyminer/collision", "scene.gltf", v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 3.0 * v1.PI/2.0), v3.make(0.0, 1500.0, 600.0))
+    //levelCreate(
+    //        "skylight/skyantenna/high", "scene.gltf", v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 1500.0, 600.0),
+    //        "skylight/skyantenna/collision", "scene.gltf", v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 1500.0, 600.0))
+    //levelCreate("skylight/orangepi/high", "scene.gltf", v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 50.0, 0.0))
+    //levelCreate(
+    //	"glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", v3.makef(20.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 100.0, 0.0),
+    //	"glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", v3.makef(20.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 100.0, 0.0))
+    //skyCreate("doge2")
+    skyCreate("footprint_court")
+    /*skyCreate("helipad")
+    skyCreate("papermill")
+    skyCreate("pisa")
+    if isModeDebug {
+        skyCreate("field")
+        skyCreate("ennis")
+        skyCreate("studio_grey")
+        skyCreate("studio_red_green")
+    }*/
+
+    brdf = gfx.TextureCreate(sprintf("%s/textures/environments/brdf2.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false, false)
+
+
+    skyminerModel = loadModel("skylight/skyminer/low", "skyminer_low_test.gltf", gfx.MODEL_GEOMETRY)
+
+    camera = gam.CameraCreate()
+    frustum = gfx.FrustumCreate()
+	/*gam.CameraSetProjection(camera, 0.5, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y, true)
+	gam.CameraSetPosition(camera, v3.make(0.0, worldPosY + 1.0, 0.0), true)
+	gam.CameraSetYawPitch(camera, 0.0, 0.0, true)*/
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func loadLevel()() {
+    if isModeLight == false {
+        playerCount = 1
+    }
+    var levelCount i32 = len(levels)
+    currentLevel = i32.rand(0, levelCount) % levelCount
+    if levels[currentLevel].loaded == false {
+        if isModeLight == false {
+            var levelModel gfx.ModelId = loadModel(levels[currentLevel].gfxName, levels[currentLevel].gfxScene, gfx.MODEL_GEOMETRY)
+            gfx.ModelUpdate(levelModel, gfx.AnimationInvalid(), 0.0, true)
+            var t0 i64 = time.UnixNano()
+            var levelWorld mat.m44 = levels[currentLevel].gfxWorld
+            var levelOctree gfx.OctreeId = gfx.OctreeCreate(levelModel, levelWorld, 1)
+            printf("Octree model split in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
+            levels[currentLevel].gfxModel = levelModel
+            levels[currentLevel].gfxOctree = levelOctree
+            //levels[currentLevel].physic = phx.AddOctree(TAG_LEVEL, -1, phx.STATE_DEBUG | phx.STATE_DEBUG_WIRE | phx.STATE_DEBUG_COLOR, levelOctree)
+
+
+            var phxModel gfx.ModelId = loadModel(levels[currentLevel].phxName, levels[currentLevel].phxScene, gfx.MODEL_GEOMETRY)
+            gfx.ModelUpdate(phxModel, gfx.AnimationInvalid(), 0.0, true)
+            var t1 i64 = time.UnixNano()
+            var phxWorld mat.m44 = levels[currentLevel].phxWorld
+            var phxOctree gfx.OctreeId = gfx.OctreeCreate(phxModel, phxWorld, 3)
+            printf("Octree model split in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
+            levels[currentLevel].phxModel = phxModel
+            levels[currentLevel].phxOctree = phxOctree
+            levels[currentLevel].physic = phx.AddOctree(TAG_LEVEL, -1, phx.STATE_DEBUG | phx.STATE_DEBUG_WIRE | phx.STATE_DEBUG_COLOR, phxOctree)
+
+
+        }
+        levels[currentLevel].loaded = true
+
+        var phxTri0 i32 = phx.AddTriangle(TAG_GROUND, -1, phx.STATE_DEBUG | phx.STATE_DEBUG_COLOR | phx.STATE_ACTIVE,
+                v3.make(-500.0, worldPosY, 0.0),
+                v3.make(0.0, worldPosY + 20.0, 0.0),
+                v3.make(-500.0, worldPosY + 20.0, -500.0),
+                v4.GREEN)
+
+        var phxTri1 i32 = phx.AddTriangle(TAG_GROUND, -1, phx.STATE_DEBUG | phx.STATE_DEBUG_COLOR | phx.STATE_ACTIVE,
+                v3.make(0.0, worldPosY + 5.0, 0.0),
+                v3.make(0.0, worldPosY + 1.0, -500.0),
+                v3.make(-500.0, worldPosY + 5.0, -500.0),
+                v4.BLUE)
+
+        var phxTri2 i32 = phx.AddTriangle(TAG_GROUND, -1, phx.STATE_DEBUG | phx.STATE_DEBUG_COLOR | phx.STATE_ACTIVE,
+                v3.make(0.0, worldPosY + 5.0, 0.0),
+                v3.make(50.0, worldPosY - 20.0, 0.0),
+                v3.make(0.0, worldPosY + 1.0, -500.0),
+                v4.RED)
+
     }
 
-    brdf = gfx.TextureCreate(sprintf("%s/textures/environments/brdf.png", app.DataDir()), gfx.FORMAT_R8_G8_B8_A8, 0, 0, 0, false)
+    var characterCount i32 = len(characters)
+    players = resize(players, 0)
+    for i := 0; i < playerCount; i++ {
+        var r i32 = i32.rand(0, characterCount) % characterCount
+        playerCreate(i, r)
+    }
+	currentPlayer = 0
 
-	camera = gam.CameraCreate()
+    var skyCount i32 = len(skies)
+    currentSky = i32.rand(0, skyCount) % skyCount
+    for i := 0; i < skyCount; i++ {
+        if (i == currentSky || isModeDebug == true) && skies[i].loaded == false {
+            var sky Sky
+            sky.specular = gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/specular/specular_.hdr", app.DataDir(), skies[i].name), gfx.FORMAT_RGB_16F, 0, 0, 32, false)
+	        sky.diffuse = gfx.TextureCreateCube(sprintf("%s/textures/environments/%s/diffuse/diffuse_.hdr", app.DataDir(), skies[i].name), gfx.FORMAT_RGB_16F, 0, 0, 0, false)
+            sky.loaded = true
+            skies[i] = sky
+        }
+    }
+
+
 	gam.CameraSetProjection(camera, 0.5, 10000.0, 0.5, gfx.gfx_viewportSize.x, gfx.gfx_viewportSize.y, true)
 	gam.CameraSetPosition(camera, v3.make(0.0, worldPosY + 1.0, 0.0), true)
 	gam.CameraSetYawPitch(camera, 0.0, 0.0, true)
-
-	//var audioId snd.AudioId = snd.AudioCreate(sprintf("%s/audios/skycoin_baby.wav", app.DataDir()))
-	//voiceId = snd.VoiceCreate(audioId)
-
-    loadMenu()
-
-    StopCPUProfile("skylight_init")
 }
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func main()() {
     StartCPUProfile("skylight_run", 100)
+    app.SetParseCallback("main", "gameOnParse")
 	app.SetStartCallback("main", "gameOnStart")
 	if app.Run("skylight", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
 	    gfx.MeshUnlock(skyMesh)

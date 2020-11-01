@@ -125,11 +125,11 @@ in vec4 v_v4Particle;
 #endif
 
 // Outputs ...
-out vec4 o_v4Color;
+layout(location = 0) out vec4 o_v4Color;
 #ifdef USE_OIT
-out vec4 o_v4Color1;
+layout(location = 1) out vec4 o_v4Color1;
 #endif
-#
+
 struct pbr_s
 {
 	float NdotL;
@@ -150,11 +150,12 @@ struct pbr_s
 #ifdef USE_PBR
 vec3 getIBLContribution(pbr_s pbrInputs, vec3 n, vec3 reflection)
 {
-	float mipCount = u_v4PBR.x - 1.0;//11.0; // resolution of 512x512
-	float lod = (pbrInputs.perceptualRoughness * mipCount);
-	// retrieve a scale and bias to F0. See [1], Figure 3
-	vec3 brdf = /*gamma*/(texture2D(u_t2BRDF, vec2(pbrInputs.NdotV, 1.0 - pbrInputs.perceptualRoughness)).rgb);
-	vec3 diffuseLight = /*gamma*/(textureCube(u_tcEnvironmentDiffuse, vec3(-n.x, n.y, -n.z)/*, lod*/).rgb);
+	//float mipCount = u_v4PBR.x - 1.0; // resolution of 512x512
+    float mipCount = u_v4PBR.x - 1.0;
+	float lod = clamp(pbrInputs.perceptualRoughness * mipCount, 0.0, mipCount);
+
+    vec3 brdf = /*gamma*/(texture2D(u_t2BRDF, clamp(vec2(pbrInputs.NdotV, pbrInputs.perceptualRoughness), vec2(0, 0), vec2(1, 1))).rgb);
+	vec3 diffuseLight = /*gamma*/(textureCube(u_tcEnvironmentDiffuse, n/*vec3(-n.x, n.y, -n.z)/*, lod*/).rgb);
 
 	vec3 specularLight = /*gamma*/(textureCubeLod(u_tcEnvironmentSpecular, reflection, lod).rgb);
 
@@ -165,7 +166,7 @@ vec3 getIBLContribution(pbr_s pbrInputs, vec3 n, vec3 reflection)
 	//diffuse *= u_ScaleIBLAmbient.x;
 	//specular *= u_ScaleIBLAmbient.y;
 
-	return (diffuse + specular) * 2.0;
+	return (diffuse + specular);// * 0.00000001 + reflection;
 }
 
 vec3 diffuse(pbr_s pbrInputs)
@@ -198,7 +199,51 @@ float microfacetDistribution(pbr_s pbrInputs)
 #endif
 
 #ifdef USE_NORMAL
-vec3 getNormal()
+vec3 getNormal2(vec3 v)
+{
+    vec2 UV = v_v2Texcoord;
+    vec3 uv_dx = dFdx(vec3(UV, 0.0));
+    vec3 uv_dy = dFdy(vec3(UV, 0.0));
+
+    vec3 t_ = (uv_dy.t * dFdx(v_v3Position) - uv_dx.t * dFdy(v_v3Position)) /
+        (uv_dx.s * uv_dy.t - uv_dy.s * uv_dx.t);
+
+    vec3 n, t, b, ng;
+
+#ifdef USE_TANGENT_VTX
+    t = normalize(v_m3Tbn[0]);
+    b = normalize(v_m3Tbn[1]);
+    ng = normalize(v_m3Tbn[2]);
+#else
+#ifdef USE_NORMAL_VTX
+    ng = normalize(v_v3Normal);
+#else
+    ng = normalize(cross(dFdx(v_v3Position), dFdy(v_v3Position)));
+#endif
+    t = normalize(t_ - ng * dot(ng, t_));
+    b = cross(ng, t);
+#endif
+
+    float facing = step(0.0, dot(v, ng)) * 2.0 - 1.0;
+    t *= facing;
+    b *= facing;
+    ng *= facing;
+
+    vec3 direction = vec3(1.0, 0.0, 0.0);
+    t = mat3(t, b, ng) * normalize(direction);
+    b = normalize(cross(ng, t));
+
+#ifdef USE_NORMAL_MAP
+    n = texture2D(u_t2Normal, UV).rgb * 2.0 - vec3(1.0);
+    n *= vec3(u_v4MetalRough.x, u_v4MetalRough.x, 1.0);
+    n = mat3(t, b, ng) * normalize(n);
+#else
+    n = ng;
+#endif
+    return n;
+}
+
+vec3 getNormal(vec3 v)
 {
 	// Retrieve the tangent space matrix
 #ifdef USE_TANGENT_VTX
@@ -213,7 +258,7 @@ vec3 getNormal()
 #ifdef USE_NORMAL_VTX
 	vec3 ng = normalize(v_v3Normal);
 #else
-	vec3 ng = cross(pos_dx, pos_dy);
+	vec3 ng = normalize(cross(pos_dx, pos_dy));
 #endif
 
 	t = normalize(t - ng * dot(ng, t));
@@ -237,11 +282,11 @@ void main()
 	vec3 v3Light = normalize(vec3(-287.7438660, 204.4289093, -409.5520630));
 
 #ifdef USE_PBR
-	vec3 v3Normal = getNormal();
 	vec3 v3Direction = normalize(u_v4CameraPosition.xyz - v_v3Position);
+	vec3 v3Normal = getNormal2(v3Direction);
 	vec3 v3Half = normalize(v3Light + v3Direction);
 
-	vec3 v3Reflect = -normalize(reflect(v3Direction, v3Normal));
+	vec3 v3Reflect = normalize(reflect(-v3Direction, v3Normal));
 	float NdotL = clamp(dot(v3Normal, v3Light), 0.001, 1.0);
 	float NdotV = clamp(abs(dot(v3Normal, v3Direction)), 0.001, 1.0);
 	float NdotH = clamp(dot(v3Normal, v3Half), 0.0, 1.0);
@@ -286,7 +331,8 @@ void main()
 #endif
 
 #ifdef USE_PBR
-	rough = clamp(rough, c_MinRoughness, 1.0);
+	rough = clamp(rough /** 10*/, c_MinRoughness, 1.0);
+    metal = clamp(metal, 0.0, 1.0);
 
 	vec3 f0 = vec3(0.04);
 	vec3 f1 = vec3(1.0) - f0;

@@ -733,7 +733,7 @@ func loadTexture(asset AssetId, dataDir str, index i32) (out TextureId) {
 		var texture gltf.Texture = gltf.AssetGetTexture(asset, index)
 		var image gltf.Image = gltf.AssetGetImage(asset, texture.source)
 		if image.uri != "" {
-			out = TextureCreate(sprintf("%s%s", dataDir, image.uri), FORMAT_R8_G8_B8_A8, 0, 0, -32, false)
+			out = TextureCreate(sprintf("%s%s", dataDir, image.uri), FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
 		}
 	//}
 }
@@ -1072,10 +1072,10 @@ func modelInstance(id ModelId, options i32) (success bool) {
 			var nodeMatrix mat.m44 = gltf.NodeGetMatrix(asset, node)
 			var determinant f32 = m44.determinant(nodeMatrix)
 			determinants = append(determinants, determinant)
-			/*var cullFace i32 = gl.BACK
+			var cullFace i32 = gl.BACK
 			if determinant < 0.0 {
 				cullFace = gl.FRONT
-			}*/
+			}
 			matrixStack = m44.push(matrixStack, nodeMatrix)
 
 			var last m44 = matrixStack[len(matrixStack) - 1]
@@ -1634,9 +1634,9 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
         if lastEffect != effect.effect {
             lastEffect = effect.effect
 
-		    EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearWrap) // TODO : use gltf sampler
-            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linear0Wrap) // TODO : use gltf sampler
-		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Wrap) // TODO : use gltf sampler
+		    EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearClamp) // TODO : use gltf sampler
+            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linear0Clamp) // TODO : use gltf sampler
+		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Clamp) // TODO : use gltf sampler
 
             EffectAssignM44(effect, UNIFORM_VIEW, view, false)
 	    	EffectAssignM44(effect, UNIFORM_PROJECTION, projection, false)

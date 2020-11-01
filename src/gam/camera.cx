@@ -251,19 +251,17 @@ func CameraSetPosition(id CameraId, position mat.v3, force bool) {
     var current CameraState = g_cameras[cameraIndex].current
     var next CameraState = g_cameras[cameraIndex].next
 
-    var time f32 = 0.0
     if force == true {
-        time = 1.0
         previous.position = current.position
         next.position = position
         current.position = position
+        g_cameras[cameraIndex].positionTime = 1.0
     } else {
-
-    if v3.equ(next.position, position) == false {
-        next.position = position
-        previous.position = current.position
-        g_cameras[cameraIndex].positionTime = time
-    }
+        if v3.equ(next.position, position) == false {
+            next.position = position
+            previous.position = current.position
+            g_cameras[cameraIndex].positionTime = 0.0
+        }
     }
 
     g_cameras[cameraIndex].previous = previous
@@ -281,9 +279,7 @@ func CameraSetYawPitch(id CameraId, yaw f32, pitch f32, force bool) {
     var current CameraState = g_cameras[cameraIndex].current
     var next CameraState = g_cameras[cameraIndex].next
 
-    var time f32 = 0.0
     if force == true {
-        time = 1.0
         previous.yaw = current.yaw
         next.yaw = yaw
         current.yaw = yaw
@@ -291,20 +287,21 @@ func CameraSetYawPitch(id CameraId, yaw f32, pitch f32, force bool) {
         previous.pitch = current.pitch
         next.pitch = pitch
         current.pitch = pitch
+        g_cameras[cameraIndex].yawTime = 1.0
+        g_cameras[cameraIndex].pitchTime = 1.0
     } else {
 
-    if next.yaw != yaw {
-        next.yaw = yaw
-        previous.yaw = current.yaw
-        g_cameras[cameraIndex].yawTime = time
+        if next.yaw != yaw {
+            next.yaw = yaw
+            previous.yaw = current.yaw
+            g_cameras[cameraIndex].yawTime = 0.0
+        }
 
-    }
-
-    if next.pitch != pitch {
-        next.pitch = pitch
-        previous.pitch = current.pitch
-        g_cameras[cameraIndex].pitchTime = time
-    }
+        if next.pitch != pitch {
+            next.pitch = pitch
+            previous.pitch = current.pitch
+            g_cameras[cameraIndex].pitchTime = 0.0
+        }
     }
 
     g_cameras[cameraIndex].previous = previous
@@ -483,11 +480,11 @@ func FreeCameraProcess(id CameraId, event *app.Event) {
 }
 
 // FreeCameraUpdate ...
-func FreeCameraUpdate(id CameraId, deltaTime f64) {
+func FreeCameraUpdate(id CameraId, deltaTime f64, rotationSpeed f32, translationSpeed f32) {
     panicIfNot(CameraIsValid(id), "")
 
-    var rotationSpeed f32 = 0.5
-    var translationSpeed f32 = 30.0
+    rotationSpeed = 0.5 * rotationSpeed
+    translationSpeed = 30.0 * translationSpeed
 
     var dt f32 = f64.f32(deltaTime)
 
