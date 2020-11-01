@@ -386,7 +386,6 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 		deltatime = 0.0
 		appear_time=appear_time-appear_time*deltaNeg*0.1//bef=0.89//ACCELERATE APPEAR TIME
 	}
-	printf("zob: %f, %f,/n", appear_time, deltaNeg)
 	if timer == 1 {
 		if display_time < Nbre_Portrait+1 {
 			if p<12{
@@ -1028,7 +1027,6 @@ func StageOnUpdate(controlIndex i32, controlAction i32) {
 		deltatime = 0.0
 		appear_time_Sta=appear_time_Sta-appear_time_Sta*deltaNeg2*0.1//bef=0.89//ACCELERATE APPEAR TIME
 	}
-	printf("zob: %f, %f,/n", display_stage, display_stage)
 	if timerSta == 1 {
 		if display_stage < Nbre_Stage+1 {
 			if r<16{
@@ -1485,7 +1483,9 @@ func IntroOnUpdate(controlIndex i32, controlAction i32) {
 		}	else{
 			txtAlpha=0.0001
 			timerIntro=9
-			snd.VoiceStop(intSong)
+    		if snd.VoiceState(intSong) != snd.VOICE_STOPPED {
+		        snd.VoiceStop(intSong)
+		    }
 			gui.ScreenShow(titleScreen)
 		}
 		}
@@ -1605,8 +1605,10 @@ func IntroOnUpdate(controlIndex i32, controlAction i32) {
         ///////CHECK MOUSE PUSH
         var state i32 = gui.CurrentEvent.mouse.action
     	if state == app.MOUSE_PRESS {
-        snd.VoiceStop(intSong)
-        gui.ScreenShow(titleScreen)
+    		if snd.VoiceState(intSong) != snd.VOICE_STOPPED {
+		        snd.VoiceStop(intSong)
+		    }
+	        gui.ScreenShow(titleScreen)
     	}
 		gui.PictureSetOnState(IntroTxt, "main", "onintroButton")
 		
