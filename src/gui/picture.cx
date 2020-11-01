@@ -48,7 +48,7 @@ func PictureCreate(name str) (out PictureId) {
 	picture.pictureAlign = ALIGN_NONE
 	picture.picturePosition = v2.ZERO
 	picture.alpha = false
-    picture.onState = invalid_func_i32_i32()
+    picture.onState = app.invalid_func_i32_i32()
     picture.color = v4.ONE
 	g_pictures = append(g_pictures, picture)
 	panicIfNot(IsValidPicture(out), "invalid id")
@@ -82,8 +82,8 @@ func PictureSetAlign(id PictureId, align i32) {
 // PictureSetOnState ...
 func PictureSetOnState(i_id PictureId, packageName str, functionName str) {
 	panicIfNot(IsValidPicture(i_id), "invalid id")
-	g_pictures[i_id.picture].onState = func_i32_i32(packageName, functionName)
-	var onState func_i32_i32_id = g_pictures[i_id.picture].onState
+	g_pictures[i_id.picture].onState = app.func_i32_i32(packageName, functionName)
+	var onState app.func_i32_i32_id = g_pictures[i_id.picture].onState
 	panicIfNot(onState.index >= 0, "invalid function")
 }
 
@@ -130,10 +130,10 @@ func PictureProcessEvent(id PictureId, event *app.Event) (out i32) {
 			}
 
 			if (call == true) {
-				var function func_i32_i32_id = g_pictures[id.picture].onState
+				var function app.func_i32_i32_id = g_pictures[id.picture].onState
 				var functionIndex i32 = function.index
 				if functionIndex >= 0 {
-					call_i32_i32(function, index, callAction)
+					app.call_i32_i32(function, index, callAction)
 					out = app.EVENT_CONSUMED
 				}
 			}

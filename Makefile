@@ -25,13 +25,17 @@ DEBUG := --debug-profile=$(PPROF)
 endif
 
 OPTS = $(DEBUG)
-OPTS_MEM = $(OPTS) --stack-size=128M --heap-initial=800M --heap-max=800M
+OPTS_MEM = $(OPTS) --stack-size=128M --heap-initial=1024M --heap-max=1024M
 
 DATA = ++data=$(CXFX_SRC)/resources/
 GLFWHINTS = ++hints=resizable
-FPS = ++fps=30
+ifeq ($FPS),)
+FPS = 60
+else
+FPS = 30
+endif
 
-CXFXOPTS = $(GLVERSION) $(DATA)#$(GLFWHINTS)
+CXFXOPTS = $(GLVERSION) $(DATA) $(GLFWHINTS)
 
 SKYLIGHT := $(CXFX_SRC)/games/skylight/src
 TUTORIALS := $(CXFX_SRC)/tutorials
@@ -78,11 +82,12 @@ SRC = $(CX_SRC)/lib/args.cx\
 	  $(CXFX_SRC)/src/mat/v4f.cx\
 	  $(CXFX_SRC)/src/mat/q4f.cx\
 	  $(CXFX_SRC)/src/mat/m44f.cx\
-      $(CXFX_SRC)/src/mat/intersect.cx\
 	  $(CXFX_SRC)/src/app/application.cx\
+	  $(CXFX_SRC)/src/app/callback.cx\
 	  $(CXFX_SRC)/src/app/event.cx\
 	  $(CXFX_SRC)/src/fps/profiler.cx\
 	  $(CXFX_SRC)/src/fps/framerate.cx\
+          $(CXFX_SRC)/src/mat/intersect.cx\
 	  $(CXFX_SRC)/src/gfx/batch.cx\
 	  $(CXFX_SRC)/src/gfx/graphics.cx\
 	  $(CXFX_SRC)/src/gfx/state.cx\
@@ -99,7 +104,6 @@ SRC = $(CX_SRC)/lib/args.cx\
 	  $(CXFX_SRC)/src/gfx/scissor.cx\
 	  $(CXFX_SRC)/src/gfx/frustum.cx\
 	  $(CXFX_SRC)/src/gfx/octree.cx\
-	  $(CXFX_SRC)/src/gui/callback.cx\
 	  $(CXFX_SRC)/src/gui/layer.cx\
 	  $(CXFX_SRC)/src/gui/skin.cx\
 	  $(CXFX_SRC)/src/gui/scope.cx\
@@ -211,5 +215,5 @@ tuto11: $(COPY_TUTORIALS_ASSETS)
 .PHONY:skylight
 skylight: $(COPY_SKYLIGHT_ASSETS)
 	@echo $(STATE) skylight...
-	$(call runcx, $(SKYLIGHT)/menu.cx $(SKYLIGHT)/skylight.cx)
+	$(call runcx, $(SKYLIGHT)/menu.cx $(SKYLIGHT)/skylight.cx ++gmode=$(GMODE) ++fps=$(FPS))
 

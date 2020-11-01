@@ -74,7 +74,7 @@ func VoiceCreate(id AudioId) (out VoiceId) {
 
 // VoicePlay ...
 func VoicePlay(id VoiceId) {
-	panicIfNot(IsValidVoice(id), "invalid id")
+    panicIfNot(IsValidVoice(id), "invalid id")
 
 	var state i32 = g_voices[id.voice].state
 
@@ -94,10 +94,12 @@ func VoicePlay(id VoiceId) {
 			source = sources[0]
 			//g_freeSources = append(g_freeSources, source) // ISSUE : check before removing
 		}
-	}
+	    panicIf(len(sources) <= 0, "")
+	} else {
+        sources = append(sources, source)
+    }
 
 	panicIf(source < 0, "")
-	panicIf(len(sources) <= 0, "")
 
 	if state == VOICE_STOPPED {
 		var audio AudioId = g_voices[id.voice].audio

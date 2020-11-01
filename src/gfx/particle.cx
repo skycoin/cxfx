@@ -237,7 +237,7 @@ func ParticleRender(view mat.m44, projection mat.m44, cameraPosition mat.v3, opa
 	EffectAssignM44(effect, UNIFORM_PROJECTION, projection, false)
 	EffectAssignV4(effect, UNIFORM_DEBUG_0, debugValue)
 	EffectAssignV4(effect, UNIFORM_TARGET_SIZE, v4.make(width, height, 1.0 / width, 1.0 / height))
-	EffectAssignTexture(effect, SAMPLER_COLOR_1, TargetGetDepth(opaqueTarget), g_nearestClamp)
+	EffectAssignTexture(effect, SAMPLER_COLOR_1, TargetGetDepth(opaqueTarget), g_nearest0Clamp)
 
 	var aliveCount i32 = len(g_alive)
 	for i := 0; i < aliveCount; i++ {

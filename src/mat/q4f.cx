@@ -116,7 +116,7 @@ func from_vectors(a v3, b v3, f v3) (out v4) {
 	out.y = out.y / l
 	out.z = out.z / l
 	out.w = out.w / l*/
-	panicIf(v4.isnan(out), "NAN from_vectors")
+	//panicIf(v4.isnan(out), "NAN from_vectors")
 }
 
 // from_axis_angle ...
@@ -136,8 +136,8 @@ func from_axis_angle(x f32, y f32, z f32, a f32) (out v4) {
 
 // from_axis_angle_v31 ...
 func from_axis_angle_v31(axis mat.v3, angle f32) (out v4) {
-	//panicIf(f32.isnan(x), "NAN from_axis_angle_v31 #0")
-	//panicIf(f32.isnan(y), "NAN from_axis_angle_v31 #1")
+	//panicIf(v3.isnan(axis), "NAN from_axis_angle_v31 #0")
+	//panicIf(f32.isnan(angle), "NAN from_axis_angle_v31 #1")
 	var a2 f32 = 0.5 * angle
 	var sina f32 = f32.sin(a2)
 	out.x = axis.x * sina
@@ -149,15 +149,14 @@ func from_axis_angle_v31(axis mat.v3, angle f32) (out v4) {
 
 // from_axis_angle_v4 ...
 func from_axis_angle_v4(aa mat.v4) (out v4) {
-	//panicIf(f32.isnan(x), "NAN from_axis_angle_v4 #0")
-	//panicIf(f32.isnan(y), "NAN from_axis_angle_v4 #1")
+	//panicIf(v4.isnan(aa), "NAN from_axis_angle_v4 #0")
 	var a2 f32 = 0.5 * aa.w
 	var sina f32 = f32.sin(a2)
 	out.x = aa.x * sina
 	out.y = aa.y * sina
 	out.z = aa.z * sina
 	out.w = f32.cos(a2)
-	//panicIf(v4.isnan(out), "NAN from_axis_angle"_v4)
+	//panicIf(v4.isnan(out), "NAN from_axis_angle")
 }
 
 

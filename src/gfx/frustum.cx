@@ -10,6 +10,7 @@ type Frustum struct {
     cornersV4 []mat.v4 // TODO : issue when using array
     corners []mat.v3 // TODO : issue when using array
     planes []mat.v4 // TODO : issue when using array
+    points []mat.v3
     debugMesh MeshId
 }
 
@@ -35,6 +36,13 @@ func FrustumCreate() (out FrustumId) {
     frustum.planes = append(frustum.planes, v4.ZERO)
     frustum.planes = append(frustum.planes, v4.ZERO)
     frustum.planes = append(frustum.planes, v4.ZERO)
+
+    frustum.points = append(frustum.points, v3.ZERO)
+    frustum.points = append(frustum.points, v3.ZERO)
+    frustum.points = append(frustum.points, v3.ZERO)
+    frustum.points = append(frustum.points, v3.ZERO)
+    frustum.points = append(frustum.points, v3.ZERO)
+    frustum.points = append(frustum.points, v3.ZERO)
 
     frustum.cornersV4 = append(frustum.cornersV4, v4.ZERO)
     frustum.cornersV4 = append(frustum.cornersV4, v4.ZERO)
@@ -95,6 +103,14 @@ func FrustumUpdate(id FrustumId, invViewProj mat.m44) {
     planes[4] = planeFromPoints(corners[0], corners[4], corners[5])
     planes[5] = planeFromPoints(corners[2], corners[7], corners[6])
 
+    var points []mat.v3 = g_frustums[id.frustum].points
+    points[0] = corners[0]
+    points[1] = corners[4]
+    points[2] = corners[4]
+    points[3] = corners[5]
+    points[4] = corners[0]
+    points[5] = corners[2]
+
     var debugMesh MeshId = g_frustums[id.frustum].debugMesh
     MeshBegin(debugMesh)
 
@@ -118,6 +134,11 @@ func FrustumUpdate(id FrustumId, invViewProj mat.m44) {
 // FrustumIntersectsAABB ...
 func FrustumIntersectsAABB(id FrustumId, min mat.v3, max mat.v3) (out i32) {
     out = mat.AABBIntersectsPlanes(min, max, g_frustums[id.frustum].planes)
+}
+
+// FrustumIntersectsSphere ...
+func FrustumIntersectsSphere(id FrustumId, center mat.v3, radius f32) (out i32) {
+    out = mat.SphereIntersectsPlanes(center, radius, g_frustums[id.frustum].planes, g_frustums[id.frustum].points)
 }
 
 // FrustumRender ...

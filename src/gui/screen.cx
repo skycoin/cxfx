@@ -30,9 +30,9 @@ type Screen struct {
 	modal	 bool
 	paused	bool
 	floating  bool
-	onEvent func_i32_i32_id
-	onUpdate func_i32_i32_id
-	onRender func_i32_i32_id
+	onEvent app.func_i32_i32_id
+	onUpdate app.func_i32_i32_id
+	onRender app.func_i32_i32_id
 	renderEx bool
 }
 
@@ -74,9 +74,9 @@ func ScreenCreate(name str) (out ScreenId) {
 	screen.modal	 = false
 	screen.paused	= false
 	screen.floating  = false
-	screen.onEvent = invalid_func_i32_i32()
-	screen.onUpdate = invalid_func_i32_i32()
-	screen.onRender = invalid_func_i32_i32()
+	screen.onEvent = app.invalid_func_i32_i32()
+	screen.onUpdate = app.invalid_func_i32_i32()
+	screen.onRender = app.invalid_func_i32_i32()
 	screen.renderEx = false
 
 	g_screens = append(g_screens, screen)
@@ -145,33 +145,33 @@ func ScreenSetDuration(id ScreenId, duration f64) {
 // ScreenSetOnEvent ...
 func ScreenSetOnEvent(id ScreenId, packageName str, functionName str) {
 	panicIfNot(IsValidScreen(id), "invalid id")
-	g_screens[id.screen].onEvent = func_i32_i32(packageName, functionName)
-	var onEvent func_i32_i32_id = g_screens[id.screen].onEvent
+	g_screens[id.screen].onEvent = app.func_i32_i32(packageName, functionName)
+	var onEvent app.func_i32_i32_id = g_screens[id.screen].onEvent
 	panicIfNot(onEvent.index >= 0, "invalid function")
 }
 
 // ScreenSetOnUpdate ...
 func ScreenSetOnUpdate(id ScreenId, packageName str, functionName str) {
 	panicIfNot(IsValidScreen(id), "invalid id")
-	g_screens[id.screen].onUpdate = func_i32_i32(packageName, functionName)
-	var onUpdate func_i32_i32_id = g_screens[id.screen].onUpdate
+	g_screens[id.screen].onUpdate = app.func_i32_i32(packageName, functionName)
+	var onUpdate app.func_i32_i32_id = g_screens[id.screen].onUpdate
 	panicIfNot(onUpdate.index >= 0, "invalid function")
 }
 
 // ScreenSetOnRender ...
 func ScreenSetOnRender(id ScreenId, packageName str, functionName str) {
 	panicIfNot(IsValidScreen(id), "invalid id")
-	g_screens[id.screen].onRender = func_i32_i32(packageName, functionName)
-	var onRender func_i32_i32_id = g_screens[id.screen].onRender
+	g_screens[id.screen].onRender = app.func_i32_i32(packageName, functionName)
+	var onRender app.func_i32_i32_id = g_screens[id.screen].onRender
 	panicIfNot(onRender.index >= 0, "invalid function")
 }
 
 // ScreenProcessEvent ...
 func ScreenProcessEvent(id ScreenId, event *app.Event) (out i32) {
 	panicIfNot(IsValidScreen(id), "invalid id")
-	var onEvent func_i32_i32_id = g_screens[id.screen].onEvent
+	var onEvent app.func_i32_i32_id = g_screens[id.screen].onEvent
 	if onEvent.index >= 0 {
-		call_i32_i32(onEvent, id.base.control, -1)
+		app.call_i32_i32(onEvent, id.base.control, -1)
 	}
 	out = ControlProcessEvent(id.base, event)
 
@@ -273,9 +273,9 @@ func ScreenUpdate(id ScreenId, deltaTime f64) () {
 
 	t = t + deltaTime
 	g_screens[id.screen].time = t
-	var onUpdate func_i32_i32_id = g_screens[id.screen].onUpdate
+	var onUpdate app.func_i32_i32_id = g_screens[id.screen].onUpdate
 	if onUpdate.index >= 0 {
-		call_i32_i32(onUpdate, id.base.control, -1)
+		app.call_i32_i32(onUpdate, id.base.control, -1)
 	}
 }
 
@@ -290,9 +290,9 @@ func ScreenRender(id ScreenId, clip mat.v4, stack i32) () {
 	panicIfNot(IsValidScreen(id), "invalid screen")
 	//fps.StartProfile(g_profileRenderScreenControl)
 
-	var onRender func_i32_i32_id = g_screens[id.screen].onRender
+	var onRender app.func_i32_i32_id = g_screens[id.screen].onRender
 	if onRender.index >= 0 {
-		call_i32_i32(onRender, id.base.control, -1)
+		app.call_i32_i32(onRender, id.base.control, -1)
 	} else {
 		gfx.MeshBegin(g_opaqueVertexColoredTriangles)
 		gfx.MeshBegin(g_opaqueVertexColoredLines)
