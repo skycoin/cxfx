@@ -2,6 +2,9 @@ package gfx
 
 import "mat"
 
+var OCTREE_GRAPHICS i32 = 1
+var OCTREE_COLLISIONS i32 = 2
+
 // Globals ...
 var g_octrees []Octree
 var g_octreeCells []mat.v3
@@ -29,34 +32,6 @@ type OctreeCell struct {
     children [8] i32
 }
 
-
-// Octree ...
-type Octree struct {
-    debugMesh MeshId
-    debugRender bool
-    center mat.v3
-    size mat.v3
-    min mat.v3
-    max mat.v3
-    maxLevel i32
-    world mat.m44
-    transforms []mat.m44
-    centers []mat.v3
-    sizes []mat.v3
-    corners []mat.v3
-    cells []OctreeCell
-    visibles []i32
-    visibleCount i32
-    offsets []i32
-    mins []mat.v3
-    maxs []mat.v3
-    tmp []i32
-    primitives []Primitive
-    visiblePrimitives []i32
-    opaqueBuckets []PrimitiveBucket
-    transparentBuckets []PrimitiveBucket
-}
-
 // OctreeId ...
 type OctreeId struct {
     octree i32
@@ -72,11 +47,898 @@ func OctreeIsValid(id OctreeId) (out bool) {
     out = id.octree >= 0 && id.octree < len(g_octrees)
 }
 
-// OctreeCreate ...
-func OctreeCreate(model ModelId, world mat.m44, maxLevel i32) (out OctreeId) {
-    out.octree = len(g_octrees)
+// Octree ...
+type Octree struct {
+    // runtime
+    debugMesh MeshId
+    visibles []i32
+    visibleCount i32
+    offsets []i32
+    tmp []i32
+    visiblePrimitives []i32
+    opaqueBuckets []PrimitiveBucket
+    transparentBuckets []PrimitiveBucket
 
-realTriangleCount = 0
+    // serialized
+    center mat.v3
+    size mat.v3
+    min mat.v3
+    max mat.v3
+    maxLevel i32
+    world mat.m44
+    transforms []mat.m44
+    cells []OctreeCell
+    mins []mat.v3
+    maxs []mat.v3
+    primitives []Primitive
+}
+
+func octreeCreate(debug bool) (out OctreeId) {
+    var octree Octree
+    octree.maxLevel = -1
+    if debug {
+        octree.debugMesh = MeshCreate(LINES, UNSIGNED_SHORT, 10 * 8192 * 3, g_vertexLayout, 10 * 8192 * 3)
+    } else {
+        octree.debugMesh = InvalidMesh()
+    }
+    out.octree = len(g_octrees)
+    g_octrees = append(g_octrees, octree)
+}
+
+var scratchF32 []f32
+var scratchI32 []i32
+
+func readSTR(handle i32) (out str) {
+    var success bool
+    out, success = os.ReadStr(handle)
+    panicIf(success == false, "failed to read str")
+}
+
+func readI64(handle i32) (out i64) {
+    var success bool
+    out, success = os.ReadI64(handle)
+    panicIf(success == false, "failed to read i64")
+}
+
+func readUI64(handle i32) (out ui64) {
+    var success bool
+    out, success = os.ReadUI64(handle)
+    panicIf(success == false, "failed to read ui64")
+}
+
+func readF32(handle i32) (out f32) {
+    var success bool
+    out, success = os.ReadF32(handle)
+    panicIf(success == false, "failed to read f32")
+}
+
+func readI32(handle i32) (out i32) {
+    var success bool
+    out, success = os.ReadI32(handle)
+    panicIf(success == false, "failed to read i32")
+}
+
+func readBOOL(handle i32) (out bool) {
+    var success bool
+    out, success = os.ReadBOOL(handle)
+    panicIf(success == false, "failed to read bool")
+}
+
+func readF32Slice(handle i32, value []f32) (out []f32) {
+    var success bool
+    var count ui64 = readUI64(handle)
+    if count > 0UL {
+        out, success = os.ReadF32Slice(handle, value, count)
+        panicIf(success == false, "failed to read []f32")
+    }
+}
+
+func readI32Slice(handle i32, value []i32) (out []i32) {
+    var success bool
+    var count ui64 = readUI64(handle)
+    if count > 0UL {
+        out, success = os.ReadI32Slice(handle, value, count)
+        panicIf(success == false, "failed to read []i32")
+    }
+}
+
+func readUI8Slice(handle i32, value []ui8) (out []ui8) {
+    var success bool
+    var count ui64 = readUI64(handle)
+    if count > 0UL {
+        out, success = os.ReadUI8Slice(handle, value, count)
+        panicIf(success == false, "failed to read []ui8")
+    }
+}
+
+func writeSTR(handle i32, value str) {
+    var success bool = os.WriteStr(handle, value)
+    panicIf(success == false, "failed to write str")
+}
+
+func writeI64(handle i32, value i64) {
+    var success bool = os.WriteI64(handle, value)
+    panicIf(success == false, "failed to write i64")
+}
+
+func writeUI64(handle i32, value ui64) {
+    var success bool = os.WriteUI64(handle, value)
+    panicIf(success == false, "failed to write ui64")
+}
+
+func writeF32(handle i32, value f32) {
+    var success bool = os.WriteF32(handle, value)
+    panicIf(success == false, "failed to write f32")
+}
+
+func writeI32(handle i32, value i32) {
+    var success bool = os.WriteI32(handle, value)
+    panicIf(success == false, "failed to write i32")
+}
+
+func writeBOOL(handle i32, value bool) {
+    var success bool = os.WriteBOOL(handle, value)
+    panicIf(success == false, "failed to write bool")
+}
+
+func writeF32Slice(handle i32, value []f32) {
+    var count ui64 = i32.ui64(len(value))
+    writeUI64(handle, count)
+    if count > 0UL {
+        var success bool = os.WriteF32Slice(handle, value)
+        panicIf(success == false, "failed to write []f32")
+    }
+}
+
+func writeI32Slice(handle i32, value []i32) {
+    var count ui64 = i32.ui64(len(value))
+    writeUI64(handle, count)
+    if count > 0UL {
+        var success bool = os.WriteI32Slice(handle, value)
+        panicIf(success == false, "failed to write []i32")
+    }
+}
+
+func writeUI8Slice(handle i32, value []ui8) {
+    var count ui64 = i32.ui64(len(value))
+    writeUI64(handle, count)
+    if count > 0UL {
+        var success bool = os.WriteUI8Slice(handle, value)
+        panicIf(success == false, "failed to write []ui8")
+    }
+}
+
+func readV3F(handle i32) (out v3) {
+    scratchF32 = resize(scratchF32, 0)
+    var success bool
+    scratchF32, success = os.ReadF32Slice(handle, scratchF32, 3UL)
+    panicIf(success == false, "failed to read v3f")
+    out.x = scratchF32[0]
+    out.y = scratchF32[1]
+    out.z = scratchF32[2]
+
+}
+
+func readV4F(handle i32) (out v4) {
+    scratchF32 = resize(scratchF32, 0)
+    var success bool
+    scratchF32, success = os.ReadF32Slice(handle, scratchF32, 4UL)
+    panicIf(success == false, "failed to read v4f")
+    out.x = scratchF32[0]
+    out.y = scratchF32[1]
+    out.z = scratchF32[2]
+    out.w = scratchF32[3]
+}
+
+func readM44F(handle i32) (out m44) {
+    scratchF32 = resize(scratchF32, 0)
+    var success bool
+    scratchF32, success = os.ReadF32Slice(handle, scratchF32, 16UL)
+    panicIf(success == false, "failed to read m44f")
+    out.v00 = scratchF32[0]
+    out.v01 = scratchF32[1]
+    out.v02 = scratchF32[2]
+    out.v03 = scratchF32[3]
+
+    out.v10 = scratchF32[4]
+    out.v11 = scratchF32[5]
+    out.v12 = scratchF32[6]
+    out.v13 = scratchF32[7]
+
+    out.v20 = scratchF32[8]
+    out.v21 = scratchF32[9]
+    out.v22 = scratchF32[10]
+    out.v23 = scratchF32[11]
+    
+    out.v30 = scratchF32[12]
+    out.v31 = scratchF32[13]
+    out.v32 = scratchF32[14]
+    out.v33 = scratchF32[15]
+}
+
+func writeV3F(handle i32, value v3) {
+    scratchF32 = resize(scratchF32, 3)
+    scratchF32[0] = value.x
+    scratchF32[1] = value.y
+    scratchF32[2] = value.z
+    var success bool = os.WriteF32Slice(handle, scratchF32)
+    panicIf(success == false, "failed to write v3f")
+}
+
+func writeV4F(handle i32, value v4) {
+    scratchF32 = resize(scratchF32, 4)
+    scratchF32[0] = value.x
+    scratchF32[1] = value.y
+    scratchF32[2] = value.z
+    scratchF32[3] = value.w
+    var success bool = os.WriteF32Slice(handle, scratchF32)
+    panicIf(success == false, "failed to write v4f")
+}
+
+func writeM44F(handle i32, value m44) {
+    scratchF32 = resize(scratchF32, 16)
+    scratchF32[0] = value.v00
+    scratchF32[1] = value.v01
+    scratchF32[2] = value.v02
+    scratchF32[3] = value.v03
+
+    scratchF32[4] = value.v10
+    scratchF32[5] = value.v11
+    scratchF32[6] = value.v12
+    scratchF32[7] = value.v13
+
+    scratchF32[8] = value.v20
+    scratchF32[9] = value.v21
+    scratchF32[10] = value.v22
+    scratchF32[11] = value.v23
+
+    scratchF32[12] = value.v30
+    scratchF32[13] = value.v31
+    scratchF32[14] = value.v32
+    scratchF32[15] = value.v33
+    var success bool = os.WriteF32Slice(handle, scratchF32)
+    panicIf(success == false, "failed to write m44f")
+}
+
+func readV3FSlice(handle i32, value[]v3) (out []v3) { // TODO : issue resizing []v3
+    out = value
+    scratchF32 = readF32Slice(handle, scratchF32)
+    var count i32 = len(scratchF32)
+    panicIf((count%3) != 0, "invalid []v3")
+    count = count/3
+    out = resize(out, 0)
+    for i := 0; i < count; i++ {
+    var v v3
+        var offset i32 = i * 3
+        v.x = scratchF32[offset]
+        v.y = scratchF32[offset+1]
+        v.z = scratchF32[offset+2]
+        out = append(out, v)
+    }
+}
+
+func writeV3FSlice(handle i32, value []v3) {
+    var count i32 = len(value)
+    scratchF32 = resize(scratchF32, count * 3)
+    for i := 0; i < count; i++ {
+        var offset i32 = i * 3
+        scratchF32[offset] = value[i].x
+        scratchF32[offset+1] = value[i].y
+        scratchF32[offset+2] = value[i].z
+    }
+    writeF32Slice(handle, scratchF32)
+}
+
+func readM44FSlice(handle i32, value[]m44) (out []m44) { // TODO : issue resizing []m44
+    out = value
+    scratchF32 = readF32Slice(handle, scratchF32)
+    var count i32 = len(scratchF32)
+    panicIf((count%16) != 0, "invalid []m44")
+    count = count / 16
+    out = resize(out, 0)
+    for i := 0; i < count; i++ {
+        var m m44
+        var offset i32 = i * 16
+        m.v00 = scratchF32[offset]
+        m.v01 = scratchF32[offset+1]
+        m.v02 = scratchF32[offset+2]
+        m.v03 = scratchF32[offset+3]
+
+        m.v10 = scratchF32[offset+4]
+        m.v11 = scratchF32[offset+5]
+        m.v12 = scratchF32[offset+6]
+        m.v13 = scratchF32[offset+7]
+
+        m.v20 = scratchF32[offset+8]
+        m.v21 = scratchF32[offset+9]
+        m.v22 = scratchF32[offset+10]
+        m.v23 = scratchF32[offset+11]
+
+        m.v30 = scratchF32[offset+12]
+        m.v31 = scratchF32[offset+13]
+        m.v32 = scratchF32[offset+14]
+        m.v33 = scratchF32[offset+15]
+        out = append(out, m)
+    }
+
+}
+
+func writeM44FSlice(handle i32, value []m44) {
+    var count i32 = len(value)
+    scratchF32 = resize(scratchF32, count * 16)
+    for i := 0; i < count; i++ {
+        var offset i32 = i * 16
+        scratchF32[offset] = value[i].v00
+        scratchF32[offset+1] = value[i].v01
+        scratchF32[offset+2] = value[i].v02
+        scratchF32[offset+3] = value[i].v03
+
+        scratchF32[offset+4] = value[i].v10
+        scratchF32[offset+5] = value[i].v11
+        scratchF32[offset+6] = value[i].v12
+        scratchF32[offset+7] = value[i].v13
+
+        scratchF32[offset+8] = value[i].v20
+        scratchF32[offset+9] = value[i].v21
+        scratchF32[offset+10] = value[i].v22
+        scratchF32[offset+11] = value[i].v23
+
+        scratchF32[offset+12] = value[i].v30
+        scratchF32[offset+13] = value[i].v31
+        scratchF32[offset+14] = value[i].v32
+        scratchF32[offset+15] = value[i].v33
+    }
+    writeF32Slice(handle, scratchF32)
+}
+
+func readOctreeCells(handle i32, value []OctreeCell) (out []OctreeCell) {
+    out = value
+    var count i32 = ui64.i32(readUI64(handle))
+    out = resize(out, 0)
+    var i ui64
+    for i := 0; i < count; i++ {
+        var oc OctreeCell
+        oc.index = readI32(handle)
+        oc.level = readI32(handle)     
+        oc.center = readV3F(handle)
+        oc.min = readV3F(handle)
+        oc.max = readV3F(handle)
+        oc.size = readV3F(handle)
+        oc.transparents = readI32Slice(handle, oc.transparents)
+        oc.opaques = readI32Slice(handle, oc.opaques)
+        oc.transparentTriangleCount = readI32(handle)
+        oc.opaqueTriangleCount = readI32(handle)
+        oc.triangleCount = readI32(handle)
+        oc.transparentPrimitives = readI32Slice(handle, oc.transparentPrimitives)
+        oc.opaquePrimitives = readI32Slice(handle, oc.opaquePrimitives)
+        oc.positions = readF32Slice(handle, oc.positions)
+        oc.normals = readF32Slice(handle, oc.normals)
+        oc.planesOrigin = readV3FSlice(handle, oc.planesOrigin)
+        oc.planesNormal = readV3FSlice(handle, oc.planesNormal)
+        oc.points = readV3FSlice(handle, oc.points)
+        for c := 0; c < 8; c++ {
+            oc.children[c] = readI32(handle)
+        }
+        out = append(out, oc)
+    }
+}
+
+func writeOctreeCells(handle i32, value []OctreeCell, options i32) {
+    var count i32 = len(value)
+    writeUI64(handle, i32.ui64(count))
+    for i := 0; i < count; i++ {
+        writeI32(handle, value[i].index)
+        writeI32(handle, value[i].level)
+        writeV3F(handle, value[i].center)
+        writeV3F(handle, value[i].min)
+        writeV3F(handle, value[i].max)
+        writeV3F(handle, value[i].size)
+        writeI32Slice(handle, value[i].transparents)
+        writeI32Slice(handle, value[i].opaques)
+        writeI32(handle, value[i].transparentTriangleCount)
+        writeI32(handle, value[i].opaqueTriangleCount)
+        writeI32(handle, value[i].triangleCount)
+        writeI32Slice(handle, value[i].transparentPrimitives)
+        writeI32Slice(handle, value[i].opaquePrimitives)
+
+        if options == OCTREE_COLLISIONS {
+            writeF32Slice(handle, value[i].positions)
+            writeF32Slice(handle, value[i].normals)
+            writeV3FSlice(handle, value[i].planesOrigin)
+            writeV3FSlice(handle, value[i].planesNormal)
+            writeV3FSlice(handle, value[i].points)
+        } else {
+            writeUI64(handle, 0UL)
+            writeUI64(handle, 0UL)
+            writeUI64(handle, 0UL)
+            writeUI64(handle, 0UL)
+            writeUI64(handle, 0UL)
+        }
+        for c := 0; c < 8; c++ {
+            writeI32(handle, value[i].children[c])
+        }
+    }
+}
+
+func readEffect(handle i32) (out EffectId) {
+    var key i64 = readI64(handle)
+    out = TemplateInstanceFromKey(g_tfxPbr, key)
+}
+
+func writeEffect(handle i32, effect EffectId) {
+    writeI64(handle, EffectGetKey(effect))
+}
+
+func readGLTFMaterial(handle i32) (out gltf.Material) {
+    out.pbrMetallicRoughness.baseColorFactor = readV4F(handle)
+    out.pbrMetallicRoughness.baseColorTexture.scale = readF32(handle)
+    out.pbrMetallicRoughness.metallicFactor = readF32(handle)
+    out.pbrMetallicRoughness.roughnessFactor = readF32(handle)
+    out.pbrSpecularGlossiness.diffuseFactor = readV4F(handle)
+    out.pbrSpecularGlossiness.diffuseTexture.scale = readF32(handle)
+    out.pbrSpecularGlossiness.glossinessFactor = readF32(handle)
+    out.pbrSpecularGlossiness.specularFactor = readV3F(handle)
+    out.pbrSpecularGlossiness.specularGlossinessTexture.scale = readF32(handle)
+    out.normalTexture.scale = readF32(handle)
+    out.emissiveTexture.scale = readF32(handle)
+    out.emissiveFactor = readV4F(handle)
+    out.alphaMode = readI32(handle)
+    out.doubleSided = readI32(handle)
+}
+
+func writeGLTFMaterial(handle i32, material gltf.Material) {
+    writeV4F(handle, material.pbrMetallicRoughness.baseColorFactor)
+    writeF32(handle, material.pbrMetallicRoughness.baseColorTexture.scale)
+    writeF32(handle, material.pbrMetallicRoughness.metallicFactor)
+    writeF32(handle, material.pbrMetallicRoughness.roughnessFactor)
+    writeV4F(handle, material.pbrSpecularGlossiness.diffuseFactor)
+    writeF32(handle, material.pbrSpecularGlossiness.diffuseTexture.scale)
+    writeF32(handle, material.pbrSpecularGlossiness.glossinessFactor)
+    writeV3F(handle, material.pbrSpecularGlossiness.specularFactor)
+    writeF32(handle, material.pbrSpecularGlossiness.specularGlossinessTexture.scale)
+    writeF32(handle, material.normalTexture.scale)
+    writeF32(handle, material.emissiveTexture.scale)
+    writeV4F(handle, material.emissiveFactor)
+    writeI32(handle, material.alphaMode)
+    writeI32(handle, material.doubleSided)
+}
+
+func readTexture(handle i32) (out TextureId) {
+    out = InvalidTexture()
+    var texturePath str = readSTR(handle)
+    if len(texturePath) > 0 {
+        out = TextureCreate(texturePath, FORMAT_R8_G8_B8_A8, 0, 0, -32, false, false)
+    }
+}
+
+func writeTexture(handle i32, texture TextureId) {
+    var texturePath str
+    if IsValidTexture(texture) {
+        texturePath = TextureGetPath(texture)
+    }
+    writeSTR(handle, texturePath)
+}
+
+func readPrimitives(handle i32, value []Primitive) (out []Primitive) {
+    out = value
+    var count i32 = ui64.i32(readUI64(handle))
+    out = resize(out, 0)
+    var i ui64
+    for i := 0; i < count; i++ {
+        var primitive Primitive
+        primitive.effect = readEffect(handle)
+        primitive.baseTexture = readTexture(handle)
+        primitive.metalRoughTexture = readTexture(handle)
+        primitive.emissiveTexture = readTexture(handle)
+        primitive.normalTexture = readTexture(handle)
+        primitive.occlusionTexture = readTexture(handle)
+
+        primitive.gltfMaterial = readGLTFMaterial(handle)
+
+        primitive.min = readV3F(handle)
+        primitive.max = readV3F(handle)
+
+        primitive.vertices = readUI8Slice(handle, primitive.vertices)
+        primitive.indices = readUI8Slice(handle, primitive.indices)
+
+        var attributes []VertexAttribute = primitive.attributes
+        var attributeCount i32 = ui64.i32(readUI64(handle))
+        for attributeIndex := 0; attributeIndex < attributeCount; attributeIndex++ {
+            var attribute VertexAttribute
+            attribute.componentCount = readI32(handle)
+            attribute.componentType = readI32(handle)
+            attribute.componentByteSize = readI32(handle)
+            attribute.componentOffset = readI32(handle)
+            attribute.byteOffset = readI32(handle)
+            attribute.binding = readI32(handle)
+            attributes = append(attributes, attribute)
+        }
+        primitive.attributes = attributes
+
+        primitive.indexByteStride = readI32(handle)
+        primitive.vertexByteStride = readI32(handle)
+        primitive.useSkin = readI32(handle)
+        primitive.usePosition = readBOOL(handle)
+        primitive.useNormal = readBOOL(handle)
+        primitive.useColor = readBOOL(handle)
+        primitive.useTexcoord = readBOOL(handle)
+        primitive.useTangent = readBOOL(handle)
+        primitive.useWeight = readBOOL(handle)
+        primitive.useJoint = readBOOL(handle)
+
+        var indexType i32 = ui64.i32(readUI64(handle))
+        var primitiveType i32 = ui64.i32(readUI64(handle))
+        var mesh MeshId = InvalidMesh()
+        var vertexCount i32 = len(primitive.vertices)
+        var indexCount i32 = len(primitive.indices)
+        if (vertexCount > 0 && indexCount > 0) &&
+           ((indexType == gl.UNSIGNED_SHORT) || (indexType == gl.UNSIGNED_INT)) &&
+           ((primitiveType == gl.TRIANGLES) || (primitiveType == gl.LINES)) {
+            mesh = MeshCreate(primitiveType, indexType,
+                len(primitive.indices) / primitive.indexByteStride,
+            attributes, len(primitive.vertices) / primitive.vertexByteStride)
+
+            MeshBegin(mesh)
+            g_meshes[mesh.mesh].vertices = primitive.vertices
+            g_meshes[mesh.mesh].indices = primitive.indices
+            g_meshes[mesh.mesh].usePosition = primitive.usePosition
+            g_meshes[mesh.mesh].useNormal = primitive.useNormal
+            g_meshes[mesh.mesh].useColor = primitive.useColor
+            g_meshes[mesh.mesh].useTexcoord = primitive.useTexcoord
+            g_meshes[mesh.mesh].useTangent = primitive.useTangent
+            g_meshes[mesh.mesh].useWeight = primitive.useWeight
+            g_meshes[mesh.mesh].useJoint = primitive.useJoint
+            g_meshes[mesh.mesh].min = primitive.min
+            g_meshes[mesh.mesh].max = primitive.max
+            MeshEnd(mesh)
+        }
+
+        primitive.mesh = mesh
+
+
+        out = append(out, primitive)
+    }
+}
+
+func writePrimitives(handle i32, value []Primitive, options i32) {
+    var count i32 = len(value)
+    writeUI64(handle, i32.ui64(count))
+    for i := 0; i < count; i++ {
+        writeEffect(handle, value[i].effect)
+        writeTexture(handle, value[i].baseTexture)
+        writeTexture(handle, value[i].metalRoughTexture)
+        writeTexture(handle, value[i].emissiveTexture)
+        writeTexture(handle, value[i].normalTexture)
+        writeTexture(handle, value[i].occlusionTexture)
+
+        writeGLTFMaterial(handle, value[i].gltfMaterial)
+
+        writeV3F(handle, value[i].min)
+        writeV3F(handle, value[i].max)
+
+        if options == OCTREE_GRAPHICS {
+            writeUI8Slice(handle, value[i].vertices)
+            writeUI8Slice(handle, value[i].indices)
+        } else {
+            writeUI64(handle, 0UL)            
+            writeUI64(handle, 0UL)
+        }
+
+        var attributes []VertexAttribute = value[i].attributes
+        var attributeCount i32 = len(attributes)
+        writeUI64(handle, i32.ui64(attributeCount))
+        for attributeIndex := 0; attributeIndex < attributeCount; attributeIndex++ {
+            writeI32(handle, attributes[attributeIndex].componentCount)
+            writeI32(handle, attributes[attributeIndex].componentType)
+            writeI32(handle, attributes[attributeIndex].componentByteSize)
+            writeI32(handle, attributes[attributeIndex].componentOffset)
+            writeI32(handle, attributes[attributeIndex].byteOffset)
+            writeI32(handle, attributes[attributeIndex].binding)
+        }
+
+        writeI32(handle, value[i].indexByteStride)
+        writeI32(handle, value[i].vertexByteStride)
+        writeI32(handle, value[i].useSkin)
+        writeBOOL(handle, value[i].usePosition)
+        writeBOOL(handle, value[i].useNormal)
+        writeBOOL(handle, value[i].useColor)
+        writeBOOL(handle, value[i].useTexcoord)
+        writeBOOL(handle, value[i].useTangent)
+        writeBOOL(handle, value[i].useWeight)
+        writeBOOL(handle, value[i].useJoint)
+
+        var indexType ui64 = 0UL
+        var primitiveType ui64 = 0UL
+        var mesh MeshId = value[i].mesh
+        if IsValidMesh(mesh) {
+            indexType = i32.ui64(g_meshes[mesh.mesh].indexFormat)
+            primitiveType = i32.ui64(g_meshes[mesh.mesh].primitive)
+        }
+        writeUI64(handle, indexType)
+        writeUI64(handle, primitiveType)
+    }
+        //mesh MeshId            
+}
+
+func octreeLoad(id OctreeId) {
+    var octreePrimitives []Primitive = g_octrees[id.octree].primitives
+    var octreePrimitiveCount i32 = len(octreePrimitives)
+    for primitiveIndex := 0; primitiveIndex < octreePrimitiveCount; primitiveIndex++ {
+        var hash0 ui64
+        var hash1 ui64
+        hash0, hash1 = PrimitiveComputeHash(octreePrimitives[primitiveIndex])
+        octreePrimitives[primitiveIndex].hash0 = hash0
+        octreePrimitives[primitiveIndex].hash1 = hash1
+    }
+}
+
+var fingerPrint ui64 = 383838383838UL
+func OctreeLoad(path str, debug bool) (out OctreeId) {
+    out = octreeCreate(debug)
+    var octreeIndex i32 = out.octree
+    var handle i32 = os.Open(path)
+    if handle != -1 {
+        g_octrees[octreeIndex].center = readV3F(handle)
+        g_octrees[octreeIndex].size = readV3F(handle)
+        g_octrees[octreeIndex].min = readV3F(handle)
+        g_octrees[octreeIndex].max = readV3F(handle)
+        g_octrees[octreeIndex].maxLevel = readI32(handle)
+        g_octrees[octreeIndex].world = readM44F(handle)
+        g_octrees[octreeIndex].transforms = readM44FSlice(handle, g_octrees[octreeIndex].transforms)
+        g_octrees[octreeIndex].cells = readOctreeCells(handle, g_octrees[octreeIndex].cells)
+        g_octrees[octreeIndex].mins = readV3FSlice(handle, g_octrees[octreeIndex].mins)
+        g_octrees[octreeIndex].maxs = readV3FSlice(handle, g_octrees[octreeIndex].maxs)
+        g_octrees[octreeIndex].primitives = readPrimitives(handle, g_octrees[octreeIndex].primitives)
+        var fp ui64 = readUI64(handle)
+        panicIf(fp != fingerPrint, "failed to OctreeLoad : invalid fingerPrint")
+        var success bool = os.Close(handle)
+        if success == false {
+            out = InvalidOctree()
+        }
+    }
+
+    octreeLoad(out)
+}
+
+func OctreeSave(id OctreeId, path str, options i32) (out bool) {
+    var handle i32 = os.Create(path)
+    if handle != -1 {
+        writeV3F(handle, g_octrees[id.octree].center)
+        writeV3F(handle, g_octrees[id.octree].size)
+        writeV3F(handle, g_octrees[id.octree].min)
+        writeV3F(handle, g_octrees[id.octree].max)
+        writeI32(handle, g_octrees[id.octree].maxLevel)
+        writeM44F(handle, g_octrees[id.octree].world)
+        writeM44FSlice(handle, g_octrees[id.octree].transforms)
+        writeOctreeCells(handle, g_octrees[id.octree].cells, options)
+        writeV3FSlice(handle, g_octrees[id.octree].mins)
+        writeV3FSlice(handle, g_octrees[id.octree].maxs)
+        writePrimitives(handle, g_octrees[id.octree].primitives, options)
+        writeUI64(handle, fingerPrint)
+        out = os.Close(handle)
+    }
+}
+
+func neqUI8Slice(left []ui8, right []ui8) (out bool) {
+    out = true
+    var leftCount i32 = len(left)
+    var rightCount i32 = len(right)
+
+    if leftCount == rightCount {
+        out = false
+        for i := 0; i < leftCount; i++ {
+            if left[i] != right[i] {
+                i = leftCount
+                out = true
+            }
+        }
+    }
+}
+
+func neqI32Slice(left []i32, right []i32) (out bool) {
+    out = true
+    var leftCount i32 = len(left)
+    var rightCount i32 = len(right)
+
+    if leftCount == rightCount {
+        out = false
+        for i := 0; i < leftCount; i++ {
+            if left[i] != right[i] {
+                i = leftCount
+                out = true
+            }
+        }
+    }
+}
+
+func neqF32Slice(left []f32, right []f32) (out bool) {
+    out = true
+    var leftCount i32 = len(left)
+    var rightCount i32 = len(right)
+
+    if leftCount == rightCount {
+        out = false
+        for i := 0; i < leftCount; i++ {
+            if left[i] != right[i] {
+                out = true
+                i = leftCount
+            }
+        }
+    }
+}
+
+func neqV3FSlice(left []v3, right []v3) (out bool) {
+    out = true
+    var leftCount i32 = len(left)
+    var rightCount i32 = len(right)
+
+    if leftCount == rightCount {
+        out = false
+        for i := 0; i < leftCount; i++ {
+            if v3.nequ(left[i], right[i]) {
+                out = true
+                i = leftCount
+            }
+        }
+    }
+}
+
+
+func OctreeAssertEquals(left OctreeId, right OctreeId, options i32) {
+    panicIf(v3.nequ(g_octrees[left.octree].center, g_octrees[right.octree].center), "center")
+    panicIf(v3.nequ(g_octrees[left.octree].size, g_octrees[right.octree].size), "size")
+    panicIf(v3.nequ(g_octrees[left.octree].min, g_octrees[right.octree].min), "min")
+    panicIf(v3.nequ(g_octrees[left.octree].max, g_octrees[right.octree].max), "max")
+    panicIf((g_octrees[left.octree].maxLevel != g_octrees[right.octree].maxLevel), "maxLevel")
+    panicIf(m44.nequ(g_octrees[left.octree].world, g_octrees[right.octree].world), "world")
+
+    var leftTX []m44 = g_octrees[left.octree].transforms
+    var rightTX []m44 = g_octrees[right.octree].transforms
+
+    var leftTxCount i32 = len(leftTX)
+    var rightTxCount i32 = len(rightTX)
+
+    panicIf(leftTxCount != rightTxCount, sprintf("transform count : %d vs %d", leftTxCount, rightTxCount))
+    for i := 0; i < leftTxCount; i++ {
+        panicIf(m44.nequ(leftTX[i], rightTX[i]), "transforms")
+    }
+
+    var leftCells []OctreeCell = g_octrees[left.octree].cells
+    var rightCells []OctreeCell = g_octrees[right.octree].cells
+
+    var leftCellCount i32 = len(leftCells)
+    var rightCellCount i32 = len(rightCells)
+
+    panicIf(leftCellCount != rightCellCount, sprintf("cell count : %d vs %d", leftCellCount, rightCellCount))
+    for i := 0; i < leftCellCount; i++ {
+        var lc OctreeCell = leftCells[i]
+        var rc OctreeCell = rightCells[i]
+
+        panicIf(lc.index != rc.index, "index")
+        panicIf(lc.level != rc.level, "level")
+        panicIf(v3.nequ(lc.center, rc.center), "center")
+        panicIf(v3.nequ(lc.min, rc.min), "min")
+        panicIf(v3.nequ(lc.max, rc.max), "max")
+        panicIf(v3.nequ(lc.size, rc.size), "size")
+
+        panicIf(neqI32Slice(lc.transparents, rc.transparents), "transparents")
+        panicIf(neqI32Slice(lc.opaques, rc.opaques), "opaques")
+        panicIf(lc.transparentTriangleCount != rc.transparentTriangleCount, "transparentTriangleCount")
+        panicIf(lc.opaqueTriangleCount != rc.opaqueTriangleCount, "opaqueTriangleCount")
+        panicIf(lc.triangleCount != rc.triangleCount, "triangleCount")
+        panicIf(neqI32Slice(lc.transparentPrimitives, rc.transparentPrimitives), "transparentPrimitives")
+        panicIf(neqI32Slice(lc.opaquePrimitives, rc.opaquePrimitives), "opaquePrimitives")
+
+        if options == OCTREE_COLLISIONS {
+            panicIf(neqF32Slice(lc.positions, rc.positions), "positions")
+            panicIf(neqF32Slice(lc.normals, rc.normals), "normals")
+            panicIf(neqV3FSlice(lc.planesOrigin, rc.planesOrigin), "planesOrigin")
+            panicIf(neqV3FSlice(lc.planesNormal, rc.planesNormal), "planesNormal")
+            panicIf(neqV3FSlice(lc.points, rc.points), "points")
+        }
+
+        for c := 0; c < 8; c++ {
+            panicIf(lc.children[c] != rc.children[c], "children")
+        }
+    }
+
+    var leftPrimitives []Primitive = g_octrees[left.octree].primitives
+    var rightPrimitives []Primitive = g_octrees[right.octree].primitives
+
+    var leftPrimitiveCount i32 = len(leftPrimitives)
+    var rightPrimitiveCount i32 = len(rightPrimitives)
+
+    panicIf(leftPrimitiveCount != rightPrimitiveCount, sprintf("primitive count : %d vs %d", leftPrimitiveCount, rightPrimitiveCount))
+    for i := 0; i < leftPrimitiveCount; i++ {
+        var lp Primitive = leftPrimitives[i]
+        var rp Primitive = rightPrimitives[i]
+
+        panicIf(lp.effect.effect != rp.effect.effect, "effect")
+        panicIf(lp.baseTexture.texture != rp.baseTexture.texture, "baseTexture")
+        panicIf(lp.metalRoughTexture.texture != rp.metalRoughTexture.texture, "metalRoughTexture")
+        panicIf(lp.emissiveTexture.texture != rp.emissiveTexture.texture, "emissiveTexture")
+        panicIf(lp.normalTexture.texture != rp.normalTexture.texture, "normalTexture")
+        panicIf(lp.occlusionTexture.texture != rp.occlusionTexture.texture, "occlusionTexture")
+
+
+        var lm gltf.Material = lp.gltfMaterial
+        var rm gltf.Material = rp.gltfMaterial
+        panicIf(v4.nequ(lm.pbrMetallicRoughness.baseColorFactor, rm.pbrMetallicRoughness.baseColorFactor), "baseColorFactor")
+        panicIf(lm.pbrMetallicRoughness.baseColorTexture.scale != rm.pbrMetallicRoughness.baseColorTexture.scale, "baseColorTexture.scale")
+        panicIf(lm.pbrMetallicRoughness.metallicFactor != rm.pbrMetallicRoughness.metallicFactor, "metallicFactor")
+        panicIf(lm.pbrMetallicRoughness.roughnessFactor != rm.pbrMetallicRoughness.roughnessFactor, "roughnessFactor")
+        panicIf(v4.nequ(lm.pbrSpecularGlossiness.diffuseFactor, rm.pbrSpecularGlossiness.diffuseFactor), "diffuseFactor")
+        panicIf(lm.pbrSpecularGlossiness.diffuseTexture.scale != rm.pbrSpecularGlossiness.diffuseTexture.scale, "diffuseTexture.scale")
+        panicIf(lm.pbrSpecularGlossiness.glossinessFactor != rm.pbrSpecularGlossiness.glossinessFactor, "glossinessFactor")
+        panicIf(v3.nequ(lm.pbrSpecularGlossiness.specularFactor, rm.pbrSpecularGlossiness.specularFactor), "specularFactor")
+        panicIf(lm.pbrSpecularGlossiness.specularGlossinessTexture.scale != rm.pbrSpecularGlossiness.specularGlossinessTexture.scale, "specularGlossinessTexture.scale")
+        panicIf(lm.normalTexture.scale != rm.normalTexture.scale, "normalTexture.scale")
+        panicIf(lm.emissiveTexture.scale != rm.emissiveTexture.scale, "emissiveTexture.scale")
+        panicIf(v4.nequ(lm.emissiveFactor, rm.emissiveFactor), "emissiveFactor")
+        panicIf(lm.alphaMode != rm.alphaMode, "alphaMode")
+        panicIf(lm.doubleSided != rm.doubleSided, "doubleSided")
+
+        panicIf(v3.nequ(lp.min, rp.min), "min")
+        panicIf(v3.nequ(lp.max, rp.max), "max")
+
+        if options == OCTREE_GRAPHICS {
+            panicIf(neqUI8Slice(lp.vertices, rp.vertices), "vertices")
+            panicIf(neqUI8Slice(lp.indices, rp.indices), "indices")
+        }
+
+        var leftAttributes []VertexAttribute = lp.attributes
+        var rightAttributes []VertexAttribute = rp.attributes
+
+        var leftAttributeCount i32 = len(leftAttributes)
+        var rightAttributeCount i32 = len(rightAttributes)
+
+        panicIf(leftAttributeCount != rightAttributeCount, "attributes")
+        for attributeIndex := 0; attributeIndex < leftAttributeCount; attributeIndex++ {
+            panicIf(leftAttributes[attributeIndex].componentCount != rightAttributes[attributeIndex].componentCount, "componentCount")
+            panicIf(leftAttributes[attributeIndex].componentType != rightAttributes[attributeIndex].componentType, "componentCount")
+            panicIf(leftAttributes[attributeIndex].componentByteSize != rightAttributes[attributeIndex].componentByteSize, "componentByteSize")
+            panicIf(leftAttributes[attributeIndex].componentOffset != rightAttributes[attributeIndex].componentOffset, "componentOffset")
+            panicIf(leftAttributes[attributeIndex].byteOffset != rightAttributes[attributeIndex].byteOffset, "byteOffset")
+            panicIf(leftAttributes[attributeIndex].binding != rightAttributes[attributeIndex].binding, "binding")
+        }
+
+        panicIf(lp.indexByteStride != rp.indexByteStride, "indexByteStride")
+        panicIf(lp.vertexByteStride != rp.vertexByteStride, "vertexByteStride")
+
+        panicIf(lp.useSkin != rp.useSkin, "useSkin")
+        panicIf(lp.usePosition != rp.usePosition, "usePosition")
+        panicIf(lp.useNormal != rp.useNormal, "useNormal")
+        panicIf(lp.useColor != rp.useColor, "useColor")
+        panicIf(lp.useTexcoord != rp.useTexcoord, "useTexcoord")
+        panicIf(lp.useTangent != rp.useTangent, "useTangent")
+        panicIf(lp.useWeight != rp.useWeight, "useWeight")
+        panicIf(lp.useJoint != rp.useJoint, "useJoint")
+
+        if options == OCTREE_GRAPHICS {
+            var leftMesh MeshId = lp.mesh
+            var rightMesh MeshId = rp.mesh
+            panicIf(IsValidMesh(leftMesh) != IsValidMesh(rightMesh), "mesh")
+
+            if (IsValidMesh(leftMesh)) {
+                panicIf(g_meshes[leftMesh.mesh].indexFormat != g_meshes[rightMesh.mesh].indexFormat, "indexType")
+                panicIf(g_meshes[leftMesh.mesh].primitive != g_meshes[rightMesh.mesh].primitive, "primitiveType")
+            }
+        }
+    }
+
+    panicIf(neqV3FSlice(g_octrees[left.octree].mins, g_octrees[right.octree].mins), "mins")
+    panicIf(neqV3FSlice(g_octrees[left.octree].maxs, g_octrees[right.octree].maxs), "maxs")
+}
+
+func OctreeDestroy(id OctreeId) {
+    panicIfNot(OctreeIsValid(id), "invalid id")
+}
+
+// OctreeCreate ...
+func OctreeCreate(model ModelId, world mat.m44, maxLevel i32, debug bool, options i32) (out OctreeId) {
+    out = octreeCreate(debug)
+
+    realTriangleCount = 0
 
     var min mat.v3 = ModelGetMin(model)
     var max mat.v3 = ModelGetMax(model)
@@ -87,15 +949,12 @@ realTriangleCount = 0
     var newMin mat.v3 = v3.min(min, max)
     var newMax mat.v3 = v3.max(min, max)
 
-    var octree Octree
-    octree.debugMesh = MeshCreate(LINES, UNSIGNED_SHORT, 10 * 8192 * 3, g_vertexLayout, 10 * 8192 * 3)
-    octree.size = v3.mulf(v3.sub(newMax, newMin), 0.5)
-    octree.center = v3.add(newMin, octree.size)
-    octree.min = newMin
-    octree.max = newMax
-    octree.maxLevel = maxLevel
-    octree.world = world
-    g_octrees = append(g_octrees, octree)
+    g_octrees[out.octree].size = v3.mulf(v3.sub(newMax, newMin), 0.5)
+    g_octrees[out.octree].center = v3.add(newMin, g_octrees[out.octree].size)
+    g_octrees[out.octree].min = newMin
+    g_octrees[out.octree].max = newMax
+    g_octrees[out.octree].maxLevel = maxLevel
+    g_octrees[out.octree].world = world
 
     var totalCount i32 = resetOffsets(out)
     var cells []OctreeCell
@@ -162,41 +1021,43 @@ realTriangleCount = 0
     for i := 0; i < cellCount; i++ {
        if i >= 0 {//== 54 || i == 6 {
         cells[i].opaques = octreeSplitMeshes(out, cells[i].opaquePrimitives,
-            asset, primitives, transforms, cells, i, cells[i].opaques)
+            asset, primitives, transforms, cells, i, cells[i].opaques, options)
         cells[i].transparents = octreeSplitMeshes(out, cells[i].transparentPrimitives,
-            asset, primitives, transforms, cells, i, cells[i].transparents)
+            asset, primitives, transforms, cells, i, cells[i].transparents, options)
         var opcell []Primitive = g_octrees[out.octree].primitives
         var opaqueTriCount i32 = computeTriangleCount(opcell, cells[i].opaques)
         var transparentTriCount i32 = computeTriangleCount(opcell, cells[i].transparents)
         printf("Splitting cell %d/%d... : Opaque %d + Transparent %d = %d \n", i, cellCount, opaqueTriCount, transparentTriCount, opaqueTriCount + transparentTriCount)
-        cells[i].opaqueTriangleCount = opaqueTriCount
-        cells[i].transparentTriangleCount = transparentTriCount
         var positions []f32 = cells[i].positions
         var positionCount i32 = len(positions)
         var triangleCount i32 = positionCount / (3 * 3)
         var normals []f32 = cells[i].normals
-        normals = resize(normals, 0)
-        for t := 0; t < triangleCount; t++ {
-            var toffset i32 = t*9
-            var t0 mat.v3 = v3.make(positions[toffset+0], positions[toffset+1], positions[toffset+2])
-            var t1 mat.v3 = v3.make(positions[toffset+3], positions[toffset+4], positions[toffset+5])
-            var t2 mat.v3 = v3.make(positions[toffset+6], positions[toffset+7], positions[toffset+8])
+        if options == OCTREE_COLLISIONS {
+            normals = resize(normals, 0)
+            for t := 0; t < triangleCount; t++ {
+                var toffset i32 = t*9
+                var t0 mat.v3 = v3.make(positions[toffset+0], positions[toffset+1], positions[toffset+2])
+                var t1 mat.v3 = v3.make(positions[toffset+3], positions[toffset+4], positions[toffset+5])
+                var t2 mat.v3 = v3.make(positions[toffset+6], positions[toffset+7], positions[toffset+8])
 
-            var t01 mat.v3 = v3.sub(t1, t0)
-            var t02 mat.v3 = v3.sub(t2, t0)
-            var t012 mat.v3 = v3.cross(t01, t02)
-            var len012 f32 = v3.length(t012)
-            var normal v3 = v3.ZERO
-            if len012 > 0.0 {
-                normal = v3.divf(t012, len012)
+                var t01 mat.v3 = v3.sub(t1, t0)
+                var t02 mat.v3 = v3.sub(t2, t0)
+                var t012 mat.v3 = v3.cross(t01, t02)
+                var len012 f32 = v3.length(t012)
+                var normal v3 = v3.ZERO
+                if len012 > 0.0 {
+                    normal = v3.divf(t012, len012)
+                }
+
+                normals = append(normals, normal.x)
+                normals = append(normals, normal.y)
+                normals = append(normals, normal.z)
             }
-
-            normals = append(normals, normal.x)
-            normals = append(normals, normal.y)
-            normals = append(normals, normal.z)
         }
         cells[i].normals = normals
         cells[i].triangleCount = triangleCount
+        cells[i].opaqueTriangleCount = opaqueTriCount
+        cells[i].transparentTriangleCount = transparentTriCount
         panicIf((triangleCount != (opaqueTriCount+transparentTriCount)),
                sprintf("TRI %d, SUM %d, OPAQUE %d, ALPHA %d, POS %d, MOD %d", triangleCount,
                    opaqueTriCount+transparentTriCount,
@@ -205,15 +1066,7 @@ realTriangleCount = 0
     }
     }
 
-    var octreePrimitives []Primitive = g_octrees[out.octree].primitives
-    var octreePrimitiveCount i32 = len(octreePrimitives)
-    for primitiveIndex := 0; primitiveIndex < octreePrimitiveCount; primitiveIndex++ {
-        var hash0 ui64
-        var hash1 ui64
-        hash0, hash1 = PrimitiveComputeHash(octreePrimitives[primitiveIndex])
-        octreePrimitives[primitiveIndex].hash0 = hash0
-        octreePrimitives[primitiveIndex].hash1 = hash1
-    }
+    octreeLoad(out)
 }
 
 func resetOffsets(id OctreeId) (count i32) {
@@ -242,25 +1095,24 @@ func OctreeUpdate(id OctreeId, frustum FrustumId, targetLevel i32) {
     var totalCount i32 = resetOffsets(id)
     octreeUpdateLevel(id, 0, frustum, true, targetLevel)
 
-    MeshBegin(g_octrees[id.octree].debugMesh)
 
-    var cells []OctreeCell = g_octrees[id.octree].cells
-    var visibles []i32 = g_octrees[id.octree].visibles
-    var visibleCount i32 = len(visibles)
-    for i := 0; i < visibleCount; i++ {
-        var offset i32 = visibles[i]
-        var center mat.v3 = cells[offset].center
-        var size mat.v3 = v3.mulf(cells[offset].size, 0.99)
-        MeshAppendBox(g_octrees[id.octree].debugMesh, true, false,
-            center, v3.make(size.x, 0.0, 0.0), v3.make(0.0, size.y, 0.0), v3.make(0.0, 0.0, size.z), v4.RED)
-    }
-/*
- var min mat.v3
+    if IsValidMesh(g_octrees[id.octree].debugMesh) {
+        MeshBegin(g_octrees[id.octree].debugMesh)
+        var cells []OctreeCell = g_octrees[id.octree].cells
+        var visibles []i32 = g_octrees[id.octree].visibles
+        var visibleCount i32 = len(visibles)
+        for i := 0; i < visibleCount; i++ {
+            var offset i32 = visibles[i]
+            var center mat.v3 = cells[offset].center
+            var size mat.v3 = v3.mulf(cells[offset].size, 0.99)
+            MeshAppendBox(g_octrees[id.octree].debugMesh, true, false,
+                center, v3.make(size.x, 0.0, 0.0), v3.make(0.0, size.y, 0.0), v3.make(0.0, 0.0, size.z), v4.RED)
+        }
+    /*
+    var min mat.v3
     var max mat.v3
-
     var mins []mat.v3 = g_octrees[id.octree].mins
     var maxs []mat.v3 = g_octrees[id.octree].maxs
-
     var primitiveCount i32 = len(mins)
     for i := 0; i < primitiveCount; i++ {
         var size mat.v3 = v3.mulf(v3.sub(maxs[i], mins[i]), 0.5)
@@ -268,9 +1120,10 @@ func OctreeUpdate(id OctreeId, frustum FrustumId, targetLevel i32) {
         MeshAppendBox(g_octrees[id.octree].debugMesh, true, false,
             center, v3.make(size.x, 0.0, 0.0), v3.make(0.0, size.y, 0.0), v3.make(0.0, 0.0, size.z),
             v4.PINK)
-    }*/
-
-    MeshEnd(g_octrees[id.octree].debugMesh)
+    }
+    */
+        MeshEnd(g_octrees[id.octree].debugMesh)
+    }
 }
 
 /*var P0 fps.ProfileId = fps.InvalidProfile()
@@ -281,20 +1134,24 @@ var P4 fps.ProfileId = fps.InvalidProfile()
 var P5 fps.ProfileId = fps.InvalidProfile()
 var P6 fps.ProfileId = fps.InvalidProfile()*/
 
+
 // OctreeRender ...
-func OctreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, projection mat.m44) {
+func OctreeRender(id OctreeId, world mat.m44, view mat.m44, projection mat.m44,
+    envSpec TextureId, envDiff TextureId, brdf TextureId, cameraPosition v4, exposure f32) {
     panicIfNot(OctreeIsValid(id), "invalid id")
     DisableBlending()
     DepthState(true, LESS, true)
     g_octrees[id.octree].opaqueBuckets = sortBuckets(id, g_octrees[id.octree].opaqueBuckets, true)
-    octreeRender(id, model, world, view, projection, g_octrees[id.octree].opaqueBuckets)
+    octreeRender(id, world, view, projection, g_octrees[id.octree].opaqueBuckets,
+        envSpec, envDiff, brdf, cameraPosition, exposure)
 
     EnableBlending(SRC_ALPHA, ONE_MINUS_SRC_ALPHA)
     DepthState(true, LESS, false)
     g_octrees[id.octree].transparentBuckets = sortBuckets(id, g_octrees[id.octree].transparentBuckets, false)
-    octreeRender(id, model, world, view, projection, g_octrees[id.octree].transparentBuckets)
+    octreeRender(id, world, view, projection, g_octrees[id.octree].transparentBuckets,
+        envSpec, envDiff, brdf, cameraPosition, exposure)
 
-    if g_octrees[id.octree].debugRender {
+    if IsValidMesh(g_octrees[id.octree].debugMesh) {
         DepthState(true, LESS, false)
 	    EffectUse(g_fxVertexColor3D)
 	    EffectAssignM44(g_fxVertexColor3D, UNIFORM_WORLD, world, false)
@@ -302,12 +1159,6 @@ func OctreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, proje
 	    EffectAssignM44(g_fxVertexColor3D, UNIFORM_PROJECTION, projection, false)
 	    MeshRender(g_octrees[id.octree].debugMesh)
     }
-}
-
-// OctreeSetDebug ...
-func OctreeSetDebug(id OctreeId, debugRender bool) {
-    panicIfNot(OctreeIsValid(id), "invalid id")
-    g_octrees[id.octree].debugRender = debugRender
 }
 
 func sortBuckets(id OctreeId, in []PrimitiveBucket, opaque bool) (out []PrimitiveBucket) {
@@ -346,20 +1197,11 @@ func sortBuckets(id OctreeId, in []PrimitiveBucket, opaque bool) (out []Primitiv
     //fps.StopProfile(P2)
 }
 
-func octreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, projection mat.m44, buckets []PrimitiveBucket) {
+func octreeRender(id OctreeId, world mat.m44, view mat.m44, projection mat.m44, buckets []PrimitiveBucket,
+    envSpec TextureId, envDiff TextureId, brdf TextureId, cameraPosition v4, exposure f32) {
     //P0 = fps.CreateStartProfile(P0, "OctreeRender")
     //P1 = fps.CreateStartProfile(P1, "P1")
     panicIfNot(OctreeIsValid(id), "invalid id")
-
-    var modelIndex i32 = model.model
-	var environmentSpecular TextureId = g_models[modelIndex].environmentSpecular // TODO : renderState
-	var environmentDiffuse TextureId = g_models[modelIndex].environmentDiffuse // TODO : renderState
-	var brdf TextureId = g_models[modelIndex].brdf // TODO : renderState
-	var cameraPosition mat.v4 = g_models[modelIndex].cameraPosition // TODO : renderState
-	var jointMatrices []m44 = g_models[modelIndex].jointMatrices
-	var skinned bool = g_models[modelIndex].skinned
-    var worldIsIdentity bool = true
-    var exposure f32 = g_models[modelIndex].exposure
 
     var lastEffect i32 = -1
     var lastBaseTexture i32 = -1
@@ -384,8 +1226,8 @@ func octreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, proje
             lastEffect = effect.effect
 
             EffectUse(effect)
-	        EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearClamp)
-            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linear0Clamp)
+	        EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, envSpec, g_linearClamp)
+            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, envDiff, g_linear0Clamp)
 		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Clamp) // TODO : use gltf sampler
 
             EffectAssignM44(effect, UNIFORM_WORLD, world, false)
@@ -394,7 +1236,7 @@ func octreeRender(id OctreeId, model ModelId, world mat.m44, view mat.m44, proje
 
             EffectAssignV4(effect, UNIFORM_CAMERA_POSITION, cameraPosition)
    	        EffectAssignV4(effect, UNIFORM_DEBUG_0, DEBUG_0)
-            EffectAssignV4(effect, UNIFORM_PBR, v4.make(i32.f32(TextureGetMipmapCount(environmentSpecular)), exposure, 0.0, 0.0))
+            EffectAssignV4(effect, UNIFORM_PBR, v4.make(i32.f32(TextureGetMipmapCount(envSpec)), exposure, 0.0, 0.0))
 
             lastBaseTexture = -1
             lastNormalTexture = -1
@@ -773,7 +1615,7 @@ func computeTriangleCount(primitives []Primitive, cellPrimitives []i32) (out i32
 }
                 var realTriangleCount i32
 
-func octreeSplitMeshes(id OctreeId, meshes []i32, asset AssetId, primitives []Primitive, transforms []m44, cells []OctreeCell, cellIndex i32, cellPrimitives []i32) (out []i32) {
+func octreeSplitMeshes(id OctreeId, meshes []i32, asset AssetId, primitives []Primitive, transforms []m44, cells []OctreeCell, cellIndex i32, cellPrimitives []i32, options i32) (out []i32) {
     var cellMax mat.v3 = cells[cellIndex].max
     var cellMin mat.v3 = cells[cellIndex].min
     var cellPlanesNormals []mat.v3 = cells[cellIndex].planesNormal
@@ -1329,35 +2171,37 @@ func octreeSplitMeshes(id OctreeId, meshes []i32, asset AssetId, primitives []Pr
 
     g_octrees[id.octree].primitives = octreePrimitives
 
-    var primitiveCount i32 = len(cellPrimitives)
-    for primitiveIndex := 0; primitiveIndex < primitiveCount; primitiveIndex++ {
-        var octreePrimitiveIndex i32 = cellPrimitives[primitiveIndex]
-        var cellPrimitive Primitive = octreePrimitives[octreePrimitiveIndex]
-        if len(cellPrimitive.vertices) > 0 && len(cellPrimitive.indices) > 0 {
-            var attributes []VertexAttribute = cellPrimitive.attributes
-            var mesh MeshId = MeshCreate(mode, indicesType,
-                len(cellPrimitive.indices) / cellPrimitive.indexByteStride,
-                attributes, len(cellPrimitive.vertices) / cellPrimitive.vertexByteStride)
+    if options == OCTREE_GRAPHICS {
+        var primitiveCount i32 = len(cellPrimitives)
+        for primitiveIndex := 0; primitiveIndex < primitiveCount; primitiveIndex++ {
+            var octreePrimitiveIndex i32 = cellPrimitives[primitiveIndex]
+            var cellPrimitive Primitive = octreePrimitives[octreePrimitiveIndex]
+            if len(cellPrimitive.vertices) > 0 && len(cellPrimitive.indices) > 0 {
+                var attributes []VertexAttribute = cellPrimitive.attributes
+                var mesh MeshId = MeshCreate(mode, indicesType,
+                    len(cellPrimitive.indices) / cellPrimitive.indexByteStride,
+                    attributes, len(cellPrimitive.vertices) / cellPrimitive.vertexByteStride)
 
-            MeshBegin(mesh)
-            g_meshes[mesh.mesh].vertices = cellPrimitive.vertices
-            g_meshes[mesh.mesh].indices = cellPrimitive.indices
-            g_meshes[mesh.mesh].usePosition = cellPrimitive.usePosition
-            g_meshes[mesh.mesh].useNormal = cellPrimitive.useNormal
-            g_meshes[mesh.mesh].useColor = cellPrimitive.useColor
-            g_meshes[mesh.mesh].useTexcoord = cellPrimitive.useTexcoord
-            g_meshes[mesh.mesh].useTangent = cellPrimitive.useTangent
-            g_meshes[mesh.mesh].useWeight = cellPrimitive.useWeight
-            g_meshes[mesh.mesh].useJoint = cellPrimitive.useJoint
-            g_meshes[mesh.mesh].min = cellPrimitive.min
-            g_meshes[mesh.mesh].max = cellPrimitive.max
-            MeshEnd(mesh)
+                MeshBegin(mesh)
+                g_meshes[mesh.mesh].vertices = cellPrimitive.vertices
+                g_meshes[mesh.mesh].indices = cellPrimitive.indices
+                g_meshes[mesh.mesh].usePosition = cellPrimitive.usePosition
+                g_meshes[mesh.mesh].useNormal = cellPrimitive.useNormal
+                g_meshes[mesh.mesh].useColor = cellPrimitive.useColor
+                g_meshes[mesh.mesh].useTexcoord = cellPrimitive.useTexcoord
+                g_meshes[mesh.mesh].useTangent = cellPrimitive.useTangent
+                g_meshes[mesh.mesh].useWeight = cellPrimitive.useWeight
+                g_meshes[mesh.mesh].useJoint = cellPrimitive.useJoint
+                g_meshes[mesh.mesh].min = cellPrimitive.min
+                g_meshes[mesh.mesh].max = cellPrimitive.max
+                MeshEnd(mesh)
 
 
-            octreePrimitives[octreePrimitiveIndex].mesh = mesh
-        } else {
-            //printf("Empty primitive... looks doubious\n")
-                cellPrimitives[primitiveIndex] = -1
+                octreePrimitives[octreePrimitiveIndex].mesh = mesh
+            } else {
+                //printf("Empty primitive... looks doubious\n")
+                    cellPrimitives[primitiveIndex] = -1
+            }
         }
     }
     out = cellPrimitives
@@ -1556,13 +2400,10 @@ func octreeIntersectsSphere(id OctreeId, position mat.v3, radius f32, level i32)
 
         var cells []OctreeCell = g_octrees[id.octree].cells
         inter = mat.SphereIntersectsAABB(position, radius, cells[offset].min, cells[offset].max)
-      //  printf("INTER %d\n", inter)
         var childLevel i32 = level + 1
         var recurse i32 = 8
         if inter <= 0 {
-        //    printf("LEVEL %d MAX %d\n", level, maxLevel)
             if level == maxLevel {
-          //      printf("APPEND OFFSET %d\n", offset)
                 out = append(out, offset)
                 var cells []OctreeCell = g_octrees[id.octree].cells
                 if cells[offset].triangleCount > 0 {

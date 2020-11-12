@@ -29,20 +29,13 @@ type Sky struct {
 
 type Level struct {
     gfxName str
-    gfxScene str
-    gfxWorld mat.m44
-    gfxModel gfx.ModelId
     gfxOctree gfx.OctreeId
     phxName str
-    phxScene str
-    phxWorld mat.m44
-    phxModel gfx.ModelId
     phxOctree gfx.OctreeId
     loaded bool
     physic i32
     debug i32
 }
-
 
 // Types
 type Anim struct {
@@ -151,7 +144,6 @@ var skies []Sky
 var levels []Level
 
 var debugFrustum bool = false
-var debugOctree bool = false
 var debugSky bool = false
 var currentSky i32
 var currentLevel i32
@@ -456,10 +448,6 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 		} else if key == app.KEYCODE_9 {
             if action == app.KEY_PRESS {
                 debugFrustum = debugFrustum == false
-            }
-        } else if key == app.KEYCODE_8 {
-            if action == app.KEY_PRESS {
-                debugOctree = debugOctree == false
             }
         } else if key == app.KEYCODE_7 {
             if action == app.KEY_PRESS {
@@ -1156,20 +1144,9 @@ func gameOnRender(controlIndex i32, controlAction i32) {
     // LevelRender
 	//-------------------------------------------------------------------------
 	if isModeLight == false {
-        var levelModel gfx.ModelId = levels[currentLevel].gfxModel
         var levelOctree gfx.OctreeId = levels[currentLevel].gfxOctree
-	    gfx.ModelUpdate(levelModel, gfx.AnimationInvalid(), 0.0, true)
-	    gfx.ModelSetWorld(levelModel, m44.IDENTITY)
-	    gfx.ModelSetView(levelModel, view)
-	    gfx.ModelSetProjection(levelModel, projection)
-	    gfx.ModelSetEnvironmentSpecular(levelModel, skies[currentSky].specular)
-	    gfx.ModelSetEnvironmentDiffuse(levelModel, skies[currentSky].diffuse)
-	    gfx.ModelSetBRDF(levelModel, brdf)
-	    gfx.ModelSetCameraPosition(levelModel, cameraPosition)
-        gfx.ModelSetExposure(levelModel, 1.0)
-	    //gfx.ModelRender(levelModel)
-        gfx.OctreeSetDebug(levelOctree, debugOctree)
-        gfx.OctreeRender(levelOctree, levelModel, /*levels[currentLevel].world*/ m44.IDENTITY, view, projection)
+        gfx.OctreeRender(levelOctree, m44.IDENTITY, view, projection,
+        	skies[currentSky].specular, skies[currentSky].diffuse, brdf, v4.make_v31(cameraPosition, 1.0), 1.0)
         if debugFrustum {
             gfx.FrustumRender(frustum, m44.IDENTITY, view, projection)
         }
@@ -1451,15 +1428,10 @@ func characterCreate(name str, scale f32, spine str, torso str, shoulder str, ha
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func levelCreate(gfxName str, gfxScene str, gfxScale mat.v3, gfxRotate mat.v4, gfxTranslate mat.v3,
-        phxName str, phxScene str, phxScale mat.v3, phxRotate mat.v4, phxTanslate mat.v3) {
+func levelCreate(gfxName str, gfxLevel i32, phxName str, phxLevel i32) {
     var level Level
-    level.gfxName = gfxName
-    level.gfxScene = gfxScene
-    level.gfxWorld = m44.makev_SAT(gfxScale, gfxRotate, gfxTranslate)
-    level.phxName = phxName
-    level.phxScene = phxScene
-    level.phxWorld = m44.makev_SAT(phxScale, phxRotate, phxTanslate)
+    level.gfxName = sprintf("%s/models/%s/octree_lod_%d.oct", app.DataDir(), gfxName, gfxLevel)
+    level.phxName = sprintf("%s/models/%s/octree_lod_%d.oct", app.DataDir(), phxName, phxLevel)
     levels = append(levels, level)
 }
 
@@ -1571,7 +1543,7 @@ func gameOnParse(i i32, argc i32) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func gameOnStart(window str) {
-    StartCPUProfile("skylight_init", 100)
+    //StartCPUProfile("skylight_init", 100)
     app.Init()
 
 	phx.Init(30U, -0.98)
@@ -1580,7 +1552,7 @@ func gameOnStart(window str) {
     if isModeVideo {
         gameOnUpdate(0, 0)
     }
-    StopCPUProfile("skylight_init")
+    //StopCPUProfile("skylight_init")
 }
 
 //-----------------------------------------------------------------------------
@@ -1679,17 +1651,13 @@ func loadGame()() {
     characterCreate("skylight/darkz", 6.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
     characterCreate("skylight/dmux", 5.5,"mixamorig:Hips_01", "mixamorig:Spine_02", "mixamorig:RightShoulder_012", "mixamorig:RightHand_00", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
     characterCreate("skylight/bouffet", 5.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("skylight/drump", 5.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
+    characterCreate("skylight/gutsin", 5.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
 
-    levelCreate(
-            "skylight/skyminer/high", "scene.gltf", v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 3.0 * v1.PI/2.0), v3.make(0.0, 1500.0, 600.0),
-            "skylight/skyminer/collision", "scene.gltf", v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 3.0 * v1.PI/2.0), v3.make(0.0, 1500.0, 600.0))
-    //levelCreate(
-    //        "skylight/skyantenna/high", "scene.gltf", v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 1500.0, 600.0),
-    //        "skylight/skyantenna/collision", "scene.gltf", v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 1500.0, 600.0))
-    //levelCreate("skylight/orangepi/high", "scene.gltf", v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 50.0, 0.0))
-    //levelCreate(
-    //	"glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", v3.makef(20.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 100.0, 0.0),
-    //	"glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", v3.makef(20.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 100.0, 0.0))
+    levelCreate("skylight/skyminer/high", 2, "skylight/skyminer/collision", 4)
+    //levelCreate("skylight/skyantenna/high", 2, "skylight/skyantenna/collision", 4)
+    //levelCreate("glTF-Sample-Models/Sponza/glTF", 2, "glTF-Sample-Models/Sponza/glTF", 4)
+
     //skyCreate("doge2")
     skyCreate("footprint_court")
     /*skyCreate("helipad")
@@ -1724,28 +1692,20 @@ func loadLevel()() {
     currentLevel = i32.rand(0, levelCount) % levelCount
     if levels[currentLevel].loaded == false {
         if isModeLight == false {
-            var levelModel gfx.ModelId = loadModel(levels[currentLevel].gfxName, levels[currentLevel].gfxScene, gfx.MODEL_GEOMETRY)
-            gfx.ModelUpdate(levelModel, gfx.AnimationInvalid(), 0.0, true)
-            var t0 i64 = time.UnixNano()
-            var levelWorld mat.m44 = levels[currentLevel].gfxWorld
-            var levelOctree gfx.OctreeId = gfx.OctreeCreate(levelModel, levelWorld, 1)
-            printf("Octree model split in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
-            levels[currentLevel].gfxModel = levelModel
+            var t0 i64
+
+            t0 = time.UnixNano()
+            var levelOctree gfx.OctreeId = gfx.OctreeLoad(levels[currentLevel].gfxName, false)
+            printf("Graphics octree loaded in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
+            panicIf(gfx.OctreeIsValid(levelOctree) == false, "failed to load graphics octree")
             levels[currentLevel].gfxOctree = levelOctree
-            //levels[currentLevel].physic = phx.AddOctree(TAG_LEVEL, -1, phx.STATE_DEBUG | phx.STATE_DEBUG_WIRE | phx.STATE_DEBUG_COLOR, levelOctree)
 
-
-            var phxModel gfx.ModelId = loadModel(levels[currentLevel].phxName, levels[currentLevel].phxScene, gfx.MODEL_GEOMETRY)
-            gfx.ModelUpdate(phxModel, gfx.AnimationInvalid(), 0.0, true)
-            var t1 i64 = time.UnixNano()
-            var phxWorld mat.m44 = levels[currentLevel].phxWorld
-            var phxOctree gfx.OctreeId = gfx.OctreeCreate(phxModel, phxWorld, 3)
-            printf("Octree model split in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
-            levels[currentLevel].phxModel = phxModel
+            t0 = time.UnixNano()
+		    var phxOctree gfx.OctreeId = gfx.OctreeLoad(levels[currentLevel].phxName, false)
+            printf("Collision octree loaded in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
+            panicIf(gfx.OctreeIsValid(phxOctree) == false, "failed to load physics octree")
             levels[currentLevel].phxOctree = phxOctree
             levels[currentLevel].physic = phx.AddOctree(TAG_LEVEL, -1, phx.STATE_DEBUG | phx.STATE_DEBUG_WIRE | phx.STATE_DEBUG_COLOR, phxOctree)
-
-
         }
         levels[currentLevel].loaded = true
 
@@ -1798,7 +1758,7 @@ func loadLevel()() {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func main()() {
-    StartCPUProfile("skylight_run", 100)
+    //StartCPUProfile("skylight_run", 100)
     app.SetParseCallback("main", "gameOnParse")
 	app.SetStartCallback("main", "gameOnStart")
 	if app.Run("skylight", 1024, 768, 60, "", gfx.GL_VERSION_NONE, 2U) {
@@ -1806,6 +1766,6 @@ func main()() {
 	    gfx.MeshUnlock(groundMesh)
 	    //gam.Destroy()//ISSUE : can't call gam.Destroy()
     }
-	StopCPUProfile("skylight_run")
+	//StopCPUProfile("skylight_run")
 }
 
