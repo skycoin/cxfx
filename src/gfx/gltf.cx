@@ -3139,21 +3139,21 @@ func AssetCreate(dataDir str, filename str, options i32) (out AssetId) {
   				var componentType i32 = accessors[a].componentType
   				if componentType == gl.FLOAT {
 					var success bool
-					dataF32, success = os.ReadF32Slice(handle, count * componentCount)
+					dataF32, success = os.ReadF32Slice(handle, dataF32, i32.ui64(count * componentCount))
 					if success == false {
 						out = assetFailure(file, "invalid gltf : failed to read f32 slice\n")
 						return
 					}
 				} else if componentType == gl.UNSIGNED_SHORT {
 					var success bool
-					dataUI16, success = os.ReadUI16Slice(handle, count * componentCount)
+					dataUI16, success = os.ReadUI16Slice(handle, dataUI16, i32.ui64(count * componentCount))
 					if success == false {
 						out = assetFailure(file, "invalid gltf : failed to read f32 slice\n")
 						return
 					}
   				} else if componentType == gl.UNSIGNED_INT {
 					var success bool
-					dataUI32, success = os.ReadUI32Slice(handle, count * componentCount)
+					dataUI32, success = os.ReadUI32Slice(handle, dataUI32, i32.ui64(count * componentCount))
 					if success == false {
 						out = assetFailure(file, "invalid gltf : failed to read f32 slice\n")
 						return
