@@ -341,7 +341,7 @@ func MeshEnd(id MeshId) () {
 
 		var vertexByteStride i32 = g_meshes[mesh].vertexByteStride
 		panicIfNot(vertexByteStride > 0, "invalid vertex stride")
-		panicIfNot((vertexByteCount % vertexByteStride) == 0, "(vertexByteCount % vertexByteStride) == 0")
+		panicIfNot((vertexByteCount % vertexByteStride) == 0, sprintf("(vertexByteCount % vertexByteStride) == 0 :: (%d mod %d) == %d", vertexByteCount, vertexByteStride, vertexByteCount % vertexByteStride))
    		vertexCount = vertexByteCount / vertexByteStride
 
 		gl.BindVertexArrayCore(g_meshes[mesh].vao)
@@ -833,6 +833,118 @@ func MeshAppendParticle(id MeshId, particle Particle) {
 	g_meshes[mesh].vertices = vertices
 	g_meshes[mesh].indices = indices
 
+}
+
+// MeshAppendTriangle ...
+// TODO remove wire branching
+// TODO remove short indices branching
+// TODO remove debug colors branching
+// TODO remove ccw branching
+// TODO support arbitrary vertex layout
+// TODO implement cw
+// TODO strips
+func MeshAppendTriangle(id MeshId, wire bool, ccw bool, p0 mat.v3, p1 mat.v3, p2 mat.v3, color mat.v4) { // TODO : use line strip
+	panicIfNot(IsValidMesh(id), "invalid id")
+
+	var mesh i32 = id.mesh
+
+	var primitive i32 = g_meshes[mesh].primitive
+	panicIfNot((wire == true && primitive == gl.LINES) || primitive == gl.TRIANGLES, "invalid primitive")
+
+	var indices []ui8 = g_meshes[mesh].indices
+	var vertices []ui8 = g_meshes[mesh].vertices
+	var offset i32 = len(vertices) / g_meshes[mesh].vertexByteStride
+	var indexFormat i32 = g_meshes[mesh].indexFormat
+	panicIf(indexFormat != gl.UNSIGNED_SHORT && indexFormat != gl.UNSIGNED_INT, "invalid index format")
+
+	if wire {
+		if indexFormat == gl.UNSIGNED_SHORT {
+				indices = gl.AppendUI16(indices, i32.ui16(offset + 0))
+				indices = gl.AppendUI16(indices, i32.ui16(offset + 1))
+				indices = gl.AppendUI16(indices, i32.ui16(offset + 1))
+				indices = gl.AppendUI16(indices, i32.ui16(offset + 2))
+				indices = gl.AppendUI16(indices, i32.ui16(offset + 2))
+				indices = gl.AppendUI16(indices, i32.ui16(offset + 0))
+				offset = offset + 3
+		} else {
+				indices = gl.AppendUI32(indices, i32.ui32(offset + 0))
+				indices = gl.AppendUI32(indices, i32.ui32(offset + 1))
+				indices = gl.AppendUI32(indices, i32.ui32(offset + 1))
+				indices = gl.AppendUI32(indices, i32.ui32(offset + 2))
+				indices = gl.AppendUI32(indices, i32.ui32(offset + 2))
+				indices = gl.AppendUI32(indices, i32.ui32(offset + 0))
+				offset = offset + 3
+		}
+	} else {
+		if ccw {
+			if indexFormat == gl.UNSIGNED_SHORT {
+					indices = gl.AppendUI16(indices, i32.ui16(offset + 0))
+					indices = gl.AppendUI16(indices, i32.ui16(offset + 1))
+					indices = gl.AppendUI16(indices, i32.ui16(offset + 2))
+					offset = offset + 3
+			} else {
+					indices = gl.AppendUI32(indices, i32.ui32(offset + 0))
+					indices = gl.AppendUI32(indices, i32.ui32(offset + 1))
+					indices = gl.AppendUI32(indices, i32.ui32(offset + 2))
+					offset = offset + 3
+			}
+		} else {
+			if indexFormat == gl.UNSIGNED_SHORT {
+					indices = gl.AppendUI16(indices, i32.ui16(offset + 0))
+					indices = gl.AppendUI16(indices, i32.ui16(offset + 2))
+					indices = gl.AppendUI16(indices, i32.ui16(offset + 1))
+					offset = offset + 3
+			} else {
+					indices = gl.AppendUI32(indices, i32.ui32(offset + 0))
+					indices = gl.AppendUI32(indices, i32.ui32(offset + 2))
+					indices = gl.AppendUI32(indices, i32.ui32(offset + 1))
+					offset = offset + 3
+			}
+		}
+	}
+
+	var r f32 = color.x
+	var g f32 = color.y
+	var b f32 = color.z
+	var a f32 = color.w
+
+	var u0 f32 = 1.0
+	var u1 f32 = 0.0
+	var v0 f32 = 1.0
+	var v1 f32 = 0.0
+
+	vertices = gl.AppendF32(vertices, p0.x)
+	vertices = gl.AppendF32(vertices, p0.y)
+	vertices = gl.AppendF32(vertices, p0.z)
+	vertices = gl.AppendF32(vertices, r)
+	vertices = gl.AppendF32(vertices, g)
+	vertices = gl.AppendF32(vertices, b)
+	vertices = gl.AppendF32(vertices, a)
+	vertices = gl.AppendF32(vertices, u0)
+	vertices = gl.AppendF32(vertices, v0)
+
+	vertices = gl.AppendF32(vertices, p1.x)
+	vertices = gl.AppendF32(vertices, p1.y)
+	vertices = gl.AppendF32(vertices, p1.z)
+	vertices = gl.AppendF32(vertices, r)
+	vertices = gl.AppendF32(vertices, g)
+	vertices = gl.AppendF32(vertices, b)
+	vertices = gl.AppendF32(vertices, a)
+	vertices = gl.AppendF32(vertices, u1)
+	vertices = gl.AppendF32(vertices, v0)
+
+	vertices = gl.AppendF32(vertices, p2.x)
+	vertices = gl.AppendF32(vertices, p2.y)
+	vertices = gl.AppendF32(vertices, p2.z)
+	vertices = gl.AppendF32(vertices, r)
+	vertices = gl.AppendF32(vertices, g)
+	vertices = gl.AppendF32(vertices, b)
+	vertices = gl.AppendF32(vertices, a)
+	vertices = gl.AppendF32(vertices, u0)
+	vertices = gl.AppendF32(vertices, v1)
+
+	g_meshes[mesh].vertices = vertices
+	g_meshes[mesh].indices = indices
 }
 
 // MeshAppendQuad ...

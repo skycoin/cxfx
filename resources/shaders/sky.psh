@@ -1,6 +1,6 @@
 uniform samplerCube u_tcEnvironmentDiffuse;
 uniform vec4 DEBUG_0;
-//uniform vec4 u_v4PBR;
+uniform vec4 u_v4CameraPosition;
 
 in vec3 v_v3Position;
 
@@ -8,7 +8,7 @@ out vec4 o_v4Color;
 
 void main()
 {
-    vec4 v4Base = textureCube(u_tcEnvironmentDiffuse, normalize(v_v3Position * vec3(1, 1, 1)));
+    vec4 v4Base = textureCube(u_tcEnvironmentDiffuse, normalize(v_v3Position - u_v4CameraPosition.rgb));
 	o_v4Color = vec4(invgamma(tonemap(v4Base.rgb)), v4Base.a);
 }
 

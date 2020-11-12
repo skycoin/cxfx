@@ -39,7 +39,7 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func gameOnUpdate(controlIndex i32, controlAction i32) {
-	gam.FreeCameraUpdate(camera, fps.DeltaSecond())
+	gam.FreeCameraUpdate(camera, fps.DeltaSecond(), 1.0, 1.0)
 
 	ry = ry + f64.f32(fps.DeltaSecond())
 	world = m44.makef_AT(0.0, 1.0, 0.0, ry, 0.0, 0.0, -50.0)

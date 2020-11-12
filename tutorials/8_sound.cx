@@ -149,8 +149,6 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func gameOnUpdate(controlIndex i32, controlAction i32) {
-	gam.FreeCameraUpdate(camera, fps.DeltaSecond())
-
 	var dts f64 = fps.DeltaSecond()
 	var dt f32 = f64.f32(dts)
 
@@ -162,7 +160,7 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	var model gfx.ModelId = models[currentModel]
 	var anim gfx.AnimationId = gfx.ModelGetAnimation(model, 0)
 	if currentCamera == CAMERA_FREE {
-		gam.FreeCameraUpdate(camera, dts)
+		gam.FreeCameraUpdate(camera, dts, 1.0, 1.0)
 	} else if currentCamera == CAMERA_FPS {
 		gam.FpsCameraUpdate(camera, dts, v3.ZERO)
 	} else if currentCamera == CAMERA_TPS {
@@ -194,7 +192,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
     } else {
     	skybox = skyDiffuses[currentSky]
     }
-    gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skybox, gfx.g_linear0Wrap)
+    gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skybox, gfx.g_linear0Clamp)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)

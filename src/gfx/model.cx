@@ -313,6 +313,18 @@ func ModelCreateFromFile(dataDir str, filename str, options i32) (out ModelId){ 
 	modelTransform(out, AnimationInvalid(), 0.0, false)
 }
 
+// ModelGetPath ...
+func ModelGetPath(id ModelId) (out str) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	out = g_models[id.model].dataDir	
+}
+
+// ModelGetName ...
+func ModelGetName(id ModelId) (out str) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	out = g_models[id.model].filename	
+}
+
 // ModelGetMin ...
 func ModelGetMin(id ModelId) (out mat.v3) {
 	panicIfNot(ModelIsValid(id), "invalid model")
@@ -1072,10 +1084,10 @@ func modelInstance(id ModelId, options i32) (success bool) {
 			var nodeMatrix mat.m44 = gltf.NodeGetMatrix(asset, node)
 			var determinant f32 = m44.determinant(nodeMatrix)
 			determinants = append(determinants, determinant)
-			/*var cullFace i32 = gl.BACK
+			var cullFace i32 = gl.BACK
 			if determinant < 0.0 {
 				cullFace = gl.FRONT
-			}*/
+			}
 			matrixStack = m44.push(matrixStack, nodeMatrix)
 
 			var last m44 = matrixStack[len(matrixStack) - 1]
@@ -1634,9 +1646,9 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
         if lastEffect != effect.effect {
             lastEffect = effect.effect
 
-		    EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearWrap) // TODO : use gltf sampler
-            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linear0Wrap) // TODO : use gltf sampler
-		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Wrap) // TODO : use gltf sampler
+		    EffectTryAssignTexture(effect, SAMPLER_ENV_SPECULAR, environmentSpecular, g_linearClamp) // TODO : use gltf sampler
+            EffectTryAssignTexture(effect, SAMPLER_ENV_DIFFUSE, environmentDiffuse, g_linear0Clamp) // TODO : use gltf sampler
+		    EffectTryAssignTexture(effect, SAMPLER_BRDF, brdf, g_linear0Clamp) // TODO : use gltf sampler
 
             EffectAssignM44(effect, UNIFORM_VIEW, view, false)
 	    	EffectAssignM44(effect, UNIFORM_PROJECTION, projection, false)
@@ -1694,7 +1706,7 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
             }
         }
 
-        if m44.equal(tmpWorld, lastTransform) == false {
+        if m44.equ(tmpWorld, lastTransform) == false {
             lastTransform = tmpWorld
     		EffectAssignM44(effect, UNIFORM_WORLD, tmpWorld, false)
         }

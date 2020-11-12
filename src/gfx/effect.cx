@@ -312,23 +312,14 @@ func TemplateBindUniform(id TemplateId, slot i32, name str) {
 	g_templates[id.template].uniforms = LocationBind(g_templates[id.template].uniforms, -1, slot, name, -1)
 }
 
-// TemplateInstance ...
-func TemplateInstance(id TemplateId) (out EffectId){
+func templateInstanceFromKey(id TemplateId, effectKey i64, vertexVariant i64, vertexFlags i64, vertexKey i64, pixelVariant i64, pixelFlags i64, pixelKey i64) (out EffectId) {
 	out = EffectInvalid()
 	panicIfNot(TemplateIsValid(id), "invalid id")
 	var templateVariant i64 = g_templates[id.template].variant
 
-	var vertexVariant i64 = g_templates[id.template].vertexVariant
-	var vertexFlags i64 = g_templates[id.template].vertexKey.value
-	var vertexKey i64 = (vertexFlags << SHADER_VARIANT) | vertexVariant
 	var vertexShader ShaderId = ShaderCreate(SHADER_VERTEX, vertexVariant, vertexFlags, vertexKey)
-
-	var pixelVariant i64 = g_templates[id.template].pixelVariant
-	var pixelFlags i64 = g_templates[id.template].pixelKey.value
-	var pixelKey i64 = (pixelFlags << SHADER_VARIANT) | pixelVariant
 	var pixelShader ShaderId = ShaderCreate(SHADER_PIXEL, pixelVariant, pixelFlags, pixelKey)
 
-	var effectKey i64 = vertexKey << 32L | pixelKey
 	var effectId EffectId = g_templates[id.template].effect
 	var validEffect bool = false
 	if EffectIsValid(effectId) == true { // ISSUE : no short-circuit evaluation
@@ -360,5 +351,28 @@ func TemplateInstance(id TemplateId) (out EffectId){
 	g_templates[id.template].effect = effectId
 	EffectUse(effectId)
 	out = effectId
+}
+
+// TemplateInstanceFromKey ...
+func TemplateInstanceFromKey(id TemplateId, effectKey i64) (out EffectId) {
+	var vertexVariant i64 = g_templates[id.template].vertexVariant
+	var vertexKey i64 = (effectKey >> 32L) & ((1L << 32L) - 1L)
+	var vertexFlags i64 = (vertexKey >> SHADER_VARIANT) & ((1L << (32L - SHADER_VARIANT)) - 1L)
+	var pixelVariant i64 = g_templates[id.template].pixelVariant
+	var pixelKey i64 = effectKey & ((1L << 32L) - 1L)
+	var pixelFlags i64 = (pixelKey >> SHADER_VARIANT) & ((1L << (32L - SHADER_VARIANT)) - 1L)
+	out = templateInstanceFromKey(id, effectKey, vertexVariant, vertexFlags, vertexKey, pixelVariant, pixelFlags, pixelKey)
+}
+
+// TemplateInstance ...
+func TemplateInstance(id TemplateId) (out EffectId){
+	var vertexVariant i64 = g_templates[id.template].vertexVariant
+	var vertexFlags i64 = g_templates[id.template].vertexKey.value
+	var vertexKey i64 = (vertexFlags << SHADER_VARIANT) | vertexVariant
+	var pixelVariant i64 = g_templates[id.template].pixelVariant
+	var pixelFlags i64 = g_templates[id.template].pixelKey.value
+	var pixelKey i64 = (pixelFlags << SHADER_VARIANT) | pixelVariant
+	var effectKey i64 = vertexKey << 32L | pixelKey
+	out = templateInstanceFromKey(id, effectKey, vertexVariant, vertexFlags, vertexKey, pixelVariant, pixelFlags, pixelKey)
 }
 

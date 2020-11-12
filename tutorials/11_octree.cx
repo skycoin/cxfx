@@ -9,6 +9,7 @@ import "m44"
 import "mat"
 import "snd"
 import "time"
+import "v1"
 import "v3"
 import "v4"
 
@@ -46,7 +47,6 @@ var world mat.m44
 
 var camera gam.CameraId
 var snapFrustum bool = true
-var debugOctree bool = false
 
 var worldPosY f32 = -10.0
 
@@ -97,12 +97,6 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
                 snapFrustum = false
             } else {
                 snapFrustum = true
-            }
-        } else if key == app.KEYCODE_2 && action == app.KEY_PRESS {
-            if debugOctree {
-                debugOctree = false
-            } else {
-                debugOctree = true
             }
         }
 	} else if mods == app.MOD_ALT && action == app.KEY_PRESS {
@@ -170,7 +164,6 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func gameOnUpdate(controlIndex i32, controlAction i32) {
-	gam.FreeCameraUpdate(camera, fps.DeltaSecond())
     if snapFrustum {
         gfx.FrustumUpdate(frustum, gam.CameraGetInvViewProj(camera))
     }
@@ -182,22 +175,14 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	ry = ry + dt * rotations[currentModel]
 	world = m44.makef_SAT(s, s, s, 0.0, 1.0, 0.0, ry, 0.0, 0.0, 0.0)
 
-	var model gfx.ModelId = models[currentModel]
-	var anim gfx.AnimationId = gfx.ModelGetAnimation(model, 0)
 	if currentCamera == CAMERA_FREE {
-		gam.FreeCameraUpdate(camera, dts)
+		gam.FreeCameraUpdate(camera, dts, 1.0, 1.0)
 	} else if currentCamera == CAMERA_FPS {
 		gam.FpsCameraUpdate(camera, dts, v3.ZERO)
 	} else if currentCamera == CAMERA_TPS {
 		gam.TpsCameraUpdate(camera, dts, v3.ZERO, 30.0)
 	}
-	var step f32 = dt * speeds[currentModel]
-	if gfx.AnimationIsValid(anim) {
-		gfx.AnimationUpdate(anim, step, true, -1.0)
-	}
-	gfx.ModelUpdate(model, anim, step, true)
-
-    gfx.OctreeUpdate(octree, frustum)
+    gfx.OctreeUpdate(octree, frustum, 4)
 }
 
 //-----------------------------------------------------------------------------
@@ -219,7 +204,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
     } else {
     	skybox = skyDiffuses[currentSky]
     }
-    gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skybox, gfx.g_linear0Wrap)
+    gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skybox, gfx.g_linear0Clamp)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
@@ -236,18 +221,9 @@ func gameOnRender(controlIndex i32, controlAction i32) {
 	// batches
 	gfx.RenderBatches(false)
 
-	// model
-	var model gfx.ModelId = models[currentModel]
-	gfx.ModelSetWorld(model, world)
-	gfx.ModelSetView(model, view)
-	gfx.ModelSetProjection(model, projection)
-	gfx.ModelSetEnvironmentSpecular(model, skySpeculars[currentSky])
-	gfx.ModelSetEnvironmentDiffuse(model, skyDiffuses[currentSky])
-	gfx.ModelSetBRDF(model, brdf)
-	gfx.ModelSetCameraPosition(model, cameraPosition)
-    gfx.ModelSetExposure(model, 1.0)
-    gfx.OctreeSetDebug(octree, debugOctree)
-    gfx.OctreeRender(octree, models[currentModel], m44.IDENTITY, view, projection)
+	// octree
+    gfx.OctreeRender(octree, m44.IDENTITY, view, projection,
+    	skySpeculars[currentSky], skyDiffuses[currentSky], brdf, v4.make_v31(cameraPosition, 1.0), 1.0)
     gfx.FrustumRender(frustum, m44.IDENTITY, view, projection)
 
 }
@@ -314,14 +290,72 @@ func onExitDialogYes(controlIndex i32, controlAction i32) {
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-func loadModel(path str, filename str, s f32, r f32, v f32) {
-	var model gfx.ModelId = gfx.ModelCreateFromFile(sprintf("%smodels/%s/", app.DataDir(), path), filename, gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
-	models = append(models, model)
+func loadModel(path str, filename str, s f32, r f32, v f32) (out i32) {
+	var modelPath str = sprintf("%smodels/%s/", app.DataDir(), path)
 
-	scales = append(scales, s)
-	rotations = append(rotations, r)
-	speeds = append(speeds, v)
+	var model gfx.ModelId = gfx.ModelInvalid()
+	var modelCount i32 = len(models)
+	for modelIndex := 0; modelIndex < modelCount; modelIndex++ {
+		var m gfx.ModelId = models[modelIndex]
+		if (gfx.ModelGetPath(m) == modelPath) && (gfx.ModelGetName(m) == filename) {
+			model = m
+			out = modelIndex
+			modelIndex = modelCount
+		}
+	}
+
+	if gfx.ModelIsValid(model) == false {
+		out = len(models)
+		model = gfx.ModelCreateFromFile(modelPath, filename, gfx.MODEL_GEOMETRY | gfx.MODEL_ANIMATION)
+		models = append(models, model)
+		scales = append(scales, s)
+		rotations = append(rotations, r)
+		speeds = append(speeds, v)
+	}
 }
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func loadOctree(path str, name str, maxLevel i32, options i32, save bool, world m44, lods bool, reload bool) (out OctreeId) {
+	var t0 i64
+
+	var minLevel i32 = 1
+	if lods == false {
+		minLevel = maxLevel
+	}
+
+	for level := minLevel; level <= maxLevel; level++ {
+	    var octreePath str = sprintf("%s/models/%s/octree_lod_%d.oct", app.DataDir(), path, level)
+	    if reload == false || save == true {
+			t0 = time.UnixNano()
+		    var modelIndex i32 = loadModel(path, name, 1.0, 0.0, 1.0)
+		    var octreeModel gfx.ModelId = models[modelIndex]
+			gfx.ModelUpdate(octreeModel, gfx.AnimationInvalid(), 0.0, true)
+			printf("model loaded in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
+
+		    t0 = time.UnixNano()
+		    var left OctreeId = gfx.OctreeCreate(octreeModel, world, level, true, options)
+		    printf("Octree model split in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
+		    out = left
+
+		    if save {
+		    	t0 = time.UnixNano()
+		    	var octreeSaved bool = gfx.OctreeSave(left, octreePath, options)
+		    	printf("Octree model saved in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
+			}
+		}
+
+	    t0 = time.UnixNano()
+	    if reload {
+		    var right OctreeId = gfx.OctreeLoad(octreePath, true)
+		    printf("Octree model loded in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
+		    //gfx.OctreeAssertEquals(left, right, options)
+	    	out = right
+	    }
+	}
+}
+
+
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -337,43 +371,22 @@ func gameOnStart(window str) {
 		v4.ONE)
 	gfx.MeshEnd(skyMesh)
 
-	//loadModel("glTF-Sample-Models/Box/glTF", "Box.gltf", 1.0, 1.0, 1.0)
-	//loadModel("glTF-Sample-Models/BoxAnimated/glTF", "BoxAnimated.gltf", 1.0, 1.0, 1.0)
-	//loadModel("glTF-Sample-Models/NormalTangentTest/glTF", "NormalTangentTest.gltf", 3.0, 1.0, 1.0)
-	//loadModel("glTF-Sample-Models/NormalTangentMirrorTest/glTF", "NormalTangentMirrorTest.gltf", 3.0, 1.0, 1.0)
-	//loadModel("glTF-Sample-Models/MetalRoughSpheres/glTF", "MetalRoughSpheres.gltf", 1.0, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/CesiumMilkTruck/glTF", "CesiumMilkTruck.gltf", 0.5, 1.0, 1.0)
-	//loadModel("glTF-Sample-Models/2CylinderEngine/glTF", "2CylinderEngine.gltf", 0.005, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/ReciprocatingSaw/glTF", "ReciprocatingSaw.gltf", 0.01, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/GearboxAssy/glTF", "GearboxAssy.gltf", 1.0, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/Buggy/glTF", "Buggy.gltf", 0.05, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/RiggedSimple/glTF", "RiggedSimple.gltf", 3.0, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/RiggedFigure/glTF", "RiggedFigure.gltf", 3.0, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/CesiumMan/glTF", "CesiumMan.gltf", 3.0, 0.0, 2.0)
-	//loadModel("glTF-Sample-Models/Monster/glTF", "Monster.gltf", 0.05, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/BrainStem/glTF", "BrainStem.gltf", 1.0, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/Duck/glTF", "Duck.gltf", 1.0, 1.0, 1.0)
-	//loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
-	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
-	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
-	//loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 1.0, 0.0, 1.0)
-    //loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
-    //loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
-    //loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
-    loadModel("skylight/skyminer/high", "scene.gltf", 1.0, 0.0, 1.0)
+	var octreeWorld mat.m44 = m44.makef_SAT(1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+	var gfxOctree gfx.OctreeId = loadOctree("skylight/skyminer/high", "scene.gltf", 1, gfx.OCTREE_GRAPHICS, false, octreeWorld, false, false)
 
-    var skyminerIndex i32 = len(models) - 1
-    currentModel = skyminerIndex
-    var octreeModel gfx.ModelId = models[skyminerIndex]
-    var octreeMin mat.v3 = v3.mulf(gfx.ModelGetMin(octreeModel), scales[skyminerIndex])
-    var octreeMax mat.v3 = v3.mulf(gfx.ModelGetMax(octreeModel), scales[skyminerIndex])
-    octree = gfx.OctreeCreate(octreeMin, octreeMax, 2)
-	gfx.ModelUpdate(octreeModel, gfx.AnimationInvalid(), 0.0, true)
+    //var octreeWorld mat.m44 = m44.makev_SAT(v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 3.0 * v1.PI/2.0), v3.make(0.0, 1500.0, 600.0))
+	//var gfxOctree gfx.OctreeId = loadOctree("skylight/skyminer/high", "scene.gltf", 2, gfx.OCTREE_GRAPHICS, false, octreeWorld, false, true)
+	//var phxOctree gfx.OctreeId = loadOctree("skylight/skyminer/collision", "scene.gltf", 4, gfx.OCTREE_COLLISIONS, false, octreeWorld, false, true)
 
-    var t0 i64 = time.UnixNano()
-    gfx.OctreeSplitModel(octree, octreeModel)
-    printf("Octree model split in %f seconds\n", fps.NanoToSecond(time.UnixNano() - t0))
+    //var octreeWorld mat.m44 = m44.makev_SAT(v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 1500.0, 600.0))
+    //var gfxOctree gfx.OctreeId = loadOctree("skylight/skyantenna/high", "scene.gltf", 2, gfx.OCTREE_GRAPHICS, false, octreeWorld, false, true)
+    //var phxOctree gfx.OctreeId = loadOctree("skylight/skyantenna/collision", "scene.gltf", 4, gfx.OCTREE_COLLISIONS, false, octreeWorld, false, true)
 
+    //var octreeWorld mat.m44 = m44.makev_SAT(v3.makef(20.0), v4.make(0.0, 0.0, 1.0, 0.0), v3.make(0.0, 100.0, 0.0))
+    //var phxOctree gfx.OctreeId = loadOctree("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 4, gfx.OCTREE_COLLISIONS, false, octreeWorld, false, true)
+    //var gfxOctree gfx.OctreeId = loadOctree("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 1, gfx.OCTREE_GRAPHICS, false, octreeWorld, false, true)
+
+    octree = gfxOctree
     frustum = gfx.FrustumCreate()
 
 

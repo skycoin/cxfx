@@ -255,10 +255,15 @@ func TextureCreateCube(path str, format i32, width i32, height i32, mipmap i32, 
 	out = textureCreate0(path, gl.TEXTURE_CUBE_MAP, format, width, height, mipmap, resizable, false)
 }
 
+// TextureGetPath ...
+func TextureGetPath(id TextureId) (out str) {
+	panicIfNot(IsValidTexture(id), "invalid id")	
+	out = g_textures[id.texture].path
+}
+
 // TextureGetPixel ...
 func TextureGetPixel(id TextureId, x i32, y i32) (r f32, g f32, b f32, a f32) {
 	panicIfNot(IsValidTexture(id), "invalid id")
-    printf("TextureGetPixel %d, %d\n", x, y)
     r, g, b, a = gl.CxTextureGetPixel(g_textures[id.texture].path, x, y)
 }
 

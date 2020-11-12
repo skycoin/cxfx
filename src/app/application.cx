@@ -62,6 +62,12 @@ type Application struct {
     prfUIUpdate fps.ProfileId
     prfUIResize fps.ProfileId
     prfRender fps.ProfileId
+
+    hasOnParse i32 // TODO : issues with bool
+    currentArgIsValid i32 // TODO : issues with bool
+    currentArg str
+    userHelp str
+    onParse func_i32_i32_id
 }
 
 // Help ...
@@ -75,6 +81,9 @@ func Help(message str, exitCode i32) {
 	printf("++hints     : Window hint flags (fullscreen, resizable)\n")
 	printf("++data      : Resource path\n")
 	printf("++glVersion : Select opengl version\n")
+    if len(g_app.userHelp) > 0 {
+        printf(g_app.userHelp)
+    }
     os.Exit(exitCode)
 }
 
@@ -261,6 +270,32 @@ func Destroy()() {
     gfx.Destroy()
 }
 
+// SetParseCallback ...
+func SetParseCallback(packageName str, functionName str) {
+    g_app.hasOnParse = 0
+    var onParse func_i32_i32_id = func_i32_i32(packageName, functionName)
+    panicIfNot(onParse.index >= 0, "invalid function")
+    if onParse.index >= 0 {
+        g_app.onParse = onParse
+        g_app.hasOnParse = 1
+    }
+}
+
+// SetUserHelp ...
+func SetUserHelp(message str) {
+    g_app.userHelp = message
+}
+
+// GetCurrentArg ...
+func GetCurrentArg() (out str) {
+    out = g_app.currentArg
+}
+
+// SetCurrentArgIsValid ...
+func SetCurrentArgIsValid(value i32) {
+    g_app.currentArgIsValid = value
+}
+
 // SetStartCallback ...
 func SetStartCallback(packageName str, functionName str) {
     glfw.SetStartCallback(g_app.window, functionName, packageName)
@@ -324,7 +359,6 @@ func parse() {
 
 	for a := 0; a < argc; a++ {
 		arg := os.Args[a]
-
 		if args.Bool(arg, "help", &help, &helpMatch) {
 			Help("", 0)
 		}
@@ -371,6 +405,14 @@ func parse() {
 			continue
 		}
 
+        if g_app.hasOnParse == 1 {
+            g_app.currentArg = arg
+            call_i32_i32(g_app.onParse, a, argc)
+            if g_app.currentArgIsValid  == 1{
+                continue
+            }
+        }
+
 		Help(sprintf("invalid argument %s", arg), cx.ASSERT)
 	}
 }
@@ -380,7 +422,7 @@ func Init() {
 	printf("app start : %s...\n", g_app.name)
 
 	glfw.Init() // ##0 terminate
-   
+
     var resizable i32 = glfw.False
 	if (g_app.options.hints & APP_HINT_RESIZABLE) == APP_HINT_RESIZABLE {
 		resizable = glfw.True

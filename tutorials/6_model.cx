@@ -146,8 +146,6 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func gameOnUpdate(controlIndex i32, controlAction i32) {
-	gam.FreeCameraUpdate(camera, fps.DeltaSecond())
-	
 	var dts f64 = fps.DeltaSecond()
 	var dt f32 = f64.f32(dts)
 
@@ -159,7 +157,7 @@ func gameOnUpdate(controlIndex i32, controlAction i32) {
 	var model gfx.ModelId = models[currentModel]
 	var anim gfx.AnimationId = gfx.ModelGetAnimation(model, 0)
 	if currentCamera == CAMERA_FREE {
-		gam.FreeCameraUpdate(camera, dts)
+		gam.FreeCameraUpdate(camera, dts, 1.0, 1.0)
 	} else if currentCamera == CAMERA_FPS {
 		gam.FpsCameraUpdate(camera, dts, v3.ZERO)
 	} else if currentCamera == CAMERA_TPS {
@@ -191,7 +189,7 @@ func gameOnRender(controlIndex i32, controlAction i32) {
     } else {
     	skybox = skyDiffuses[currentSky]
     }
-    gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skybox, gfx.g_linear0Wrap)
+    gfx.EffectAssignTexture(gfx.g_fxSky, gfx.SAMPLER_ENV_DIFFUSE, skybox, gfx.g_linear0Clamp)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_WORLD, m44.IDENTITY, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_VIEW, view, false)
 	gfx.EffectAssignM44(gfx.g_fxSky, gfx.UNIFORM_PROJECTION, projection, false)
@@ -235,7 +233,7 @@ func loadModel(path str, filename str, s f32, r f32, v f32) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func gameOnStart(window str) {
-	StartCPUProfile("6_model_init", 100)
+	//StartCPUProfile("6_model_init", 100)
 	app.Init()
 
     skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
@@ -262,15 +260,14 @@ func gameOnStart(window str) {
 	//loadModel("glTF-Sample-Models/Monster/glTF", "Monster.gltf", 0.05, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/BrainStem/glTF", "BrainStem.gltf", 1.0, 0.0, 1.0)
 	//loadModel("glTF-Sample-Models/Duck/glTF", "Duck.gltf", 1.0, 1.0, 1.0)
-	loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
+	//loadModel("glTF-Sample-Models/DamagedHelmet/glTF", "DamagedHelmet.gltf", 3.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/BoomBox/glTF", "BoomBox.gltf", 200.0, 1.0, 1.0)
 	//loadModel("glTF-Sample-Models/VC/glTF", "VC.gltf", 1.0, 0.0, 1.0)
-	loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
+	//loadModel("glTF-Sample-Models/Sponza/glTF", "Sponza.gltf", 10.0, 0.0, 1.0)
     //loadModel("skylight/skycoin/low", "scene.gltf", 1000.0, 0.0, 1.0)
     //loadModel("skylight/skywatch/medium", "scene.gltf", 1.0, 0.0, 1.0)
     //loadModel("skylight/orangepi/high", "scene.gltf", 10.0, 0.0, 1.0)
     loadModel("skylight/skyminer/high", "scene.gltf", 1.0, 0.0, 1.0)
-
 
 
     groundMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 6 * groundWidth * groundHeight, gfx.g_vertexLayout, 6 * groundWidth * groundHeight)
@@ -319,8 +316,8 @@ func gameOnStart(window str) {
 	gui.ScreenSetOnUpdate(gameScreen, "main", "gameOnUpdate")
 	gui.ScreenSetOnRender(gameScreen, "main", "gameOnRender")
 	gui.ScreenShow(gameScreen)
-	StopCPUProfile("6_model_init")
-	StartCPUProfile("6_model_run", 100)
+	//StopCPUProfile("6_model_init")
+	//StartCPUProfile("6_model_run", 100)
 }
 
 //-----------------------------------------------------------------------------
@@ -332,6 +329,6 @@ func main()() {
 	    gfx.MeshUnlock(groundMesh)
 	    //gam.Destroy()//ISSUE : can't call gam.Destroy()
 	}
-    StopCPUProfile("6_model_run")
+    //StopCPUProfile("6_model_run")
 }
 
