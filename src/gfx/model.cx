@@ -313,6 +313,18 @@ func ModelCreateFromFile(dataDir str, filename str, options i32) (out ModelId){ 
 	modelTransform(out, AnimationInvalid(), 0.0, false)
 }
 
+// ModelGetPath ...
+func ModelGetPath(id ModelId) (out str) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	out = g_models[id.model].dataDir	
+}
+
+// ModelGetName ...
+func ModelGetName(id ModelId) (out str) {
+	panicIfNot(ModelIsValid(id), "invalid model")
+	out = g_models[id.model].filename	
+}
+
 // ModelGetMin ...
 func ModelGetMin(id ModelId) (out mat.v3) {
 	panicIfNot(ModelIsValid(id), "invalid model")
@@ -1694,7 +1706,7 @@ func modelRender(id ModelId, renderables []i32, alpha f32) {
             }
         }
 
-        if m44.equal(tmpWorld, lastTransform) == false {
+        if m44.equ(tmpWorld, lastTransform) == false {
             lastTransform = tmpWorld
     		EffectAssignM44(effect, UNIFORM_WORLD, tmpWorld, false)
         }

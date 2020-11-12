@@ -25,7 +25,7 @@ DEBUG := --debug-profile=$(PPROF)
 endif
 
 OPTS = $(DEBUG)
-OPTS_MEM = $(OPTS) --stack-size=128M --heap-initial=1024M --heap-max=1024M
+OPTS_MEM = $(OPTS) --stack-size=32M --heap-initial=512M --heap-max=512M
 
 DATA = ++data=$(CXFX_SRC)/resources/
 GLFWHINTS = ++hints=resizable
