@@ -1726,12 +1726,6 @@ func IntroOnUpdate(controlIndex i32, controlAction i32) {
 	        gui.ScreenShow(titleScreen)
     	}
 		gui.PictureSetOnState(IntroTxt, "main", "onintroButton")
-
-		printf("height:",synthBounds.x)
-		//printf("width:",gfx.gfx_width)
-		
-
-
 }
 
 	
