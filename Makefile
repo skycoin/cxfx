@@ -4,9 +4,11 @@
 
 ## TODO : can't order files alphabetically without breaking tuto 7->14
 
-GOPATH := $(subst \,/,${GOPATH})
-SKYCOIN = $(GOPATH)/src/github.com/SkycoinProject
-CX = $(SKYCOIN)/cx
+#GOPATH := $(subst \,/,${GOPATH})
+#SKYCOIN = $(GOPATH)/src/skycoin
+#CX = $(SKYCOIN)/cx
+CX = ../cx
+CX_BIN = $(CX)/bin/cx
 CXFX = .
 CX_SRC := $(CX)
 CXFX_SRC := $(CXFX)
@@ -58,11 +60,11 @@ else
 ifeq ($(BUILDCX), true)
 define runcx
 	cd $(CX); $(MAKE) build-full
-	cx $(RUNCLI)
+	$(CX_BIN) $(RUNCLI)
 endef
 else
 define runcx
-	cx $(RUNCLI)
+	$(CX_BIN) $(RUNCLI)
 endef
 endif
 endif

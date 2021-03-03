@@ -1490,7 +1490,7 @@ func playerCreate(playerIndex i32, characterIndex i32) {
             //phx.SetObjectMaxVelocity(player.phxObject, v3.make(1000.0, 3.0, 2.0))
             //phx.SetObjectMaxAcceleration(player.phxObject, v3.make(1000.0, 15.0, 10.0))
             if (playerIndex == currentPlayer) {
-                phx.SetObjectPosition(player.phxObject, v3.make(-786.0, 3000.0, -409.0))
+                phx.SetObjectPosition(player.phxObject, v3.make(-786.0, 6000.0, -409.0))
                }
 
 	        player.currentAnim = player.idle.anim
