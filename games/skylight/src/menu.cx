@@ -5,7 +5,7 @@ import "gfx"
 import "gui"
 import "mat"
 import "snd"
-
+var selectedCharacter i32
 var gameScreen gui.ScreenId
 var exitScreen gui.ScreenId
 var titleScreen gui.ScreenId
@@ -14,6 +14,7 @@ var bootScreen gui.ScreenId
 var skycoinScreen gui.ScreenId
 var characterScreen gui.ScreenId
 var introScreen gui.ScreenId
+var startgame i32
 
 var BackGRPicture gui.PictureId
 var FacePicture gui.PictureId
@@ -216,6 +217,7 @@ type portrait struct {
 	titlest PictureId
 	titletx str
 	titletxanim AnimationId
+	validate i32
 	
 }
 var Stapic[16] portrait
@@ -541,7 +543,9 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 
 			    ////PUMPSCALING THE RIGHT PORTRAIT
 			    if Porpic[f].Select>-1 && Portrait_select==Porpic[f].Select{
+
 			        Porpic[Portrait_select].disp_scale=pumpscalePor
+			        selectedCharacter=Porpic[Portrait_select].validate
 			        ////PUMPCOLORING THE RIGHT PORTRAIT
 			        pumpV.x=Porpic[Portrait_select].pumpcolor
 			        pumpV.y=Porpic[Portrait_select].pumpcolor
@@ -599,7 +603,7 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 		    }
         }
 
-	    //printf("pump: %f\n", pumpscalePor)
+	   
         ///////////////////////////////////////////////////////////////////////////////////////////
 		//DISPLAY PORTRAITS////////////////////////////////////
 		for i:=0; i < Nbre_Portrait; i++ {
@@ -692,8 +696,13 @@ func CharaOnUpdate(controlIndex i32, controlAction i32) {
 func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		//CALCULATING THE RATIO BETWEEN INITIAL SCREENSIZE AND REFRESHED SCREENSIZE
 		valid_game=1
+		introAlpha=0.0
+		selectedCharacter=0
 		g_mousePos = gui.CurrentEvent.mouse.position
-
+		gui.PictureSetColor(Intro04, v4.make(1.0,1.0,1.0,0.0))
+		if snd.VoiceState(intSong) != snd.VOICE_STOPPED {
+		        snd.VoiceStop(intSong)
+		    }
 		var bande_noire f32//Size of black boarder on top and botton
 		var bande_horiz f32//Size of black boarder on the sides
 		var true_width f32//Real size of width with no boarder
@@ -710,12 +719,7 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 		true_height=gfx.gfx_height-(bande_noire)
 
 //DISPLAY TITLE BACKGROUND IMAGE
-		//MAIN
-		gui.ControlSetBounds(skylightPicture.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
-		gui.ControlSetAlign(skylightPicture.base, gui.ALIGN_CENTER)
-		gui.PictureSetAlign(skylightPicture, gui.ALIGN_CENTER)
-		gui.ControlSetAutoscale(skylightPicture.base, gui.AUTOSCALE)
-		gui.PictureSetAnimation(skylightPicture, skylightAnim, false, 30)
+		
 
 		//SCROLLING
 		gui.ControlSetBounds(TitlePicture2.base, v4.make((bande_horiz/2.0)+scroll_horiz, 0.0, true_width, gfx.gfx_height))
@@ -827,46 +831,7 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 /////////FLASHING ICONS
 		var IconBounds v4
 		
-		///CHECK IF MOUSE IS WITHIN BOUNDS
-		/////////////ICON SINGLE
-		IconBounds= gui.ControlGetRenderBounds(Icon_single.base)
-		if (g_mousePos.x>IconBounds.x) && (g_mousePos.x<(IconBounds.x+IconBounds.z)) && (g_mousePos.y>IconBounds.y) && (g_mousePos.y<(IconBounds.y+IconBounds.w)){
-			
-			Iconsinglecolor=((pumpscale-0.95)/(1.0-0.95))
-			pumpV.x=Iconsinglecolor
-			pumpV.y=Iconsinglecolor
-			pumpV.z=Iconsinglecolor
-			pumpV.w=Iconsinglecolor
-			
-            gui.PictureSetColor(Icon_single, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
-        }else{
-        	Iconsinglecolor=Iconsinglecolor*0.9
-			pumpV.x=Iconsinglecolor
-			pumpV.y=Iconsinglecolor
-			pumpV.z=Iconsinglecolor
-			pumpV.w=Iconsinglecolor
-
-        	gui.PictureSetColor(Icon_single, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
-        }
-        /////////ICON MULTI
-        IconBounds= gui.ControlGetRenderBounds(Icon_multi.base)
-        if (g_mousePos.x>IconBounds.x) && (g_mousePos.x<(IconBounds.x+IconBounds.z)) && (g_mousePos.y>IconBounds.y) && (g_mousePos.y<(IconBounds.y+IconBounds.w)){
-			
-			Iconmulticolor=((pumpscale-0.95)/(1.0-0.95))
-			pumpV.x=Iconmulticolor
-			pumpV.y=Iconmulticolor
-			pumpV.z=Iconmulticolor
-			pumpV.w=Iconmulticolor
-			
-			gui.PictureSetColor(Icon_multi, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
-        }else{
-        	Iconmulticolor=Iconmulticolor*0.9
-			pumpV.x=Iconmulticolor
-			pumpV.y=Iconmulticolor
-			pumpV.z=Iconmulticolor
-			pumpV.w=Iconmulticolor
-        	gui.PictureSetColor(Icon_multi, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
-        }
+		
         /////////ICON OPTIONS
         IconBounds= gui.ControlGetRenderBounds(Icon_options.base)
         if (g_mousePos.x>IconBounds.x) && (g_mousePos.x<(IconBounds.x+IconBounds.z)) && (g_mousePos.y>IconBounds.y) && (g_mousePos.y<(IconBounds.y+IconBounds.w)){
@@ -890,19 +855,9 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 
 /////////////////////////////////////////////////
 
-		gui.ControlSetAutoscale(Icon_single.base, gui.AUTOSCALE_X)
-		gui.ControlSetAutosize(Icon_single.base, gui.AUTOSIZE_Y)
-		gui.ControlSetAutoscale(Icon_multi.base, gui.AUTOSCALE_X)
-		gui.ControlSetAutosize(Icon_multi.base, gui.AUTOSIZE_Y)
 		gui.ControlSetAutoscale(Icon_options.base, gui.AUTOSCALE_X)
 		gui.ControlSetAutosize(Icon_options.base, gui.AUTOSIZE_Y)
-		//var oldpos mat.v4 = v4.make((bande_horiz/2.0)+(0.40*true_width), -0.75*(true_height/2.0), true_width*0.06*pumpscale, gfx.gfx_height)
-		//var thepos mat.v4 = v4.make(oldpos.x, 0.09*(true_height/2.0)+(bande_noire/2.0), oldpos.z, oldpos.w)
-		//printf("THE_POS ", timer_title)
-
-		gui.ControlSetBounds(Icon_single.base, v4.make((bande_horiz/2.0)+(0.40*true_width), 0.09*(true_height/2.0)+(bande_noire/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
-		gui.ControlSetBounds(Icon_multi.base, v4.make((bande_horiz/2.0)+(0.47*true_width), 0.09*(true_height/2.0)+(bande_noire/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
-		gui.ControlSetBounds(Icon_options.base, v4.make((bande_horiz/2.0)+(0.54*true_width), 0.09*(true_height/2.0)+(bande_noire/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
+		gui.ControlSetBounds(Icon_options.base, v4.make((bande_horiz/2.0)+(0.92*true_width), 0.094*(true_height/2.0)+(bande_noire/2.0), true_width*0.06*pumpscale, gfx.gfx_height))
 		
 		if deltatime_title > 1.0{
 		if pumpmark==0{
@@ -928,8 +883,8 @@ func TitleOnUpdate(controlIndex i32, controlAction i32) {
 
         ///////CHECK MOUSE PUSH
 		gui.PictureSetOnState(NamePicture, "main", "onSingleButton")
-		gui.PictureSetOnState(Icon_single, "main", "onSingleButton")
-		gui.PictureSetOnState(Icon_multi, "main", "onMultiButton")
+		//gui.PictureSetOnState(Icon_single, "main", "onSingleButton")
+		//gui.PictureSetOnState(Icon_multi, "main", "onMultiButton")
 
 
 }
@@ -1112,7 +1067,7 @@ func StageOnUpdate(controlIndex i32, controlAction i32) {
 			gui.ControlSetBounds(Stapic[i].name.base, v4.make(Stapic[i].coorx, Stapic[i].coory, Stapic[i].sizex*Stapic[i].disp_scale, Stapic[i].sizey))
 			gui.PictureSetAlpha(Stapic[i].name, true)
 			gui.PictureSetColor(Stapic[i].name, v4.make(1.0,1.0,1.0,1.0))
-			if Stapic[i].disp_scale<0.96 {
+			if Stapic[i].disp_scale<0.5 {
 				Stapic[i].disp_scale=Stapic[i].disp_scale*70.0*dt///////SCALING SPEED
 				//Porpic[i].flux=Porpic[i].flux*68.0*dt//bef=1.02//ZOOM SPEED ACCELERATION
 			}	else {
@@ -1159,6 +1114,7 @@ func StageOnUpdate(controlIndex i32, controlAction i32) {
 			selBounds.w=(selBounds.w/pumpscaleSta)
 
 			///CHECK IF MOUSE IS WITHIN BOUNDS
+
 			if (g_mousePos.x>selBounds.x) && (g_mousePos.x<(selBounds.x+selBounds.z)) && (g_mousePos.y>selBounds.y) && (g_mousePos.y<(selBounds.y+selBounds.w)){
 				ratiox=Stapic[f].porwid/selBounds.z
 				ratioy=Stapic[f].porhei/selBounds.w
@@ -1207,31 +1163,9 @@ func StageOnUpdate(controlIndex i32, controlAction i32) {
 					gui.ControlSetBounds(Stapic[Stage_select].titlest.base, v4.make((bande_horiz/2.0)+(0.69*true_width), (0.14*true_height)+(bande_noire/2.0), 0.15*true_width, gfx.gfx_height))
 			        gui.PictureSetAlpha(Stapic[Stage_select].titlest, true)
 					gui.PictureSetColor(Stapic[Stage_select].titlest, v4.make(1.0,1.0,1.0,Stapic[Stage_select].picalpha))
-			    }
+					currentLevel=f
+			    	}
 
-
-                    //highlight 0
-                    //var refHlColor mat.v4 = v4.divf(v4.make(15.7, 66.3, 71.4, 255.0), 255.0)
-			        //var targetHlColor mat.v4 = v4.divf(v4.make(86.3, 63.9, 43.1, 255.0), 255.0)
-
-                     //highlight 1
-                    //var refHlColor mat.v4 = v4.divf(v4.make(45.7, 6.3, 41.4, 255.0), 255.0)
-                    //var targetHlColor mat.v4 = v4.divf(v4.make(124.5, 6.3, 35.5, 255.0), 255.0)
-
-                     //highlight 2
-                    //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 29.4, 31.4, 255.0), 255.0)
-			        //var targetHlColor mat.v4 = v4.divf(v4.make(86.3, 63.9, 43.1, 255.0), 255.0)
-
-                     //highlight 3
-                    //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 29.4, 31.4, 255.0), 255.0)
-                    //var targetHlColor mat.v4 = v4.divf(v4.make(94.5, 86.3, 65.5, 255.0), 255.0)
-
-                    //clear blue
-                    //var refHlColor mat.v4 = v4.divf(v4.make(14.1, 19.4, 51.4, 255.0), 255.0)
-        	        //var targetHlColor mat.v4 = v4.divf(v4.make(35.0, 45.0, 115.5, 255.0), 255.0)
-
-                    //gui.PictureSetColor(Stapic[Stage_select].name, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
-                    
 			    }
     		}else{
 	    		Stapic[f].Select=-1
@@ -1248,10 +1182,6 @@ func StageOnUpdate(controlIndex i32, controlAction i32) {
 			}
 		    }
 
-            //IF NOT SELECTED DEPUMP
-		    /*if Stapic[f].Select==-1 && Stapic[f].disp_scale<1.0{
-		    	Stapic[f].disp_scale=Stapic[f].disp_scale*1.002
-		    }*/
 
 		    if Stapic[f].Select==-1 && Stapic[f].pumpcolor>0.01{
 		    	Stapic[f].pumpcolor=Stapic[f].pumpcolor*0.935
@@ -1289,7 +1219,7 @@ func StageOnUpdate(controlIndex i32, controlAction i32) {
 
                     gui.PictureSetColor(Stapic[i].name, v4.lerpsat(v4.ONE, v4.div(targetHlColor, refHlColor), pumpV))
 			}else{
-			gui.ControlSetBounds(Stapic[i].name.base, v4.make(Stapic[i].coorx, Stapic[i].coory, Stapic[i].sizex*Stapic[i].disp_scale, Stapic[i].sizey))
+			gui.ControlSetBounds(Stapic[i].name.base, v4.make(Stapic[i].coorx, Stapic[i].coory, Stapic[i].sizex, Stapic[i].sizey))
 			gui.PictureSetAlpha(Stapic[i].name, true)
 			gui.PictureSetColor(Stapic[i].name, v4.make(1.0,1.0,1.0,1.0))
 			//gui.ControlSetSkin(Porpic[i].name.base, gui.g_debugGreenSkin)
@@ -1338,20 +1268,9 @@ func StageOnUpdate(controlIndex i32, controlAction i32) {
 		gui.ControlSetAutosize(Icon_back2.base, gui.AUTOSIZE_Y)
 		gui.ControlSetBounds(Icon_back2.base, v4.make((bande_horiz/2.0)+(0.92*true_width),0.87*(true_height)+(bande_noire/2.0), 0.07*true_width*pumpscale, gfx.gfx_height))
 		gui.PictureSetAlpha(Icon_back2, true)
-		gui.PictureSetOnState(Icon_back2, "main", "onBackButton")
-/*
-		gui.ControlSetAutoscale(stageName.base, gui.AUTOSCALE_X)
-		gui.ControlSetAutosize(stageName.base, gui.AUTOSIZE_Y)
-		gui.ControlSetBounds(stageName.base, v4.make((bande_horiz/2.0)+(0.92*true_width),scroll_vert*(true_height)+(bande_noire/2.0), 0.05*true_width, gfx.gfx_height))
-		gui.PictureSetAlpha(stageName, true)
-	
-		if scroll_vert>0.0{
-			scroll_vert=scroll_vert*0.5
-			if scroll_vert<0.1{
-				scroll_vert=0.0
-			}
-		}*/
-
+		gui.PictureSetOnState(Icon_back2, "main", "onBackSTButton")
+		gui.PictureSetOnState(Stapic[0].name, "main", "onPlayButton")
+		gui.PictureSetOnState(Stapic[1].name, "main", "onPlayButton")
 		
 
 		deltatime_scroll = deltatime_scroll + dt_title
@@ -1638,7 +1557,7 @@ func IntroOnUpdate(controlIndex i32, controlAction i32) {
 		gui.ControlSetAutoscale(Intro04.base, gui.AUTOSCALE)
 		gui.PictureSetAnimation(Intro04, intro04Anim, false, 30)
 		gui.PictureSetAlpha(Intro04, true)
-		gui.PictureSetColor(Intro04, v4.make(1.0,1.0,1.0,introAlpha))
+	gui.PictureSetColor(Intro04, v4.make(1.0,1.0,1.0,introAlpha))
 		}
 
 		if timerIntro==7{
@@ -1783,11 +1702,22 @@ func IntroOnUpdate(controlIndex i32, controlAction i32) {
 var firstCxfxScreenUpdate f32 = 0.0
 func cxfxOnUpdate(controlIndex i32, controlAction i32) {
     if firstCxfxScreenUpdate >= 0.0 {
+    	gui.PictureSetOnState(skycoinPicture, "main", "onSelectButton")
         if firstCxfxScreenUpdate > 0.4 {
             snd.VoicePlay(cxfxVoice)
             firstCxfxScreenUpdate = -1.0
         }
         firstCxfxScreenUpdate = firstCxfxScreenUpdate + f64.f32(fps.DeltaSecond())
+    }
+    var state i32 = gui.CurrentEvent.mouse.action
+    if startgame==0{
+    	if state == app.MOUSE_PRESS {
+    		if snd.VoiceState(cxfxVoice) != snd.VOICE_STOPPED {
+		        snd.VoiceStop(cxfxVoice)
+		    }
+	        gui.ScreenShow(titleScreen)
+	        startgame=1
+    	}
     }
 }
 
@@ -1795,17 +1725,27 @@ func cxfxOnUpdate(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 var firstSkycoinScreenUpdate bool
 func skycoinOnUpdate(controlIndex i32, controlAction i32) {
-	
 	gui.ControlSetBounds(skycoinPicture.base, v4.make(0.0, 0.0, gfx.gfx_width/2.0, gfx.gfx_height/2.0))
 	gui.ControlSetAlign(skycoinPicture.base, gui.ALIGN_CENTER)
 	gui.ControlSetAutoscale(skycoinPicture.base, gui.AUTOSCALE)
 	gui.PictureSetAlign(skycoinPicture, gui.ALIGN_CENTER)
-	gui.PictureSetOnState(skycoinPicture, "main", "onSelectButton")
+	//gui.PictureSetOnState(skycoinPicture, "main", "onSelectButton")
 
     if firstSkycoinScreenUpdate == false {
         snd.VoicePlay(skycoinVoice)
         firstSkycoinScreenUpdate = true
     }
+    var state i32 = gui.CurrentEvent.mouse.action
+    if startgame==0{
+    	if state == app.MOUSE_PRESS {
+    		if snd.VoiceState(skycoinVoice) != snd.VOICE_STOPPED {
+		        snd.VoiceStop(skycoinVoice)
+		    }
+	        gui.ScreenShow(titleScreen)
+	        startgame=1
+    	}
+    }
+
 }
 
 //-----------------------------------------------------------------------------
@@ -1817,11 +1757,12 @@ func onPortraitButton(controlIndex i32, controlAction i32) {
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func onPlayButton(controlIndex i32, controlAction i32) {
-	if controlAction == app.KEY_PRESS {
-		gui.ScreenShow(gameScreen)
-	} else if controlAction != app.KEY_RELEASE && controlAction != app.KEY_REPEAT {
-		panicIfNot(false, "invalid action")
-	}
+	 var state i32 = gui.CurrentEvent.mouse.action
+    if state == app.MOUSE_PRESS {
+    	firstGameUpdate = true
+    	firstLevelUpdate = true
+        gui.ScreenShow(gameScreen)
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -1829,7 +1770,7 @@ func onPlayButton(controlIndex i32, controlAction i32) {
 func onCharacterClick(controlIndex i32, controlAction i32) {
     var state i32 = gui.CurrentEvent.mouse.action
     if state == app.MOUSE_PRESS {
-        gui.ScreenShow(gameScreen)
+        gui.ScreenShow(stageScreen)
     }
 }
 
@@ -1839,6 +1780,9 @@ func onSelectButton(controlIndex i32, controlAction i32) {
 	if controlAction == app.KEY_PRESS {
 		if valid_game==0{//PREVENT MULTIPLE CLICKING
 			gui.ScreenShow(titleScreen)
+			if snd.VoiceState(skycoinVoice) != snd.VOICE_STOPPED {
+		        snd.VoiceStop(skycoinVoice)
+		    }
 			valid_game=1
 		}
 	} else if controlAction != app.KEY_RELEASE && controlAction != app.KEY_REPEAT {
@@ -1911,6 +1855,18 @@ func onBackButton(controlIndex i32, controlAction i32) {
 }
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
+func onBackSTButton(controlIndex i32, controlAction i32) {
+	if controlAction == app.MOUSE_PRESS {
+		if valid_game==2{//PREVENT MULTIPLE CLICKING
+		gui.ScreenShow(characterScreen)
+		valid_game=1
+	}
+	} else if controlAction != app.MOUSE_RELEASE && controlAction != app.MOUSE_REPEATE {
+		panicIfNot(false, "invalid action")
+	}
+}
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 func onExitButton(controlIndex i32, controlAction i32) {
 	if controlAction == app.KEY_PRESS {
 		gui.ScreenShow(exitScreen)
@@ -1957,11 +1913,11 @@ func loadMenu() {
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         stageAnim = gui.AnimationCreateFromTexture(stageTexture)
         
-        bgbacktv = gfx.TextureCreate(sprintf("%s/textures/stage_textures/antennabutton.png", app.DataDir()),
+        bgbacktv = gfx.TextureCreate(sprintf("%s/textures/stage_textures/walletbutt2.png", app.DataDir()),
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         bgbackAnim = gui.AnimationCreateFromTexture(bgbacktv)
 
-        walletButton = gfx.TextureCreate(sprintf("%s/textures/stage_textures/walletbutt2.png", app.DataDir()),
+        walletButton = gfx.TextureCreate(sprintf("%s/textures/stage_textures/antennabutton.png", app.DataDir()),
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         walletAnim = gui.AnimationCreateFromTexture(walletButton)
 
@@ -1977,7 +1933,7 @@ func loadMenu() {
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         stageSelectAnim = gui.AnimationCreateFromTexture(stageSelectName)
 
-        antennabig = gfx.TextureCreate(sprintf("%s/textures/stage_textures/antenna00_big.png", app.DataDir()),
+        antennabig = gfx.TextureCreate(sprintf("%s/textures/stage_textures/wallet00_big.png", app.DataDir()),
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         antennabigAnim = gui.AnimationCreateFromTexture(antennabig)
 
@@ -1985,7 +1941,7 @@ func loadMenu() {
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         minerbigAnim = gui.AnimationCreateFromTexture(minerbig)
 
-        walletbig = gfx.TextureCreate(sprintf("%s/textures/stage_textures/wallet00_big.png", app.DataDir()),
+        walletbig = gfx.TextureCreate(sprintf("%s/textures/stage_textures/antenna00_big.png", app.DataDir()),
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         walletbigAnim = gui.AnimationCreateFromTexture(walletbig)
 
@@ -1993,7 +1949,7 @@ func loadMenu() {
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         namebackAnim = gui.AnimationCreateFromTexture(nameback)
 
-        walletname = gfx.TextureCreate(sprintf("%s/textures/stage_textures/wallet_name.png", app.DataDir()),
+        walletname = gfx.TextureCreate(sprintf("%s/textures/stage_textures/antenna_name.png", app.DataDir()),
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         walletnameAnim = gui.AnimationCreateFromTexture(walletname)
 
@@ -2001,7 +1957,7 @@ func loadMenu() {
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         minernameAnim = gui.AnimationCreateFromTexture(minername)
 
-        antennaname = gfx.TextureCreate(sprintf("%s/textures/stage_textures/antenna_name.png", app.DataDir()),
+        antennaname = gfx.TextureCreate(sprintf("%s/textures/stage_textures/wallet_name.png", app.DataDir()),
                 gfx.FORMAT_R8_G8_B8_A8, 0, 0, -1, true,false)
         antennanameAnim = gui.AnimationCreateFromTexture(antennaname)
 
@@ -2262,6 +2218,7 @@ func loadMenu() {
 	    	Porpic[1].porhei=1182.0
 	    	Porpic[1].pumpcolor=0.01
 	    	Porpic[1].Select=-1
+	    	Porpic[1].validate=8
 
 	    	Porpic[2].pic = "WojTexture"
 	    	Porpic[2].anim = WojAnim
@@ -2272,6 +2229,7 @@ func loadMenu() {
 	    	Porpic[2].porhei=476.0
 	    	Porpic[2].pumpcolor=0.01
 	    	Porpic[2].Select=-1
+	    	Porpic[2].validate=5
 
 	    	Porpic[3].pic = "CarTexture"
 	    	Porpic[3].anim = CarAnim
@@ -2282,6 +2240,7 @@ func loadMenu() {
 	    	Porpic[3].porhei=1209.0
 	    	Porpic[3].pumpcolor=0.01
 	    	Porpic[3].Select=-1
+	    	Porpic[3].validate=10
 
 	    	Porpic[4].pic = "LagTexture"
 	    	Porpic[4].anim = LagAnim
@@ -2292,6 +2251,7 @@ func loadMenu() {
 	    	Porpic[4].porhei=899.0
 	    	Porpic[4].pumpcolor=0.01
 	    	Porpic[4].Select=-1
+	    	Porpic[4].validate=11
 
 	    	Porpic[5].pic = "BogdanTexture"
 	    	Porpic[5].anim = BogdanAnim
@@ -2302,6 +2262,7 @@ func loadMenu() {
 	    	Porpic[5].porhei=1157.0
 	    	Porpic[5].pumpcolor=0.01
 	    	Porpic[5].Select=-1
+	    	Porpic[5].validate=4
 	    	
 
 	    	Porpic[6].pic = "ZucTexture"
@@ -2313,6 +2274,7 @@ func loadMenu() {
 	    	Porpic[6].porhei=910.0
 	    	Porpic[6].pumpcolor=0.01
 	    	Porpic[6].Select=-1
+	    	Porpic[6].validate=6
 
 	    	Porpic[7].pic = "MusTexture"
 	    	Porpic[7].anim = MusAnim
@@ -2323,6 +2285,7 @@ func loadMenu() {
 	    	Porpic[7].porhei=640.0
 	    	Porpic[7].pumpcolor=0.01
 	    	Porpic[7].Select=-1
+	    	Porpic[7].validate=7
 
 	    	Porpic[8].pic = "VitTexture"
 	    	Porpic[8].anim = VitAnim
@@ -2333,6 +2296,7 @@ func loadMenu() {
 	    	Porpic[8].porhei=842.0
 	    	Porpic[8].pumpcolor=0.01
 	    	Porpic[8].Select=-1
+	    	Porpic[8].validate=1
 
 	    	Porpic[9].pic = "FunTexture"
 	    	Porpic[9].anim = FunAnim
@@ -2343,6 +2307,7 @@ func loadMenu() {
 	    	Porpic[9].porhei=658.0
 	    	Porpic[9].pumpcolor=0.01
 	    	Porpic[9].Select=-1
+	    	Porpic[9].validate=2
 
 	    	Porpic[10].pic = "SynTexture"
 	    	Porpic[10].anim = SynAnim
@@ -2353,6 +2318,7 @@ func loadMenu() {
 	    	Porpic[10].porhei=850.0
 	    	Porpic[10].pumpcolor=0.01
 	    	Porpic[10].Select=-1
+	    	Porpic[10].validate=0
 
 	    	Porpic[11].pic = "McaTexture"
 	    	Porpic[11].anim = McaAnim
@@ -2363,6 +2329,7 @@ func loadMenu() {
 	    	Porpic[11].porhei=707.0
 	    	Porpic[11].pumpcolor=0.01
 	    	Porpic[11].Select=-1
+	    	Porpic[11].validate=3
 	    	
 	    	//BACK CLOUDS
 	    	CloudPicture6 = gui.PictureId = gui.PictureCreate("CloudTexture")
@@ -2686,25 +2653,7 @@ func loadMenu() {
 	    	gui.PictureSetAnimation(Icon_back2, Icon03Anim, false, 30)
 	    	gui.PictureSetAlpha(Icon_back2, true)
 	    	gui.ControlSetBounds(Icon_back2.base, v4.make(0.0,-1000.0,0.0,0.0))
-	    	/*stageName = gui.PictureId = gui.PictureCreate("stageSelectName")
-	    	gui.ControlAddChild(stageScreen.base, stageName.base)
-	    	//gui.ControlSetAutoscale(Icon_back.base, gui.AUTOSCALE)
-	    	gui.PictureSetAlign(stageName, gui.ALIGN_CENTER)
-	    	gui.PictureSetAnimation(stageName, stageSelectAnim, false, 30)
-	    	gui.PictureSetAlpha(stageName, true)
-	    	gui.ControlSetBounds(stageName.base, v4.make(-1000.0,-1000.0,100.0,100.0))
-	    	antennafat = gui.PictureId = gui.PictureCreate("antennabig")
-	    	gui.ControlAddChild(stageScreen.base, antennafat.base)
-	    	//gui.ControlSetAutoscale(antennafat.base, gui.AUTOSCALE)
-	    	gui.PictureSetAlign(antennafat, gui.ALIGN_CENTER)
-	    	gui.PictureSetAnimation(antennafat, antennabigAnim, false, 30)
-	    	gui.PictureSetAlpha(antennafat, true)
-	    	gui.ControlSetBounds(antennafat.base, v4.make(-1000.0,-1000.0,100.0,100.0))*/
-
 	    	
-
-	    	
-
 	    }
 
 
@@ -2725,7 +2674,7 @@ func loadMenu() {
 	    	
 	    	zoom_flux=1.01//TITLE ZOOM SPEED
 	    	gui.ControlAddChild(titleScreen.base, skylightPicture.base)
-	    	gui.ControlSetBounds(skylightPicture.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
+	    	//gui.ControlSetBounds(skylightPicture.base, v4.make(0.0, 0.0, gfx.gfx_width, gfx.gfx_height))
 	    	gui.ControlSetAlign(skylightPicture.base, gui.ALIGN_CENTER)
 	    	gui.PictureSetAlign(skylightPicture, gui.ALIGN_CENTER)
 	    	gui.ControlSetAutoscale(skylightPicture.base, gui.AUTOSCALE)
@@ -2798,20 +2747,7 @@ func loadMenu() {
 	    	gui.ControlSetAutoscale(CloudPicture5.base, gui.AUTOSCALE)
 	    	gui.PictureSetAnimation(CloudPicture5, CloudAnim2, false, 30)
 	    	gui.PictureSetAlpha(CloudPicture5, true)
-	    	Icon_single = gui.PictureId = gui.PictureCreate("Icon00Texture")
-	    	gui.ControlAddChild(titleScreen.base, Icon_single.base)
-	    	gui.PictureSetAlign(Icon_single, gui.ALIGN_CENTER)
-	    	//gui.ControlSetSkin(Icon_single.base, gui.g_debugGreenSkin)
-	    	//gui.ControlSetAutoscale(Icon_single.base, gui.AUTOSCALE_X)
-	    	//gui.ControlSetAutosize(Icon_single.base, gui.AUTOSIZE_Y)
-	    	gui.PictureSetAnimation(Icon_single, Icon00Anim, false, 30)
-	    	gui.PictureSetAlpha(Icon_single, true)
-	    	Icon_multi = gui.PictureId = gui.PictureCreate("Icon02Texture")
-	    	gui.ControlAddChild(titleScreen.base, Icon_multi.base)
-	    	gui.PictureSetAlign(Icon_multi, gui.ALIGN_CENTER)
-	    	//gui.ControlSetAutoscale(Icon_multi.base, gui.AUTOSCALE)
-	    	gui.PictureSetAnimation(Icon_multi, Icon02Anim, false, 30)
-	    	gui.PictureSetAlpha(Icon_multi, true)
+	    	
 	    	Icon_options = gui.PictureId = gui.PictureCreate("Icon01Texture")
 	    	gui.ControlAddChild(titleScreen.base, Icon_options.base)
 	    	gui.PictureSetAlign(Icon_options, gui.ALIGN_CENTER)
@@ -2857,7 +2793,7 @@ func loadMenu() {
 	    gui.ScreenSetDuration(introScreen, -1.0D)
 	    gui.ScreenSetOnNext(introScreen, characterScreen)
         {
-	    	scroll_horiz=-gfx.gfx_height
+	    	//scroll_horiz=-gfx.gfx_height
 	    	timerIntro=0
 	    	scroll_horiz2=0.001
 	    	txtAlpha=1.0
@@ -2927,13 +2863,7 @@ func loadMenu() {
 	    	gui.PictureSetAnimation(IntroTxt, introTxAnim, false, 30)
 	    	gui.PictureSetAlpha(IntroTxt, true)
 	    	
-	    	CloudPicture5 = gui.PictureId = gui.PictureCreate("CloudTexture2")
-	    	gui.ControlAddChild(introScreen.base, CloudPicture5.base)
-	    	gui.PictureSetAlign(CloudPicture5, gui.ALIGN_CENTER)
-	    	gui.ControlSetAutoscale(CloudPicture5.base, gui.AUTOSCALE)
-	    	gui.PictureSetAnimation(CloudPicture5, CloudAnim2, false, 30)
-	    	gui.PictureSetAlpha(CloudPicture5, true)
-
+	    	
 	    	bd_noire = gui.PictureId = gui.PictureCreate("BdTexture")
 	    	gui.ControlAddChild(introScreen.base, bd_noire.base)
 	    	gui.PictureSetAlign(bd_noire, gui.ALIGN_CENTER)
@@ -3010,6 +2940,7 @@ func loadMenu() {
 	gui.ControlSetSkin(bootScreen.base, gui.g_bootSkin)
 	gui.ControlSetDock(bootScreen.base, gui.DOCK_FILL)
 	gui.ScreenSetDuration(bootScreen, 2.0D)
+	startgame=0
 	if hasModeMenu {
         gui.ScreenSetOnNext(bootScreen, skycoinScreen)
     } else {

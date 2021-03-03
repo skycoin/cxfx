@@ -20,6 +20,9 @@ import "v4"
 // TODO : can't navigate with keyboard at startup
 // TODO : dialog disapear if exit button is pushed with keyboard
 
+var exitScreen gui.ScreenId
+
+
 type Sky struct {
     name str
     loaded bool
@@ -250,7 +253,15 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 	var key i32 = gui.CurrentEvent.keyboard.key
 	var action i32 = gui.CurrentEvent.keyboard.action
 	var mods i32 = gui.CurrentEvent.keyboard.mods
+//////////////////////ESCAPE///////////////////////////////////
+	if mods == app.MOD_NONE {
+		if key == app.KEYCODE_ESCAPE && action == app.KEY_PRESS {
+			gui.ScreenShow(exitScreen)
+        }
 
+
+
+////////////////////////////////////////////////////////////////
 	if mods == app.MOD_CTRL {
 		if action == app.KEY_PRESS {
 			if key == app.KEYCODE_LEFT {
@@ -475,7 +486,7 @@ func gameOnEvent(controlIndex i32, controlAction i32) {
 		gam.TpsCameraProcess(camera, &gui.CurrentEvent)
 	}
 }
-
+}
 func newAimBox(position mat.v3) {
 	var axis mat.v3 = v3.normalize(v3.rand())
 	var radius f32 = 2.5
@@ -1553,8 +1564,69 @@ func gameOnStart(window str) {
         gameOnUpdate(0, 0)
     }
     //StopCPUProfile("skylight_init")
+     	// exitScreen
+	exitScreen  = gui.ScreenCreate("exitScreen")
+	gui.ControlSetSkin(exitScreen.base, gui.g_modalSkin)
+	gui.ControlSetDock(exitScreen.base, gui.DOCK_FILL)
+	gui.ScreenSetDuration(exitScreen, -2.0D)
+	gui.ScreenSetModal(exitScreen, true)
+
+	{
+		var exitWindow gui.WindowId = gui.WindowCreate("exitWindow")
+		gui.ControlAddChild(exitScreen.base, exitWindow.base)
+		gui.ControlSetSkin(exitWindow.base, gui.g_windowSkin)
+		gui.ControlSetAutosize(exitWindow.base, gui.AUTOSIZE)
+		gui.ControlSetAlign(exitWindow.base, gui.ALIGN_CENTER)
+		gui.WindowSetCaption(exitWindow, "cxfx")
+		gui.WindowAddButton(exitWindow, "no", "No", "main", "onExitDialog2No")
+		gui.WindowAddButton(exitWindow, "yes", "Yes", "main", "onExitDialog2Yes")
+
+		{
+			var exitLabel gui.LabelId = gui.LabelCreate("exitLabel")
+			gui.WindowSetContainee(exitWindow, exitLabel.base)
+			gui.ControlSetDock(exitLabel.base, gui.DOCK_FILL)
+			gui.ControlSetAutosize(exitLabel.base, gui.AUTOSIZE)
+			gui.LabelSetFont(exitLabel, gui.g_regularFont)
+			gui.LabelSetText(exitLabel, "Return to title ?")
+			gui.LabelSetSize(exitLabel, gui.g_fontSizeText)
+			gui.LabelSetColor(exitLabel, gui.g_white)
+			gui.LabelSetAlign(exitLabel, gui.ALIGN_CENTER)
+		}
+	}
 }
 
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func onExitDialog2No(controlIndex i32, controlAction i32) {
+	if (controlAction == app.KEY_PRESS) {
+		printf("NO PRESSED\n")
+	} else if (controlAction == app.KEY_RELEASE) {
+		printf("NO RELEASED\n")
+		gui.ScreenHideModal(exitScreen)
+		printf("HERE\n")
+	} else if (controlAction == app.KEY_REPEAT) {
+		printf("NO REPEAT\n")
+	} else {
+		panicIfNot(false, "invalid controlAction")
+	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+func onExitDialog2Yes(controlIndex i32, controlAction i32) {
+	if (controlAction == app.KEY_PRESS) {
+		printf("YES PRESSED\n")
+	} else if (controlAction == app.KEY_RELEASE) {
+		printf("YES RELEASED\n")
+		gui.ScreenHideModal(exitScreen)
+		gui.ScreenShow(titleScreen)
+	} else if (controlAction == app.KEY_REPEAT) {
+		printf("YES REPEAT\n")
+	} else {
+		panicIfNot(false, "invalid action")
+	}
+}
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func loadGame()() {
@@ -1655,7 +1727,7 @@ func loadGame()() {
     characterCreate("skylight/gutsin", 5.0,"mixamorig:Hips_00", "mixamorig:Spine_01", "mixamorig:RightShoulder_011", "mixamorig:RightHand_014", q4.from_axis_angle(0.0, 1.0, 0.0, 0.0))
 
     levelCreate("skylight/skyminer/high", 2, "skylight/skyminer/collision", 4)
-    //levelCreate("skylight/skyantenna/high", 2, "skylight/skyantenna/collision", 4)
+    levelCreate("skylight/skyantenna/high", 2, "skylight/skyantenna/collision", 4)
     //levelCreate("glTF-Sample-Models/Sponza/glTF", 2, "glTF-Sample-Models/Sponza/glTF", 4)
 
     //skyCreate("doge2")
@@ -1689,7 +1761,7 @@ func loadLevel()() {
         playerCount = 1
     }
     var levelCount i32 = len(levels)
-    currentLevel = i32.rand(0, levelCount) % levelCount
+    //currentLevel = 1////////////////LEVEL VARIABLE
     if levels[currentLevel].loaded == false {
         if isModeLight == false {
             var t0 i64
@@ -1731,11 +1803,12 @@ func loadLevel()() {
 
     var characterCount i32 = len(characters)
     players = resize(players, 0)
-    for i := 0; i < playerCount; i++ {
+         playerCreate(0, selectedCharacter)
+    for i := 1; i < playerCount; i++ {
         var r i32 = i32.rand(0, characterCount) % characterCount
         playerCreate(i, r)
     }
-	currentPlayer = 0
+ currentPlayer = 0
 
     var skyCount i32 = len(skies)
     currentSky = i32.rand(0, skyCount) % skyCount
