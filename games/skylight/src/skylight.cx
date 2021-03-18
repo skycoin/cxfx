@@ -833,7 +833,7 @@ func updateAnimations(dt f32)() {
 		var jumping bool = newVoidCount > 5 && oldVoidCount >= 5
 
 		var animLoop bool = true
-		var animMax f32 = -1
+		var animMax f32 = -1.0
 
 		if newVoidCount > 5 {
 			player.currentAnim = player.jump.anim
