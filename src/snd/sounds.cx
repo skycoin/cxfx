@@ -132,6 +132,7 @@ func Update()() {
 		} else {
 			i++
 		}
+        usedCount = VoiceGetUsedCount()
 	}
 }
 

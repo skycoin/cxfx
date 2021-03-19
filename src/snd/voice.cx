@@ -158,6 +158,8 @@ func removeVoice(id VoiceId) {
 		var newCount i32 = usedCount - 1
 		if usedCount > 1 {
 			g_used[used] = g_used[newCount]
+            var usedVoice i32  = g_used[used].voice
+            g_voices[usedVoice].used = used
 		}
 		g_used = resize(g_used, newCount)
 	}
