@@ -19,7 +19,7 @@ var FORMAT_R8 i32 = 7
 
 // Globals ...
 var g_textures []Texture
-var g_nil []i32
+var g_nil []ui32
 
 // TextureId ...
 type TextureId struct {

@@ -370,7 +370,6 @@ func MeshRender(id MeshId) {
 	gl.BindVertexArrayCore(g_meshes[mesh].vao)
 	panicIf(GlError(), "gl.BindVertexArrayCore")
 
-	var null []i32
 	var indexFormat i32 = g_meshes[mesh].indexFormat
 	var indexCount i32 = g_meshes[mesh].indexCount
 
@@ -381,7 +380,7 @@ func MeshRender(id MeshId) {
 		EnableCulling(g_meshes[mesh].frontFace, cullFace)
     }
 
-	gl.DrawElements(g_meshes[mesh].primitive, indexCount, indexFormat, null)
+	gl.DrawElements(g_meshes[mesh].primitive, indexCount, indexFormat)
 	panicIf(GlError(), "gl.DrawArrays")
 }
 
