@@ -372,7 +372,7 @@ func gameOnStart(window str) {
 	gfx.MeshEnd(skyMesh)
 
 	var octreeWorld mat.m44 = m44.makef_SAT(1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-	var gfxOctree gfx.OctreeId = loadOctree("skylight/skyminer/high", "scene.gltf", 1, gfx.OCTREE_GRAPHICS, false, octreeWorld, false, false)
+	var gfxOctree gfx.OctreeId = loadOctree("skylight/skyminer/high", "scene.gltf", 2, gfx.OCTREE_GRAPHICS, false, octreeWorld, false, false)
 
     //var octreeWorld mat.m44 = m44.makev_SAT(v3.makef(100.0), v4.make(0.0, 0.0, 1.0, 3.0 * v1.PI/2.0), v3.make(0.0, 1500.0, 600.0))
 	//var gfxOctree gfx.OctreeId = loadOctree("skylight/skyminer/high", "scene.gltf", 2, gfx.OCTREE_GRAPHICS, false, octreeWorld, false, true)

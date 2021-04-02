@@ -341,7 +341,7 @@ func MeshEnd(id MeshId) () {
 
 		var vertexByteStride i32 = g_meshes[mesh].vertexByteStride
 		panicIfNot(vertexByteStride > 0, "invalid vertex stride")
-		panicIfNot((vertexByteCount % vertexByteStride) == 0, sprintf("(vertexByteCount % vertexByteStride) == 0 :: (%d mod %d) == %d", vertexByteCount, vertexByteStride, vertexByteCount % vertexByteStride))
+		panicIfNot((vertexByteCount % vertexByteStride) == 0, sprintf("(vertexByteCount mod vertexByteStride) == 0 :: (%d mod %d) == %d", vertexByteCount, vertexByteStride, vertexByteCount % vertexByteStride))
    		vertexCount = vertexByteCount / vertexByteStride
 
 		gl.BindVertexArrayCore(g_meshes[mesh].vao)
@@ -370,7 +370,6 @@ func MeshRender(id MeshId) {
 	gl.BindVertexArrayCore(g_meshes[mesh].vao)
 	panicIf(GlError(), "gl.BindVertexArrayCore")
 
-	var null []i32
 	var indexFormat i32 = g_meshes[mesh].indexFormat
 	var indexCount i32 = g_meshes[mesh].indexCount
 
@@ -381,7 +380,7 @@ func MeshRender(id MeshId) {
 		EnableCulling(g_meshes[mesh].frontFace, cullFace)
     }
 
-	gl.DrawElements(g_meshes[mesh].primitive, indexCount, indexFormat, null)
+	gl.DrawElements(g_meshes[mesh].primitive, indexCount, indexFormat)
 	panicIf(GlError(), "gl.DrawArrays")
 }
 
