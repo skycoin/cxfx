@@ -341,7 +341,7 @@ func MeshEnd(id MeshId) () {
 
 		var vertexByteStride i32 = g_meshes[mesh].vertexByteStride
 		panicIfNot(vertexByteStride > 0, "invalid vertex stride")
-		panicIfNot((vertexByteCount % vertexByteStride) == 0, sprintf("(vertexByteCount % vertexByteStride) == 0 :: (%d mod %d) == %d", vertexByteCount, vertexByteStride, vertexByteCount % vertexByteStride))
+		panicIfNot((vertexByteCount % vertexByteStride) == 0, sprintf("(vertexByteCount mod vertexByteStride) == 0 :: (%d mod %d) == %d", vertexByteCount, vertexByteStride, vertexByteCount % vertexByteStride))
    		vertexCount = vertexByteCount / vertexByteStride
 
 		gl.BindVertexArrayCore(g_meshes[mesh].vao)
