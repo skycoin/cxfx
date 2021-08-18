@@ -360,7 +360,7 @@ func loadOctree(path str, name str, maxLevel i32, options i32, save bool, world 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 func gameOnStart(window str) {
-	StartCPUProfile("6_model_init", 100)
+	StartCPUProfile("11_octree_init", 100)
 	app.Init()
 
     skyMesh = gfx.MeshLock(gfx.TRIANGLES, gfx.UNSIGNED_SHORT, 36, gfx.g_vertexLayout, 24);
@@ -548,6 +548,9 @@ func gameOnStart(window str) {
 	gui.ScreenSetDuration(bootScreen, 2.0D)
 	gui.ScreenSetOnNext(bootScreen, skycoinScreen)
 	gui.ScreenShow(bootScreen)
+
+	StopCPUProfile("11_octree_init")
+	StartCPUProfile("11_octree_run", 100)
 }
 
 //-----------------------------------------------------------------------------
@@ -559,6 +562,6 @@ func main()() {
 	    gfx.MeshUnlock(groundMesh)
 	    //gam.Destroy()//ISSUE : can't call gam.Destroy()
 	}
-    StopCPUProfile("6_model_run")
+    StopCPUProfile("11_octree_run")
 }
 
