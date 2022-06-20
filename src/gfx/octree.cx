@@ -29,7 +29,14 @@ type OctreeCell struct {
     planesOrigin []mat.v3
     planesNormal []mat.v3
     points []mat.v3
-    children [8] i32
+    child_0 i32
+    child_1 i32
+    child_2 i32
+    child_3 i32
+    child_4 i32
+    child_5 i32
+    child_6 i32
+    child_7 i32
 }
 
 // OctreeId ...
@@ -416,9 +423,14 @@ func readOctreeCells(handle i32, value []OctreeCell) (out []OctreeCell) {
         oc.planesOrigin = readV3FSlice(handle, oc.planesOrigin)
         oc.planesNormal = readV3FSlice(handle, oc.planesNormal)
         oc.points = readV3FSlice(handle, oc.points)
-        for c := 0; c < 8; c++ {
-            oc.children[c] = readI32(handle)
-        }
+        oc.child_0 = readI32(handle)
+        oc.child_1 = readI32(handle)
+        oc.child_2 = readI32(handle)
+        oc.child_3 = readI32(handle)
+        oc.child_4 = readI32(handle)
+        oc.child_5 = readI32(handle)
+        oc.child_6 = readI32(handle)
+        oc.child_7 = readI32(handle)
         out = append(out, oc)
     }
 }
@@ -454,9 +466,15 @@ func writeOctreeCells(handle i32, value []OctreeCell, options i32) {
             writeUI64(handle, 0UL)
             writeUI64(handle, 0UL)
         }
-        for c := 0; c < 8; c++ {
-            writeI32(handle, value[i].children[c])
-        }
+
+        writeI32(handle, value[i].child_0)
+        writeI32(handle, value[i].child_1)
+        writeI32(handle, value[i].child_2)
+        writeI32(handle, value[i].child_3)
+        writeI32(handle, value[i].child_4)
+        writeI32(handle, value[i].child_5)
+        writeI32(handle, value[i].child_6)
+        writeI32(handle, value[i].child_7)
     }
 }
 
@@ -837,9 +855,15 @@ func OctreeAssertEquals(left OctreeId, right OctreeId, options i32) {
             panicIf(neqV3FSlice(lc.points, rc.points), "points")
         }
 
-        for c := 0; c < 8; c++ {
-            panicIf(lc.children[c] != rc.children[c], "children")
-        }
+
+        panicIf(lc.child_0 != rc.child_0, "children")
+        panicIf(lc.child_1 != rc.child_1, "children")
+        panicIf(lc.child_2 != rc.child_2, "children")
+        panicIf(lc.child_3 != rc.child_3, "children")
+        panicIf(lc.child_4 != rc.child_4, "children")
+        panicIf(lc.child_5 != rc.child_5, "children")
+        panicIf(lc.child_6 != rc.child_6, "children")
+        panicIf(lc.child_7 != rc.child_7, "children")
     }
 
     var leftPrimitives []Primitive = g_octrees[left.octree].primitives
@@ -2327,9 +2351,14 @@ func octreeUpdateCells(id OctreeId, level i32, center mat.v3, size mat.v3) (out 
 
         var childLevel i32 = level + 1
         var childSize mat.v3 = v3.mulf(size, 0.5)
-        for i := 0; i < 8; i++ {
-            cells[offset].children[i] = octreeUpdateCells(id, childLevel, v3.add(center, v3.mul(g_octreeCells[i], childSize)), childSize)
-        }
+        cells[offset].child_0 = octreeUpdateCells(id, childLevel, v3.add(center, v3.mul(g_octreeCells[0], childSize)), childSize)
+        cells[offset].child_1 = octreeUpdateCells(id, childLevel, v3.add(center, v3.mul(g_octreeCells[1], childSize)), childSize)
+        cells[offset].child_2 = octreeUpdateCells(id, childLevel, v3.add(center, v3.mul(g_octreeCells[2], childSize)), childSize)
+        cells[offset].child_3 = octreeUpdateCells(id, childLevel, v3.add(center, v3.mul(g_octreeCells[3], childSize)), childSize)
+        cells[offset].child_4 = octreeUpdateCells(id, childLevel, v3.add(center, v3.mul(g_octreeCells[4], childSize)), childSize)
+        cells[offset].child_5 = octreeUpdateCells(id, childLevel, v3.add(center, v3.mul(g_octreeCells[5], childSize)), childSize)
+        cells[offset].child_6 = octreeUpdateCells(id, childLevel, v3.add(center, v3.mul(g_octreeCells[6], childSize)), childSize)
+        cells[offset].child_7 = octreeUpdateCells(id, childLevel, v3.add(center, v3.mul(g_octreeCells[7], childSize)), childSize)
     }
 }
 
