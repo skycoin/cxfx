@@ -16,8 +16,8 @@ type AnimationId struct {
 type Animation struct {
 	id AnimationId
 	path str
-	textures [] gfx.TextureId
-	delays [] i32
+	textures []gfx.TextureId
+	delays []i32
 	disposals []i32
 	frameCount i32
 	loop i32

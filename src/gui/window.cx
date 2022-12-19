@@ -1,7 +1,7 @@
 package gui
 
 // Globals ...
-var g_windows[] Window
+var g_windows []Window
 
 // WindowId ...
 type WindowId struct {

@@ -18,10 +18,10 @@ type Graph struct {
 	expX i32
 	expY i32
 	coord mat.v2
-	labels [] LabelId
+	labels []LabelId
 	labelCount i32
-	horz [] GraphLine
-	vert [] GraphLine
+	horz []GraphLine
+	vert []GraphLine
 	graphClips mat.v4
 }
 

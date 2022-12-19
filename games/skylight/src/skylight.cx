@@ -20,7 +20,7 @@ import "v4"
 // TODO : can't navigate with keyboard at startup
 // TODO : dialog disapear if exit button is pushed with keyboard
 
-var exitScreen gui.ScreenId
+//var exitScreen gui.ScreenId
 
 
 type Sky struct {

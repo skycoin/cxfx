@@ -1,7 +1,7 @@
 package gui
 
 // Globals ...
-var g_combos[] Combo
+var g_combos []Combo
 
 // ComboId ...
 type ComboId struct {

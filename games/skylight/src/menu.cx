@@ -181,7 +181,7 @@ var synthintroAnim gui.AnimationId = gui.InvalidAnimation()
 
 
 
-var texture gfx.TextureId = gfx.InvalidTexture()
+//var texture gfx.TextureId = gfx.InvalidTexture()
 
 
 
@@ -220,8 +220,8 @@ type portrait struct {
 	validate i32
 	
 }
-var Stapic[16] portrait
-var Porpic[12] portrait
+var Stapic [16]portrait
+var Porpic [12]portrait
 var timer i32
 var timerSta i32
 var timerIntro i32

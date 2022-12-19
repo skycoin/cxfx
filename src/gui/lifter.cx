@@ -5,7 +5,7 @@ var LIFT_VERT i32 = 0
 var LIFT_HORZ i32 = 1
 
 // Globals ...
-var g_lifters[] Lifter
+var g_lifters []Lifter
 
 
 // LifterId

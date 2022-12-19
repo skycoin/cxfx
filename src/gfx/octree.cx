@@ -29,7 +29,7 @@ type OctreeCell struct {
     planesOrigin []mat.v3
     planesNormal []mat.v3
     points []mat.v3
-    children [8] i32
+    children [8]i32
 }
 
 // OctreeId ...
@@ -1136,8 +1136,7 @@ var P6 fps.ProfileId = fps.InvalidProfile()*/
 
 
 // OctreeRender ...
-func OctreeRender(id OctreeId, world mat.m44, view mat.m44, projection mat.m44,
-    envSpec TextureId, envDiff TextureId, brdf TextureId, cameraPosition v4, exposure f32) {
+func OctreeRender(id OctreeId, world mat.m44, view mat.m44, projection mat.m44, envSpec TextureId, envDiff TextureId, brdf TextureId, cameraPosition v4, exposure f32) {
     panicIfNot(OctreeIsValid(id), "invalid id")
     DisableBlending()
     DepthState(true, LESS, true)
@@ -1197,8 +1196,7 @@ func sortBuckets(id OctreeId, in []PrimitiveBucket, opaque bool) (out []Primitiv
     //fps.StopProfile(P2)
 }
 
-func octreeRender(id OctreeId, world mat.m44, view mat.m44, projection mat.m44, buckets []PrimitiveBucket,
-    envSpec TextureId, envDiff TextureId, brdf TextureId, cameraPosition v4, exposure f32) {
+func octreeRender(id OctreeId, world mat.m44, view mat.m44, projection mat.m44, buckets []PrimitiveBucket, envSpec TextureId, envDiff TextureId, brdf TextureId, cameraPosition v4, exposure f32) {
     //P0 = fps.CreateStartProfile(P0, "OctreeRender")
     //P1 = fps.CreateStartProfile(P1, "P1")
     panicIfNot(OctreeIsValid(id), "invalid id")

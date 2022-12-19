@@ -10,7 +10,7 @@ var SPLIT_HORZ i32 = 5
 var SPLIT_VERT i32 = 6
 
 // Globals ...
-var g_splitters[] Splitter
+var g_splitters []Splitter
 
 // SplitterId ...
 type SplitterId struct {
