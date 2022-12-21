@@ -10,11 +10,9 @@
 CX = ../cx
 CX_BIN = $(CX)/bin/cx
 CXFX = .
-CX_SRC := $(CX)
 CXFX_SRC := $(CXFX)
 GLVERSION = ++glVersion=gl32
 ifeq ($(TARGET), android)
-	CX_SRC = .
 	CXFX_SRC = ./cxfx
 	GLVERSION = ++glVersion=gles31
 endif
@@ -27,7 +25,7 @@ DEBUG := --debug-profile=$(PPROF)
 endif
 
 OPTS = $(DEBUG)
-OPTS_MEM = $(OPTS) --stack-size=32M --heap-initial=512M --heap-max=512M
+OPTS_MEM = $(OPTS) --stack-size=32M --heap-initial=512M --heap-max=512M --debug-file-access
 
 DATA = ++data=$(CXFX_SRC)/resources/
 GLFWHINTS = ++hints=resizable
@@ -74,8 +72,8 @@ define CXCP
 	cp -R ${1} ${2}
 endef
 
-SRC = $(CX_SRC)/lib/args.cx\
-	  $(CX_SRC)/lib/json.cx\
+SRC = $(CXFX_SRC)/src/args/args.cx\
+	  $(CXFX_SRC)/src/json/json.cx\
 	  $(CXFX_SRC)/src/mat/math.cx\
 	  $(CXFX_SRC)/src/mat/v1d.cx\
 	  $(CXFX_SRC)/src/mat/v1f.cx\
@@ -89,7 +87,7 @@ SRC = $(CX_SRC)/lib/args.cx\
 	  $(CXFX_SRC)/src/app/event.cx\
 	  $(CXFX_SRC)/src/fps/profiler.cx\
 	  $(CXFX_SRC)/src/fps/framerate.cx\
-          $(CXFX_SRC)/src/mat/intersect.cx\
+      $(CXFX_SRC)/src/mat/intersect.cx\
 	  $(CXFX_SRC)/src/gfx/batch.cx\
 	  $(CXFX_SRC)/src/gfx/graphics.cx\
 	  $(CXFX_SRC)/src/gfx/state.cx\

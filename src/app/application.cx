@@ -126,6 +126,8 @@ func Run(name str, width i32, height i32, fps i32, dataDir str, glVersion i32, f
     g_app.prfUIResize = fps.CreateProfile("ui resize")
     g_app.prfRender = fps.CreateProfile("render")
 
+    glfw.PollEvents()
+
     for Running()  && (fakeExit < 60.0D) {
         fps.BeginUpdate(fpsUpdate)
         glfw.PollEvents()
