@@ -2,7 +2,7 @@ package gui
 
 
 // Globals ...
-var g_binders[] Binder
+var g_binders []Binder
 
 // BinderId ...
 type BinderId struct {

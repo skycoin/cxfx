@@ -1,8 +1,8 @@
 package gfx
 
 // Globals ...
-var g_batches[] Batch
-var g_renderBatches[] BatchId
+var g_batches []Batch
+var g_renderBatches []BatchId
 
 // BatchId ...
 type BatchId struct {

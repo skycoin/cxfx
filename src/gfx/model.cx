@@ -230,8 +230,8 @@ type Model struct {
 	min mat.v3
 	max mat.v3
 
-	nodes[]i32
-	nodesMap[]i32
+	nodes []i32
+	nodesMap []i32
 	determinants []f32
 	transforms []mat.m44
 	matrixStack []mat.m44

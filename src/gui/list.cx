@@ -1,7 +1,7 @@
 package gui
 
 // Globals ...
-var g_lists[] List
+var g_lists []List
 
 // ListId ...
 type ListId struct {
